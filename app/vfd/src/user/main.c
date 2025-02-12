@@ -1,115 +1,80 @@
-/* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
-
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
+#include "stm32g4xx_hal.h"
+#include "tx_api.h"
 
 /* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-/* USER CODE BEGIN PFP */
+static void SystemClock_Config(void);
+void Error_Handler(void);
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
-
+#define  APP_CFG_TASK_START_PRIO                          2u
+#define  APP_CFG_TASK_START_STK_SIZE                    4096u
+static  TX_THREAD   AppTaskStartTCB;
+static  uint64_t    AppTaskStartStk[APP_CFG_TASK_START_STK_SIZE/8];
+static  void  AppTaskStart          (ULONG thread_input);
 /**
   * @brief  The application entry point.
   * @retval int
   */
 int main(void)
 {
+    /* MCU Configuration--------------------------------------------------------*/
 
-  /* USER CODE BEGIN 1 */
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
 
-  /* USER CODE END 1 */
+    /* Configure the system clock */
+    SystemClock_Config();
 
-  /* MCU Configuration--------------------------------------------------------*/
+    HAL_SuspendTick();
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+    tx_kernel_enter();
 
-  /* USER CODE BEGIN Init */
 
-  /* USER CODE END Init */
+    /* Infinite loop */
+    while (1)
+    {
 
-  /* Configure the system clock */
-  SystemClock_Config();
+    }
 
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  /* USER CODE BEGIN 2 */
-
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
 }
 
+
+VOID  tx_application_define(VOID *first_unused_memory)
+{
+    tx_thread_create(&AppTaskStartTCB,              /* 任务控制块地址 */   
+                       "App Task Start",              /* 任务名 */
+                       AppTaskStart,                  /* 启动任务函数地址 */
+                       0,                             /* 传递给任务的参数 */
+                       &AppTaskStartStk[0],            /* 堆栈基地址 */
+                       APP_CFG_TASK_START_STK_SIZE,    /* 堆栈空间大小 */  
+                       APP_CFG_TASK_START_PRIO,        /* 任务优先级*/
+                       APP_CFG_TASK_START_PRIO,        /* 任务抢占阀值 */
+                       TX_NO_TIME_SLICE,               /* 不开启时间片 */
+                       TX_AUTO_START);                 /* 创建后立即启动 */      
+}
+
+int times = 0;
+static  void  AppTaskStart (ULONG thread_input)
+{
+	(void)thread_input;
+
+    HAL_ResumeTick();
+	
+    while (1)
+	{  
+        tx_thread_sleep(1000);
+        times++;
+    }
+}
 /**
   * @brief System Clock Configuration
   * @retval None
   */
-void SystemClock_Config(void)
+static void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
+  __HAL_RCC_GPIOF_CLK_ENABLE();
   /** Configure the main internal regulator output voltage
   */
   HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1_BOOST);
@@ -150,26 +115,7 @@ void SystemClock_Config(void)
   HAL_RCC_EnableCSS();
 }
 
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
 
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOF_CLK_ENABLE();
-
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
-}
-
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -177,13 +123,13 @@ static void MX_GPIO_Init(void)
   */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
+
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
   {
   }
-  /* USER CODE END Error_Handler_Debug */
+
 }
 
 #ifdef  USE_FULL_ASSERT
