@@ -223,7 +223,6 @@
                     <state>STM32G431xx</state>
                     <state>USE_HAL_DRIVER</state>
                     <state>TX_ENABLE_FPU_SUPPORT</state>
-                    <state>TX_ENABLE_STACK_CHECKING</state>
                     <state>TX_INCLUDE_USER_DEFINE_FILE</state>
                 </option>
                 <option>
@@ -355,6 +354,10 @@
                     <state>$PROJ_DIR$\..\src\user</state>
                     <state>$PROJ_DIR$\..\src\threadx\ports\inc</state>
                     <state>$PROJ_DIR$\..\src\threadx\src\inc</state>
+                    <state>$PROJ_DIR$\..\src\modules\nx_msg</state>
+                    <state>$PROJ_DIR$\..\src\services\service_test</state>
+                    <state>$PROJ_DIR$\..\src\bsp</state>
+                    <state>$PROJ_DIR$\..\src\drivers\log</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2115,6 +2118,12 @@
     </configuration>
     <group>
         <name>bsp</name>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_log.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_log.h</name>
+        </file>
     </group>
     <group>
         <name>cmsis</name>
@@ -2127,6 +2136,21 @@
     </group>
     <group>
         <name>drivers</name>
+        <group>
+            <name>log</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\log\log.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\log\log.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\log\printf-stdarg.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\log\printf-stdarg.h</name>
+            </file>
+        </group>
     </group>
     <group>
         <name>lib</name>
@@ -2383,6 +2407,30 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\lib\src\stm32g4xx_ll_utils.c</name>
+            </file>
+        </group>
+    </group>
+    <group>
+        <name>modules</name>
+        <group>
+            <name>nx_msg</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\nx_msg\nx_msg.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\nx_msg\nx_msg.h</name>
+            </file>
+        </group>
+    </group>
+    <group>
+        <name>services</name>
+        <group>
+            <name>service_test</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_test\service_test.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_test\service_test.h</name>
             </file>
         </group>
     </group>

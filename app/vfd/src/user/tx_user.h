@@ -109,22 +109,21 @@
 /* Override various options with default values already assigned in tx_port.h. Please also refer
    to tx_port.h for descriptions on each of these options.  */
 
-/*
+
 #define TX_MAX_PRIORITIES                       32
-#define TX_MINIMUM_STACK                        ????
-#define TX_THREAD_USER_EXTENSION                ????
-#define TX_TIMER_THREAD_STACK_SIZE              ????
-#define TX_TIMER_THREAD_PRIORITY                ????
-*/
+#define TX_MINIMUM_STACK                        256
+#define TX_TIMER_THREAD_STACK_SIZE              512
+#define TX_TIMER_THREAD_PRIORITY                0
+
 
 /* Define the common timer tick reference for use by other middleware components. The default
    value is 10ms (i.e. 100 ticks, defined in tx_api.h), but may be replaced by a port-specific
    version in tx_port.h or here.
    Note: the actual hardware timer value may need to be changed (usually in tx_initialize_low_level).  */
 
-/*
-#define TX_TIMER_TICKS_PER_SECOND       (100UL)
-*/
+
+#define TX_TIMER_TICKS_PER_SECOND       (1000UL)
+
 
 /* Determine if there is a FileX pointer in the thread control block.
    By default, the pointer is there for legacy/backwards compatibility.
@@ -169,9 +168,9 @@
    define is negated, thereby forcing the stack fill which is necessary for the stack checking
    logic.  */
 
-/*
+
 #define TX_ENABLE_STACK_CHECKING
-*/
+
 
 /* Determine if random number is used for stack filling. By default, ThreadX uses a fixed
    pattern for stack filling. When the following is defined, ThreadX uses a random number

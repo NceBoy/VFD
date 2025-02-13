@@ -1,15 +1,18 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32g4xx_hal.h"
 #include "tx_api.h"
+#include "nx_msg.h"
+#include "service_test.h"
+#include "log.h"
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 void Error_Handler(void);
 
 #define  APP_CFG_TASK_START_PRIO                          2u
-#define  APP_CFG_TASK_START_STK_SIZE                    4096u
+#define  APP_CFG_TASK_START_STK_SIZE                    1024u
 static  TX_THREAD   AppTaskStartTCB;
-static  uint64_t    AppTaskStartStk[APP_CFG_TASK_START_STK_SIZE/8];
+static  ULONG64    AppTaskStartStk[APP_CFG_TASK_START_STK_SIZE/8];
 static  void  AppTaskStart          (ULONG thread_input);
 /**
   * @brief  The application entry point.
@@ -25,16 +28,10 @@ int main(void)
     /* Configure the system clock */
     SystemClock_Config();
 
-    HAL_SuspendTick();
-
     tx_kernel_enter();
 
-
     /* Infinite loop */
-    while (1)
-    {
-
-    }
+    while (1);
 
 }
 
@@ -53,18 +50,33 @@ VOID  tx_application_define(VOID *first_unused_memory)
                        TX_AUTO_START);                 /* 创建后立即启动 */      
 }
 
-int times = 0;
+
 static  void  AppTaskStart (ULONG thread_input)
 {
 	(void)thread_input;
+    log_init();
+	nx_msg_init();
 
-    HAL_ResumeTick();
+    service_test_start();
+
+    unsigned char random_buf[256] = {0};
+
+    int p = 0;
 	
-    while (1)
-	{  
+	while(1)
+	{
+        /*产生一个随机数组*/
+        unsigned int num = _tx_time_get();
+        srand(num);
+        p = rand() % 20 + 30; // 生成一个30到50的随机数
+
+        memset(random_buf,0,sizeof(random_buf));
+        for(int i = 0 ; i < p ; i++)
+            random_buf[i] = i;
+
+        nx_msg_send(NULL, service_test_get_addr(), MSG_ID_TEST, random_buf, p);
         tx_thread_sleep(1000);
-        times++;
-    }
+	}
 }
 /**
   * @brief System Clock Configuration
