@@ -1,19 +1,20 @@
 /* Includes ------------------------------------------------------------------*/
-#include "stm32g4xx_hal.h"
+#include "main.h"
 #include "tx_api.h"
 #include "nx_msg.h"
-#include "service_test.h"
 #include "log.h"
+
+#include "service_test.h"
+#include "service_motor.h"
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
-void Error_Handler(void);
 
-#define  APP_CFG_TASK_START_PRIO                          2u
-#define  APP_CFG_TASK_START_STK_SIZE                    1024u
-static  TX_THREAD   AppTaskStartTCB;
-static  ULONG64    AppTaskStartStk[APP_CFG_TASK_START_STK_SIZE/8];
-static  void  AppTaskStart          (ULONG thread_input);
+#define  CFG_TASK_START_PRIO                          2u
+#define  CFG_TASK_START_STK_SIZE                    1024u
+static  TX_THREAD   taskstarttcb;
+static  ULONG64     taskstartstk[CFG_TASK_START_STK_SIZE/8];
+static  void        taskstart          (ULONG thread_input);
 /**
   * @brief  The application entry point.
   * @retval int
@@ -38,43 +39,33 @@ int main(void)
 
 VOID  tx_application_define(VOID *first_unused_memory)
 {
-    tx_thread_create(&AppTaskStartTCB,              /* 任务控制块地址 */   
-                       "App Task Start",              /* 任务名 */
-                       AppTaskStart,                  /* 启动任务函数地址 */
-                       0,                             /* 传递给任务的参数 */
-                       &AppTaskStartStk[0],            /* 堆栈基地址 */
-                       APP_CFG_TASK_START_STK_SIZE,    /* 堆栈空间大小 */  
-                       APP_CFG_TASK_START_PRIO,        /* 任务优先级*/
-                       APP_CFG_TASK_START_PRIO,        /* 任务抢占阀值 */
-                       TX_NO_TIME_SLICE,               /* 不开启时间片 */
-                       TX_AUTO_START);                 /* 创建后立即启动 */      
+    tx_thread_create(&taskstarttcb,                 /* 任务控制块地址 */   
+                     "task start",                  /* 任务名 */
+                     taskstart,                     /* 启动任务函数地址 */
+                     0,                             /* 传递给任务的参数 */
+                     &taskstartstk[0],              /* 堆栈基地址,8字节对齐 */
+                     CFG_TASK_START_STK_SIZE,       /* 堆栈空间大小 */  
+                     CFG_TASK_START_PRIO,           /* 任务优先级*/
+                     CFG_TASK_START_PRIO,           /* 任务抢占阀值 */
+                     TX_NO_TIME_SLICE,              /* 不开启时间片 */
+                     TX_AUTO_START);                /* 创建后立即启动 */      
 }
 
 
-static  void  AppTaskStart (ULONG thread_input)
+static  void  taskstart (ULONG thread_input)
 {
 	(void)thread_input;
+
     log_init();
+
 	nx_msg_init();
 
     service_test_start();
 
-    unsigned char random_buf[256] = {0};
-
-    int p = 0;
+    service_motor_start();
 	
 	while(1)
 	{
-        /*产生一个随机数组*/
-        unsigned int num = _tx_time_get();
-        srand(num);
-        p = rand() % 20 + 30; // 生成一个30到50的随机数
-
-        memset(random_buf,0,sizeof(random_buf));
-        for(int i = 0 ; i < p ; i++)
-            random_buf[i] = i;
-
-        nx_msg_send(NULL, service_test_get_addr(), MSG_ID_TEST, random_buf, p);
         tx_thread_sleep(1000);
 	}
 }

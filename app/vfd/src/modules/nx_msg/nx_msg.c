@@ -7,8 +7,8 @@
 #define MSG_MGR_MAX_NUM             16
 #define MSG_MEM_POOL_BYTES          2 * 1024
 
-static uint32_t msg_mgr[MSG_MGR_MAX_NUM * 6] = {0};
-static uint32_t msg_mem[MSG_MEM_POOL_BYTES / sizeof(uint32_t)] = {0};
+static UINT msg_mgr[MSG_MGR_MAX_NUM * 6] = {0};
+static UINT msg_mem[MSG_MEM_POOL_BYTES / sizeof(UINT)] = {0};
 
 static TX_BLOCK_POOL g_msg_mgr_blk = {0};
 static TX_BYTE_POOL  g_msg_mem_pool = {0};

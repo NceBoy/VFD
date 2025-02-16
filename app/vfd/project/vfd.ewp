@@ -358,6 +358,8 @@
                     <state>$PROJ_DIR$\..\src\services\service_test</state>
                     <state>$PROJ_DIR$\..\src\bsp</state>
                     <state>$PROJ_DIR$\..\src\drivers\log</state>
+                    <state>$PROJ_DIR$\..\src\services\service_motor</state>
+                    <state>$PROJ_DIR$\..\src\drivers\cordic</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -535,7 +537,7 @@
                 </option>
                 <option>
                     <name>ADefines</name>
-                    <state>TX_ENABLE_FPU_SUPPORT
+                    <state>TX_ENABLE_FPU_SUPPORT
 </state>
                 </option>
                 <option>
@@ -2137,6 +2139,15 @@
     <group>
         <name>drivers</name>
         <group>
+            <name>cordic</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\cordic\cordic.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\cordic\cordic.h</name>
+            </file>
+        </group>
+        <group>
             <name>log</name>
             <file>
                 <name>$PROJ_DIR$\..\src\drivers\log\log.c</name>
@@ -2424,6 +2435,15 @@
     </group>
     <group>
         <name>services</name>
+        <group>
+            <name>service_motor</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_motor\service_motor.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_motor\service_motor.h</name>
+            </file>
+        </group>
         <group>
             <name>service_test</name>
             <file>

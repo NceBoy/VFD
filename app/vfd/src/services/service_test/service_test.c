@@ -3,29 +3,35 @@
 #include "tx_queue.h"
 #include "log.h"
 
+/*线程参数*/
 
-#define  QUEUE_TEST_MAX_NUM                          8
 #define  CFG_TASK_TEST_PRIO                          3u
 #define  CFG_TASK_TEST_STK_SIZE                    1024u
 static  TX_THREAD   task_test_tcb;
-static  ULONG64    task_test_stk[CFG_TASK_TEST_STK_SIZE/8];
-static  void  task_test          (ULONG thread_input);
+static  ULONG64     task_test_stk[CFG_TASK_TEST_STK_SIZE/8];
+static  void        task_test          (ULONG thread_input);
+
+/*队列参数*/
+#define  QUEUE_TEST_MAX_NUM                          8
 static TX_QUEUE g_test_queue = {0};
 static UINT g_test_queue_addr[QUEUE_TEST_MAX_NUM] = {0};
+
+
 static int msg_times = 0;
+
 void service_test_start(void)
 {
     nx_msg_queue_create(&g_test_queue, "test queue",(VOID *)g_test_queue_addr, sizeof(g_test_queue_addr));
     tx_thread_create(&task_test_tcb,
-                    "task test",
-                    task_test,
-                    0,
-                    &task_test_stk[0],
-                    CFG_TASK_TEST_STK_SIZE,
-                    CFG_TASK_TEST_PRIO,
-                    CFG_TASK_TEST_PRIO,
-                    TX_NO_TIME_SLICE,
-                    TX_AUTO_START);
+                     "task test",
+                     task_test,
+                     0,
+                     &task_test_stk[0],
+                     CFG_TASK_TEST_STK_SIZE,
+                     CFG_TASK_TEST_PRIO,
+                     CFG_TASK_TEST_PRIO,
+                     TX_NO_TIME_SLICE,
+                     TX_AUTO_START);
 }
 
 msg_addr service_test_get_addr(void)

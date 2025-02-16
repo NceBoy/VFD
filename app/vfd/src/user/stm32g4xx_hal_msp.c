@@ -37,6 +37,38 @@ void HAL_MspInit(void)
 }
 
 /**
+* @brief CORDIC MSP Initialization
+* This function configures the hardware resources used in this example
+* @param hcordic: CORDIC handle pointer
+* @retval None
+*/
+void HAL_CORDIC_MspInit(CORDIC_HandleTypeDef* hcordic)
+{
+  if(hcordic->Instance==CORDIC)
+  {
+    /* Peripheral clock enable */
+    __HAL_RCC_CORDIC_CLK_ENABLE();
+  }
+
+}
+
+/**
+* @brief CORDIC MSP De-Initialization
+* This function freeze the hardware resources used in this example
+* @param hcordic: CORDIC handle pointer
+* @retval None
+*/
+void HAL_CORDIC_MspDeInit(CORDIC_HandleTypeDef* hcordic)
+{
+  if(hcordic->Instance==CORDIC)
+  {
+    /* Peripheral clock disable */
+    __HAL_RCC_CORDIC_CLK_DISABLE();
+  }
+
+}
+
+/**
 * @brief UART MSP Initialization
 * This function configures the hardware resources used in this example
 * @param huart: UART handle pointer
