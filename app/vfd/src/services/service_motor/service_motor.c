@@ -3,6 +3,7 @@
 #include "tx_queue.h"
 #include "log.h"
 #include "cordic.h"
+#include "motor.h"
 
 /*线程参数*/
 
@@ -49,10 +50,6 @@ static int do_handler(MSG_MGR_T* msg)
 }
 #endif
 
-float sin = 0.0f;
-float rad = 0.0f;
-unsigned int times = 0;
-float angle = 0.0f;
 
 
 
@@ -62,15 +59,12 @@ static  void  task_motor (ULONG thread_input)
 
     cordic_init();
     
-		
+    motor_start();
+    
 	while(1)
 	{
-        cordic_sin(rad, &sin);
-        angle = 57.29578f * public_rad_convert(rad);
-        rad += 0.01f;
-        times++;
-        logdbg("[%d] sin[%d] = %d \n", times, (int)(angle * 100) ,(int)(sin * 10000));
-        tx_thread_sleep(1000);
+        motor_test();
+        tx_thread_sleep(100);
 	}
 
 }
