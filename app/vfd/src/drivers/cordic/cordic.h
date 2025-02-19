@@ -9,7 +9,7 @@ float public_rad_convert(float rad);
     
 void cordic_init(void);
     
-void cordic_sin(float angle , float* sin);
+float cordic_sin(float angle);
     
 #ifdef __cplusplus
 }

@@ -59,11 +59,11 @@ static  void  task_motor (ULONG thread_input)
 
     cordic_init();
     
-    motor_start();
+    motor_start(50.0);
     
 	while(1)
 	{
-        motor_test();
+        motor_update_spwm(0 , 0.9);
         tx_thread_sleep(100);
 	}
 

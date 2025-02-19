@@ -201,6 +201,4 @@ void SysTick_Handler(void)
 /* please refer to the startup file (startup_stm32g4xx.s).                    */
 /******************************************************************************/
 
-/* USER CODE BEGIN 1 */
 
-/* USER CODE END 1 */

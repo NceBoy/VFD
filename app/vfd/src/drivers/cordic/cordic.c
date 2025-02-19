@@ -1,17 +1,5 @@
 #include "main.h"
 
-/* Define PI */
-#ifndef M_PI
-#define M_PI 3.14159265358979323846f
-#endif
-/* Define Q31 */
-#ifndef Q31
-#define Q31 0x80000000
-#endif
-/* Define Q31 to float unit in RADIAN = Q31/PI */
-#define RADIAN_Q31_f  (Q31/M_PI)
-
-#define		PI_2	6.283185307f
 
 static CORDIC_HandleTypeDef hcordic;
 
@@ -50,7 +38,7 @@ void cordic_init(void)
 #endif
 }
 
-void cordic_sin(float angle , float* sin)
+float cordic_sin(float angle)
 {
     float angle_pi = public_rad_convert(angle);
 	/* Q31,two write, one read, sine calculate, 6 precision */
@@ -60,5 +48,5 @@ void cordic_sin(float angle , float* sin)
 	/* Modulus is m=1 */
 	hcordic.Instance->WDATA = 0x7FFFFFFF;
 	/* Get sin value in float */
-	*sin = ((int32_t)hcordic.Instance->RDATA)*1.0f/Q31; 
+	return ((int32_t)hcordic.Instance->RDATA)*1.0f/Q31; 
 }

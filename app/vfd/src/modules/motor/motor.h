@@ -11,8 +11,9 @@ void motor_current_freq_set(float freq);
 void motor_target_info_update(float target);
 
 
-void motor_start(void);
-void motor_test(void);
+void motor_start(float target_freq);
+void motor_update_spwm(unsigned int dir , float modulation_ratio);
+
 
 
 #ifdef __cplusplus

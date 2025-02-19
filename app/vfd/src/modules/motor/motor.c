@@ -1,11 +1,15 @@
 #include "main.h"
+#include "bsp_tmr.h"
 #include "motor.h"
 #include "log.h"
+#include "cordic.h"
 
 
+extern TIM_HandleTypeDef htim8;
 /*为了计算精度，统一为float*/
 typedef struct
 {
+    float angle;        /*当前的角度，一直累加的值，用于计算sin值*/
     float target_freq;
     float current_freq;
     float next_step_freq;
@@ -57,21 +61,65 @@ static float motor_calcu_next_step_freq(float startup_freq ,
     return next_step_freq;
 }
 
-void motor_start(void)
+void motor_start(float target_freq)
 {
-    g_motor_real.current_freq = 15.0f;
-    g_motor_real.next_step_freq = 15.0f;
-    g_motor_real.target_freq = 15.0f;
-    motor_target_info_update(25);
+    /*step 1 . init motor value*/
+    g_motor_real.angle = 0.0f;
+    g_motor_real.current_freq = 0.0f;
+    g_motor_real.next_step_freq = 5.0f;
+    motor_target_info_update(target_freq);
+    /*step 2 . start timer*/
 }
 
-void motor_test(void)
-{
-    /*根据上一步计算的next_setp_freq更新sin的值*/
-    //motor_current_freq_set(g_motor_real.next_step_freq);
-    //g_motor_real.next_step_freq = motor_calcu_next_step_freq( 5 , 800 * 1000 ,100,
-    //                            g_motor_real.current_freq,g_motor_real.target_freq);
-    g_motor_real.next_step_freq = 15.9958f;
-    g_motor_real.target_freq = 16.0001209f;
-    logdbg("next freq = %d \n",float_equal(g_motor_real.next_step_freq, g_motor_real.target_freq));
+void motor_update_spwm(unsigned int dir , float modulation_ratio)
+{   
+    // 计算三相占空比
+    unsigned short phaseA = 0;
+    unsigned short phaseB = 0;
+    unsigned short phaseC = 0;
+    phaseA = (unsigned short)(modulation_ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle)));
+    if(dir == 0)
+    {
+        phaseB = (unsigned short)(modulation_ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));
+        phaseC = (unsigned short)(modulation_ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));        
+    }
+    else
+    {
+        phaseC = (unsigned short)(modulation_ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));
+        phaseB = (unsigned short)(modulation_ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));         
+    }
+
+
+    bsp_tmr_update_compare(phaseA , phaseB , phaseC);
+
+    motor_current_freq_set(g_motor_real.next_step_freq);
+
+    /*计算下一步的角度*/
+    float delta = PI_2 * PWM_CRCLE * g_motor_real.current_freq;
+    g_motor_real.angle += delta;
+    if (g_motor_real.angle >= PI_2) g_motor_real.angle -= PI_2;
+
+    /*计算下一步的频率*/
+    g_motor_real.next_step_freq = motor_calcu_next_step_freq(   5 , 
+                                                                800 * 1000 ,
+                                                                (unsigned int)(PWM_CRCLE * 1000000 ),
+                                                                g_motor_real.current_freq,
+                                                                g_motor_real.target_freq);
+
+    logdbg("%d:%d:%d\n",phaseA , phaseB , phaseC);
 }
+
+
+
+
+
+
+
+
+ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+ {
+    if(htim->Instance == TIM8)
+    {
+
+    }
+ }
