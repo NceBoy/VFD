@@ -6,10 +6,15 @@
 extern "C" {
 #endif
 
-
+#if 0  /*170M*/
 #define PWM_PSC                 16
 #define PWM_RESOLUTION          500
 #define PWM_APB2_CLK            170000000
+#else /*160M*/
+#define PWM_PSC                 1
+#define PWM_RESOLUTION          4000
+#define PWM_APB2_CLK            160000000
+#endif
 
 /*中心对称模式下PWM周期，单位秒*/
 #define PWM_CRCLE               ( (float)(2 * PWM_RESOLUTION * (PWM_PSC + 1)) / PWM_APB2_CLK)

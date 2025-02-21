@@ -63,7 +63,6 @@ static  void  task_motor (ULONG thread_input)
     
 	while(1)
 	{
-        motor_update_spwm(0 , 0.9);
         tx_thread_sleep(100);
 	}
 

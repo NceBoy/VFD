@@ -224,6 +224,8 @@
                     <state>USE_HAL_DRIVER</state>
                     <state>TX_ENABLE_FPU_SUPPORT</state>
                     <state>TX_INCLUDE_USER_DEFINE_FILE</state>
+                    <state>TX_PORT_BASEPRI=16</state>
+                    <state>TX_PORT_USE_BASEPRI</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -538,8 +540,9 @@
                 </option>
                 <option>
                     <name>ADefines</name>
-                    <state>TX_ENABLE_FPU_SUPPORT
-</state>
+                    <state>TX_ENABLE_FPU_SUPPORT</state>
+                    <state>TX_PORT_USE_BASEPRI</state>
+                    <state>TX_PORT_BASEPRI=16</state>
                 </option>
                 <option>
                     <name>AList</name>

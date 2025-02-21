@@ -14,16 +14,17 @@ void bsp_tmr_init(void)
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
     htim8.Instance = TIM8;
-    htim8.Init.Prescaler = PWM_PSC;  /* 170MHz / (psc + 1) = clk , 10MHz*/
+    htim8.Init.Prescaler = PWM_PSC;  /* 160MHz / (psc + 1) = clk , 80MHz*/
     htim8.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
     htim8.Init.Period = PWM_RESOLUTION;  /*对称计数模式，周期为10KHz*/
-    htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;  /*APB2 clk = 170MHz ,计算死区时间*/
+    htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;  /*APB2 clk = 160MHz ,计算死区时间*/
     htim8.Init.RepetitionCounter = 1;
     htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
     if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
     {
         Error_Handler();
     }
+
     sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
     if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
     {
@@ -81,10 +82,13 @@ void bsp_tmr_init(void)
     }
 
     HAL_TIM_MspPostInit(&htim8);
+
 }
 
 void bsp_tmr_start(void)
 {
+    HAL_TIM_Base_Start_IT(&htim8);
+
     HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
     HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_1);
 
@@ -102,10 +106,11 @@ void bsp_tmr_update_compare(unsigned short ch1_ccr , unsigned short ch2_ccr , un
     htim8.Instance->CCR3 = ch3_ccr;
 }
 
+
 /**
   * @brief This function handles TIM8 update interrupt.
   */
  void TIM8_UP_IRQHandler(void)
  {
-   HAL_TIM_IRQHandler(&htim8);
+    HAL_TIM_IRQHandler(&htim8);
  }

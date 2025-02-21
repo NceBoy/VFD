@@ -219,7 +219,6 @@ HAL_StatusTypeDef HAL_InitTick (uint32_t TickPriority)
 uint32_t HAL_GetTick (void)
 {
     static uint32_t ticks = 0U;
-    uint32_t i;
 
     if (TX_THREAD_GET_SYSTEM_STATE() == TX_INITIALIZE_IS_FINISHED)
     {
@@ -227,7 +226,7 @@ uint32_t HAL_GetTick (void)
     }
 
     /* 如果ThreadX还没有运行，采用下面方式 */
-    for (i = (SystemCoreClock >> 14U); i > 0U; i--)
+    for (uint32_t i = (SystemCoreClock >> 14U); i > 0U; i--)
     {
         __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP();
         __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP();
