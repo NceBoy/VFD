@@ -63,7 +63,7 @@ void bsp_tmr_init(void)
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
     sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
     sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-    sBreakDeadTimeConfig.DeadTime = 0;
+    sBreakDeadTimeConfig.DeadTime = 0xBF;  /*Ttds = 1/160M=0.00625us ==>1.5875us*/
 
     sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
     sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
@@ -105,7 +105,6 @@ void bsp_tmr_update_compare(unsigned short ch1_ccr , unsigned short ch2_ccr , un
     htim8.Instance->CCR2 = ch2_ccr;
     htim8.Instance->CCR3 = ch3_ccr;
 }
-
 
 /**
   * @brief This function handles TIM8 update interrupt.

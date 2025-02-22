@@ -27,7 +27,7 @@ void cordic_init(void)
     CORDIC_ConfigTypeDef sCordicConfig;
 
     sCordicConfig.Function         = CORDIC_FUNCTION_SINE;     //选择计算正弦
-    sCordicConfig.Precision        = CORDIC_PRECISION_6CYCLES; //选择计算精度等级
+    sCordicConfig.Precision        = CORDIC_PRECISION_4CYCLES; //选择计算精度等级
     sCordicConfig.Scale            = CORDIC_SCALE_0;           //选择计算系数
     sCordicConfig.NbWrite          = CORDIC_NBWRITE_2;         //选择计算结果个数
     sCordicConfig.NbRead           = CORDIC_NBREAD_1;          //选择输出正弦
@@ -41,8 +41,8 @@ void cordic_init(void)
 float cordic_sin(float angle)
 {
     float angle_pi = public_rad_convert(angle);
-	/* Q31,two write, one read, sine calculate, 6 precision */
-	hcordic.Instance->CSR = 0x00100061;
+	/* Q31,two write, one read, sine calculate, 4 precision */
+	hcordic.Instance->CSR = 0x00100041;
 	/* Write data into WDATA */
 	hcordic.Instance->WDATA = (int32_t )(angle_pi * RADIAN_Q31_f);
 	/* Modulus is m=1 */

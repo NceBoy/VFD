@@ -34,15 +34,18 @@ int  nx_msg_send(msg_addr from, msg_addr to, MSG_ID msgid, void *buf, int len)
     block->mtype = msgid;
     block->from = from;
     block->to = to;
-    ret = tx_byte_allocate(&g_msg_mem_pool, (VOID **)&ptr, len,  TX_NO_WAIT);
-    if(ret != TX_SUCCESS)
+    if((buf != NULL) && (len != 0))
     {
-        tx_block_release((VOID *)block);
-        return -2;
+        ret = tx_byte_allocate(&g_msg_mem_pool, (VOID **)&ptr, len,  TX_NO_WAIT);
+        if(ret != TX_SUCCESS)
+        {
+            tx_block_release((VOID *)block);
+            return -2;
+        }
+        block->buf = (void*)ptr;
+        block->len = len;
+        memcpy(block->buf , buf , len);
     }
-    block->buf = (void*)ptr;
-    block->len = len;
-    memcpy(block->buf , buf , len);
     ret = tx_queue_send(to, (VOID *)&block, TX_NO_WAIT);
     if(ret != TX_SUCCESS)
     {

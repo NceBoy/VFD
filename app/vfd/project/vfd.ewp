@@ -363,6 +363,7 @@
                     <state>$PROJ_DIR$\..\src\services\service_motor</state>
                     <state>$PROJ_DIR$\..\src\drivers\cordic</state>
                     <state>$PROJ_DIR$\..\src\modules\motor</state>
+                    <state>$PROJ_DIR$\..\src\modules\tmr</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2449,6 +2450,15 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\nx_msg\nx_msg.h</name>
+            </file>
+        </group>
+        <group>
+            <name>tmr</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\tmr\tmr.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\tmr\tmr.h</name>
             </file>
         </group>
     </group>
