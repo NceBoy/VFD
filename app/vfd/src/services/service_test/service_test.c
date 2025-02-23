@@ -67,10 +67,12 @@ static  void  task_test (ULONG thread_input)
 	}
 #else
 
+
     tx_thread_sleep(1000);
-    unsigned int data[2] = {0,50};
+    unsigned int data[2] = {0,10};
     nx_msg_send(NULL, service_motor_get_addr(), MSG_ID_MOTOR_START, data, sizeof(data)); /*电机启动*/
 
+#if 0
     tx_thread_sleep(1000 * 5); /*5s后开始变频*/
     unsigned int freq1 = 30;
     nx_msg_send(NULL, service_motor_get_addr(), MSG_ID_MOTOR_VF, &freq1, 4); /*电机变频*/    
@@ -87,12 +89,12 @@ static  void  task_test (ULONG thread_input)
     tx_thread_sleep(1000 * 5); /*5s后开始变频*/
     unsigned int freq4 = 50;
     nx_msg_send(NULL, service_motor_get_addr(), MSG_ID_MOTOR_VF, &freq4, 4); /*电机变频*/
-
+#endif
     tx_thread_sleep(1000 * 5); /*5s后开始换向*/
     nx_msg_send(NULL, service_motor_get_addr(), MSG_ID_MOTOR_REVERSE, NULL, 0); /*电机换向*/
 
     tx_thread_sleep(1000 * 5); /*5s后开始变频*/
-    unsigned int freq5 = 25;
+    unsigned int freq5 = 10;
     nx_msg_send(NULL, service_motor_get_addr(), MSG_ID_MOTOR_VF, &freq5, 4); /*电机变频*/
 
     tx_thread_sleep(1000 * 5); /*5s后开始变频*/

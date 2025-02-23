@@ -94,12 +94,16 @@ unsigned int motor_arrive_freq(float freq)
     return float_equal_in_step(g_motor_real.current_freq , freq, 0.01);
 }
 
+void motor_init(void)
+{
+    bsp_tmr_init();
+}
 
 
 void motor_start(unsigned int dir , float target_freq)
 {
     /*step 1 . init tmr*/
-    bsp_tmr_init();
+   
     /*step 2 . init motor value*/
     g_motor_real.motor_status = motor_in_run;
     g_motor_real.ratio = 0.9;
@@ -121,8 +125,8 @@ void motor_update_spwm(void)
     phaseA = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle)));
     if(g_motor_real.motor_dir == 0)
     {
-        phaseB = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));
-        phaseC = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));        
+        phaseC = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));
+        phaseB = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));        
     }
     else
     {
@@ -134,6 +138,7 @@ void motor_update_spwm(void)
     bsp_tmr_update_compare(phaseA , phaseB , phaseC);
 
     motor_current_freq_set(g_motor_real.next_step_freq);
+
 
     /*计算下一步的角度*/
     float delta = PI_2 * PWM_CRCLE * g_motor_real.current_freq;
@@ -151,14 +156,16 @@ void motor_update_spwm(void)
 
 void motor_break(void)
 {
+    bsp_tmr_stop();
     bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
 }
 
-
+unsigned int interrupt_times = 0;
  void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
  {
     if(htim->Instance == TIM8)
     {
         motor_update_spwm();
+        interrupt_times++;
     }
  }

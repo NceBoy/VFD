@@ -55,27 +55,27 @@ static int do_msg_handler(MSG_MGR_T* msg)
             unsigned int data[2] = {0};
             memcpy(data,msg->buf,msg->len);
             motor_start(data[0],(float)data[1]);
-            logdbg("motor start in dir = %d , frequency = %d\n",data[0],data[1]);
+            //logdbg("motor start in dir = %d , frequency = %d\n",data[0],data[1]);
         } break; /*变频*/
         case MSG_ID_MOTOR_VF      : {
             assert(msg->len == 4);
             unsigned int freq = 0;
             memcpy(&freq,msg->buf,msg->len);
             motor_target_freq_update((float) freq);
-            logdbg("motor change frequency to %d\n",freq);
+            //logdbg("motor change frequency to %d\n",freq);
         } break; /*变频*/
         case MSG_ID_MOTOR_REVERSE : {
             g_motor_current_freq = motor_current_freq_get();
             motor_target_freq_update(5.0);
             tmr_start(&g_motor_reverse_tmr);
             motor_status_set(motor_in_reverse);
-            logdbg("motor start reverse, current frequency = %d\n",(int)g_motor_current_freq);
+            //logdbg("motor start reverse, current frequency = %d\n",(int)g_motor_current_freq);
         } break; /*换向*/
         case MSG_ID_MOTOR_BREAK : {
             motor_target_freq_update(5.0);
             tmr_start(&g_motor_reverse_tmr);
             motor_status_set(motor_in_break);
-            logdbg("motor start break\n");
+            //logdbg("motor start break\n");
         } break; /*刹车*/        
         default:break;
     }
@@ -95,7 +95,7 @@ static  void  task_motor (ULONG thread_input)
 
     cordic_init();
 
-    motor_start(0,50.0);
+    motor_init();
     
 	while(1)
 	{

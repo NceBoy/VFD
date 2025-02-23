@@ -99,6 +99,20 @@ void bsp_tmr_start(void)
     HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
 }
 
+void bsp_tmr_stop(void)
+{
+    HAL_TIM_Base_Stop_IT(&htim8);
+
+    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_1);
+    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_1);
+
+    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
+    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
+
+    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
+    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);   
+}
+
 void bsp_tmr_update_compare(unsigned short ch1_ccr , unsigned short ch2_ccr , unsigned short ch3_ccr)
 {
     htim8.Instance->CCR1 = ch1_ccr;

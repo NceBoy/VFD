@@ -22,6 +22,7 @@ void motor_target_freq_update(float target_freq);
 void motor_reverse(void);
 unsigned int motor_arrive_freq(float freq);
 
+void motor_init(void);
 void motor_start(unsigned int dir , float target_freq);
 void motor_break(void);
 void motor_update_spwm(void);
