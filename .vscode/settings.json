@@ -1,6 +1,7 @@
 {
     "editor.detectIndentation": false,
     "files.associations": {
-        "tx_initialize.h": "c"
+        "tx_initialize.h": "c",
+        "softi2c_port.h": "c"
     }
 }
