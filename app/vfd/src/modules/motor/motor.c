@@ -28,6 +28,11 @@ static void motor_current_freq_set(float freq)
     g_motor_real.current_freq = freq;
 }
 
+void motor_target_info_update(float target_freq)
+{
+    g_motor_real.target_freq = target_freq;
+}
+
 static unsigned int float_equal_in_step(float a , float b, float step)
 {
     if(a > b)

@@ -3,5 +3,6 @@
     "files.associations": {
         "tx_initialize.h": "c",
         "tx_api.h": "c"
+        "softi2c_port.h": "c"
     }
 }

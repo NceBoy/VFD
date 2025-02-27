@@ -364,6 +364,9 @@
                     <state>$PROJ_DIR$\..\src\drivers\cordic</state>
                     <state>$PROJ_DIR$\..\src\modules\motor</state>
                     <state>$PROJ_DIR$\..\src\modules\tmr</state>
+                    <state>$PROJ_DIR$\..\src\drivers\eeprom</state>
+                    <state>$PROJ_DIR$\..\src\bsp\softi2c</state>
+                    <state>$PROJ_DIR$\..\src\modules\protocol</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2125,6 +2128,21 @@
     </configuration>
     <group>
         <name>bsp</name>
+        <group>
+            <name>softi2c</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\bsp\softi2c\SoftI2C.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\bsp\softi2c\SoftI2C.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\bsp\softi2c\SoftI2C_port.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\bsp\softi2c\SoftI2C_port.h</name>
+            </file>
+        </group>
         <file>
             <name>$PROJ_DIR$\..\src\bsp\bsp_log.c</name>
         </file>
@@ -2156,6 +2174,18 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\drivers\cordic\cordic.h</name>
+            </file>
+        </group>
+        <group>
+            <name>eeprom</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\eeprom\EEPROM.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\eeprom\EEPROM.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\eeprom\EEPROM_port.h</name>
             </file>
         </group>
         <group>
@@ -2459,6 +2489,19 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\tmr\tmr.h</name>
+            </file>    
+            <name>protocol</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\protocol\protocol.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\protocol\protocol.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\protocol\vfd_param.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\protocol\vfd_param.h</name>
             </file>
         </group>
     </group>
