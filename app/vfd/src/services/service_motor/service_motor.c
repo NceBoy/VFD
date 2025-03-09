@@ -89,7 +89,7 @@ static  void  task_motor (ULONG thread_input)
 
     MSG_MGR_T *msg = NULL;
 
-    tmr_init(&g_motor_reverse_tmr ,"motor reverse" , motor_reverse_tmr_cb,5);
+    tmr_init(&g_motor_reverse_tmr ,"motor reverse" , motor_reverse_tmr_cb, 0 ,5);
 
     tmr_create(&g_motor_reverse_tmr);
 

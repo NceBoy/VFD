@@ -16,10 +16,11 @@ typedef struct
     TX_TIMER tx_tmr;
     char name[16];
     tmr_callback cb_tmr;
+    unsigned int  para;
     unsigned int num_ticks;
 }tmr_t;
 
-int tmr_init(tmr_t* tmr ,char* name , tmr_callback cb_tmr,unsigned int ticks);
+int tmr_init(tmr_t* tmr ,char* name , tmr_callback cb_tmr, unsigned int para, unsigned int ticks);
 
 int tmr_create(tmr_t* tmr);
 

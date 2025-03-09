@@ -3,6 +3,8 @@
 #include "tx_api.h"
 #include "nx_msg.h"
 #include "log.h"
+#include "bsp_adc.h"
+#include "tmr.h"
 #include "tx_api.h"
 #include "tx_initialize.h"
 #include "tx_thread.h"
@@ -17,6 +19,10 @@ static void SystemClock_Config(void);
 static  TX_THREAD   taskstarttcb;
 static  ULONG64     taskstartstk[CFG_TASK_START_STK_SIZE/8];
 static  void        taskstart          (ULONG thread_input);
+
+static VOID adc_sample_tmr_cb(ULONG);
+static tmr_t g_adc_sample_tmr = {0};
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -61,19 +67,34 @@ static  void  taskstart (ULONG thread_input)
 
     log_init();
 
+    bsp_adc_init();
+
 	nx_msg_init();
 
     service_test_start();
 
     service_motor_start();
  
+    /*创建一个定时器，以100ms的间隔采集电压电流*/
+    tmr_init(&g_adc_sample_tmr ,"adc sample" , adc_sample_tmr_cb, 0 ,200);
+    tmr_create(&g_adc_sample_tmr);    
+    tmr_start(&g_adc_sample_tmr);
     
+    
+
 	while(1)
 	{
         tx_thread_sleep(1000);
 	}
 }
 
+uint32_t start_ticks = 0;
+static VOID adc_sample_tmr_cb(ULONG para)
+{
+    (void)para;
+    start_ticks = (uint32_t)_tx_time_get();
+    bsp_adc_start_once();
+}
 /**
   * @brief System Clock Configuration
   * @retval None

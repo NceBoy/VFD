@@ -367,6 +367,8 @@
                     <state>$PROJ_DIR$\..\src\drivers\eeprom</state>
                     <state>$PROJ_DIR$\..\src\bsp\softi2c</state>
                     <state>$PROJ_DIR$\..\src\modules\protocol</state>
+                    <state>$PROJ_DIR$\..\src\modules\io</state>
+                    <state>$PROJ_DIR$\..\src\drivers\adc</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2144,6 +2146,18 @@
             </file>
         </group>
         <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_adc.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_adc.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_io.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_io.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\src\bsp\bsp_log.c</name>
         </file>
         <file>
@@ -2167,6 +2181,15 @@
     </group>
     <group>
         <name>drivers</name>
+        <group>
+            <name>adc</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\adc\adc.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\adc\adc.h</name>
+            </file>
+        </group>
         <group>
             <name>cordic</name>
             <file>
@@ -2465,6 +2488,15 @@
     <group>
         <name>modules</name>
         <group>
+            <name>io</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\io\io.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\io\io.h</name>
+            </file>
+        </group>
+        <group>
             <name>motor</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\motor\motor.c</name>
@@ -2483,13 +2515,6 @@
             </file>
         </group>
         <group>
-            <name>tmr</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\tmr\tmr.c</name>
-            </file>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\tmr\tmr.h</name>
-            </file>    
             <name>protocol</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\protocol\protocol.c</name>
@@ -2502,6 +2527,15 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\protocol\vfd_param.h</name>
+            </file>
+        </group>
+        <group>
+            <name>tmr</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\tmr\tmr.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\tmr\tmr.h</name>
             </file>
         </group>
     </group>
