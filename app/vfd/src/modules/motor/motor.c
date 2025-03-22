@@ -7,6 +7,16 @@
 
 
 extern TIM_HandleTypeDef htim8;
+
+#define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
+
+typedef enum
+{
+    motor_in_idle,
+    motor_in_run,
+    motor_in_reverse,
+    motor_in_break,
+}motor_status_enum;
 /*为了计算精度，统一为float*/
 typedef struct
 {
@@ -14,24 +24,60 @@ typedef struct
     unsigned int        motor_dir;
     float               ratio;
     float               angle;        /*当前的角度，一直累加的值，用于计算sin值*/
+    float               target_should_be;
     float               target_freq;
     float               current_freq;
     float               next_step_freq;
 }motor_ctl_t;
 
-#define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
+typedef struct 
+{
+
+}motor_para_t;
+
 
 static motor_ctl_t g_motor_real;
 
-static void motor_current_freq_set(float freq)
-{
-    g_motor_real.current_freq = freq;
-}
-
 void motor_target_info_update(float target_freq)
 {
-    g_motor_real.target_freq = target_freq;
+    if  ((g_motor_real.motor_status == motor_in_break) || 
+         (g_motor_real.motor_status == motor_in_reverse))
+    {
+        g_motor_real.target_should_be = target_freq;
+    }
+    else
+    {
+        g_motor_real.target_should_be = target_freq;
+        g_motor_real.target_freq = target_freq;
+    }
+    
 }
+
+void motor_reverse_start(void)
+{
+    g_motor_real.target_freq = 5.0;
+    g_motor_real.motor_status = motor_in_reverse;
+}
+
+static void motor_reverse_recovery(void)
+{
+    if(g_motor_real.motor_dir > 0)
+        g_motor_real.motor_dir = 0;
+    else g_motor_real.motor_dir++;
+
+    g_motor_real.target_freq = g_motor_real.target_should_be;
+
+    g_motor_real.motor_status = motor_in_run;
+}
+
+void motor_break_start(void)
+{
+    g_motor_real.target_freq = 5.0;
+    g_motor_real.motor_status = motor_in_break;
+}
+
+
+
 
 static unsigned int float_equal_in_step(float a , float b, float step)
 {
@@ -51,13 +97,20 @@ static unsigned int float_equal_in_step(float a , float b, float step)
 /*(T型加减速,下一步频率计算)*/
 static float motor_calcu_next_step_freq(float startup_freq , 
                                         unsigned int acceleration_time_us ,
+                                        unsigned int deceleration_time_us ,
                                         unsigned int one_step_time_us,
                                         float current_freq,
                                         float target_freq)
 {
     float next_step_freq = 0.0f;
-    float acceleration_hz_1us = (50.0f - startup_freq ) / (float)acceleration_time_us;
-    float one_step_hz = acceleration_hz_1us * one_step_time_us;
+    float step_hz_1us = 0.0f;
+
+    if(target_freq > current_freq) /*加速*/
+        step_hz_1us = (50.0f - startup_freq ) / (float)acceleration_time_us;
+    else /*减速*/
+        step_hz_1us = (50.0f - startup_freq ) / (float)deceleration_time_us;
+
+    float one_step_hz = step_hz_1us * one_step_time_us;
     if(float_equal_in_step(current_freq , target_freq, one_step_hz))
         return target_freq;
     if(target_freq > current_freq)
@@ -67,34 +120,9 @@ static float motor_calcu_next_step_freq(float startup_freq ,
     return next_step_freq;
 }
 
-void motor_status_set(motor_status_enum status)
-{
-    g_motor_real.motor_status = status;
-}
 
-motor_status_enum motor_status_get(void)
-{
-    return g_motor_real.motor_status;
-}
 
-float motor_current_freq_get(void)
-{
-    return g_motor_real.current_freq;
-}
-
-void motor_target_freq_update(float target_freq)
-{
-    g_motor_real.target_freq = target_freq;
-}
-
-void motor_reverse(void)
-{
-    if(g_motor_real.motor_dir > 0)
-        g_motor_real.motor_dir = 0;
-    else g_motor_real.motor_dir++;
-}
-
-unsigned int motor_arrive_freq(float freq)
+static unsigned int motor_arrive_freq(float freq)
 {
     return float_equal_in_step(g_motor_real.current_freq , freq, 0.01);
 }
@@ -116,12 +144,12 @@ void motor_start(unsigned int dir , float target_freq)
     g_motor_real.angle = 0.0f;
     g_motor_real.current_freq = 0.0f;
     g_motor_real.next_step_freq = 5.0f;
-    motor_target_freq_update(target_freq);
+    motor_target_info_update(target_freq);
     /*step 3 . start timer*/
     bsp_tmr_start();
 }
 
-void motor_update_spwm(void)
+static void motor_update_spwm(void)
 {   
     // 计算三相占空比
     unsigned short phaseA = 0;
@@ -151,18 +179,22 @@ void motor_update_spwm(void)
     if (g_motor_real.angle >= PI_2) g_motor_real.angle -= PI_2;
 
     /*计算下一步的频率*/
-    g_motor_real.next_step_freq = motor_calcu_next_step_freq(   5 , 
-                                                                800 * 1000 ,
-                                                                (unsigned int)(PWM_CRCLE * 1000000 ),
-                                                                g_motor_real.current_freq,
-                                                                g_motor_real.target_freq);
+    if(motor_arrive_freq(g_motor_real.target_freq))
+        g_motor_real.next_step_freq = g_motor_real.target_freq;
+    else
+        g_motor_real.next_step_freq = motor_calcu_next_step_freq(   5 , 
+                                                                    800 * 1000 ,
+                                                                    (unsigned int)(PWM_CRCLE * 1000000 ),
+                                                                    g_motor_real.current_freq,
+                                                                    g_motor_real.target_freq);
 
 }
 
 void motor_break(void)
 {
     bsp_tmr_stop();
-    bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
+    //bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
+    g_motor_real.motor_status = motor_in_idle;
 }
 
 unsigned int interrupt_times = 0;
@@ -170,6 +202,16 @@ unsigned int interrupt_times = 0;
  {
     if(htim->Instance == TIM8)
     {
+        if((g_motor_real.motor_status == motor_in_reverse) && 
+            (motor_arrive_freq(5.0) == 1))
+        {
+            motor_reverse_recovery();
+        }
+        else if((g_motor_real.motor_status == motor_in_break) &&
+                (motor_arrive_freq(5.0) == 1))
+        {
+            motor_break();
+        }
         motor_update_spwm();
         interrupt_times++;
     }

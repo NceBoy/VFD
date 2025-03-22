@@ -20,10 +20,6 @@ static  void        task_motor          (ULONG thread_input);
 static TX_QUEUE g_motor_queue = {0};
 static UINT g_motor_queue_addr[QUEUE_MOTOR_MAX_NUM] = {0};
 
-/*创建定时器，用来实时检查反向时刻*/
-static VOID motor_reverse_tmr_cb(ULONG);
-static tmr_t g_motor_reverse_tmr = {0};
-static float g_motor_current_freq = 0.0f;
 
 void service_motor_start(void)
 {
@@ -55,28 +51,26 @@ static int do_msg_handler(MSG_MGR_T* msg)
             unsigned int data[2] = {0};
             memcpy(data,msg->buf,msg->len);
             motor_start(data[0],(float)data[1]);
-            //logdbg("motor start in dir = %d , frequency = %d\n",data[0],data[1]);
-        } break; /*变频*/
+
+        } break; 
+
         case MSG_ID_MOTOR_VF      : {
             assert(msg->len == 4);
             unsigned int freq = 0;
             memcpy(&freq,msg->buf,msg->len);
-            motor_target_freq_update((float) freq);
-            //logdbg("motor change frequency to %d\n",freq);
-        } break; /*变频*/
+            motor_target_info_update((float) freq);
+
+        } break; 
+
         case MSG_ID_MOTOR_REVERSE : {
-            g_motor_current_freq = motor_current_freq_get();
-            motor_target_freq_update(5.0);
-            tmr_start(&g_motor_reverse_tmr);
-            motor_status_set(motor_in_reverse);
-            //logdbg("motor start reverse, current frequency = %d\n",(int)g_motor_current_freq);
-        } break; /*换向*/
+            motor_reverse_start();
+
+        } break; 
+
         case MSG_ID_MOTOR_BREAK : {
-            motor_target_freq_update(5.0);
-            tmr_start(&g_motor_reverse_tmr);
-            motor_status_set(motor_in_break);
-            //logdbg("motor start break\n");
-        } break; /*刹车*/        
+            motor_break_start();
+
+        } break;      
         default:break;
     }
     return 0;
@@ -88,10 +82,6 @@ static  void  task_motor (ULONG thread_input)
 	(void)thread_input;
 
     MSG_MGR_T *msg = NULL;
-
-    tmr_init(&g_motor_reverse_tmr ,"motor reverse" , motor_reverse_tmr_cb, 0 ,5);
-
-    tmr_create(&g_motor_reverse_tmr);
 
     cordic_init();
 
@@ -105,25 +95,4 @@ static  void  task_motor (ULONG thread_input)
             nx_msg_free(msg);
         }
 	}
-}
-
-VOID motor_reverse_tmr_cb(ULONG para)
-{
-    (void)para;
-    if(motor_arrive_freq(5.0)) /*电机到达换向/刹车频率*/
-    {
-        motor_status_enum status = motor_status_get();
-        if(status == motor_in_reverse)
-        {
-            motor_reverse(); /*反向*/
-            motor_target_freq_update(g_motor_current_freq); /*反向后恢复之前的频率*/
-        } 
-        else if(status == motor_in_break)
-        {
-            motor_break();
-        }
-        tmr_stop(&g_motor_reverse_tmr);
-    }
-        
-
 }
