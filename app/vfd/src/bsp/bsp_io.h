@@ -8,8 +8,9 @@ extern "C" {
 
 
 
-void bsp_io_init(void);
+void bsp_io_init_input(void);
 
+void bsp_io_init_output(void);
 
 #ifdef __cplusplus
 }

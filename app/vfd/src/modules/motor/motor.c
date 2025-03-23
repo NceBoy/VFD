@@ -30,11 +30,12 @@ typedef struct
     float               next_step_freq;
 }motor_ctl_t;
 
+/*
 typedef struct 
 {
 
 }motor_para_t;
-
+*/
 
 static motor_ctl_t g_motor_real;
 
@@ -61,7 +62,7 @@ void motor_reverse_start(void)
 
 static void motor_reverse_recovery(void)
 {
-    if(g_motor_real.motor_dir > 0)
+    if(g_motor_real.motor_dir > 0)  /*内置定义0:向左，1:向右，如果不对，交换电机的任意2相电源线*/
         g_motor_real.motor_dir = 0;
     else g_motor_real.motor_dir++;
 
@@ -170,8 +171,7 @@ static void motor_update_spwm(void)
 
     bsp_tmr_update_compare(phaseA , phaseB , phaseC);
 
-    motor_current_freq_set(g_motor_real.next_step_freq);
-
+    g_motor_real.current_freq = g_motor_real.next_step_freq;
 
     /*计算下一步的角度*/
     float delta = PI_2 * PWM_CRCLE * g_motor_real.current_freq;
@@ -184,6 +184,7 @@ static void motor_update_spwm(void)
     else
         g_motor_real.next_step_freq = motor_calcu_next_step_freq(   5 , 
                                                                     800 * 1000 ,
+                                                                    600 * 1000 ,
                                                                     (unsigned int)(PWM_CRCLE * 1000000 ),
                                                                     g_motor_real.current_freq,
                                                                     g_motor_real.target_freq);
