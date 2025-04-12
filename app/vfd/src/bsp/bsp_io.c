@@ -1,7 +1,7 @@
 #include "main.h"
 #include "bsp_io.h"
 
-/*16个输入信号，其中8个开打中断，其余8个扫描模式*/
+/*16个输入信号*/
 void bsp_io_init_input(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -37,22 +37,6 @@ void bsp_io_init_input(void)
       GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
       GPIO_InitStruct.Pull = GPIO_PULLUP;
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    
-      /* EXTI interrupt init*/
-      HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-      HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-    
-      HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
-      HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-    
-      HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
-      HAL_NVIC_EnableIRQ(EXTI2_IRQn);
-    
-      HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
-      HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-    
-      HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
-      HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 
@@ -60,48 +44,5 @@ void bsp_io_init_input(void)
 void bsp_io_init_output(void)
 {
 
-}
-
-/**
-  * @brief This function handles EXTI line0 interrupt.
-  */
- void EXTI0_IRQHandler(void)
- {
-   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
- }
- 
- /**
-   * @brief This function handles EXTI line1 interrupt.
-   */
- void EXTI1_IRQHandler(void)
- {
-   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
- }
- 
- /**
-   * @brief This function handles EXTI line2 interrupt.
-   */
- void EXTI2_IRQHandler(void)
- {
-   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
- }
- 
- /**
-   * @brief This function handles EXTI line3 interrupt.
-   */
- void EXTI3_IRQHandler(void)
- {
-   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
- }
-
- /**
-  * @brief This function handles EXTI line[15:10] interrupts.
-  */
-void EXTI15_10_IRQHandler(void)
-{
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_11);
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_12);
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_14);
 }
 

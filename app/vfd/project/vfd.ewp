@@ -367,8 +367,8 @@
                     <state>$PROJ_DIR$\..\src\drivers\eeprom</state>
                     <state>$PROJ_DIR$\..\src\bsp\softi2c</state>
                     <state>$PROJ_DIR$\..\src\modules\protocol</state>
-                    <state>$PROJ_DIR$\..\src\modules\io</state>
                     <state>$PROJ_DIR$\..\src\drivers\adc</state>
+                    <state>$PROJ_DIR$\..\src\modules\inout</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2488,12 +2488,12 @@
     <group>
         <name>modules</name>
         <group>
-            <name>io</name>
+            <name>inout</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\io\io.c</name>
+                <name>$PROJ_DIR$\..\src\modules\inout\inout.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\io\io.h</name>
+                <name>$PROJ_DIR$\..\src\modules\inout\inout.h</name>
             </file>
         </group>
         <group>

@@ -41,7 +41,6 @@ int main(void)
 
     /* Infinite loop */
     while (1);
-
 }
 
 
@@ -80,8 +79,6 @@ static  void  taskstart (ULONG thread_input)
     tmr_create(&g_adc_sample_tmr);    
     tmr_start(&g_adc_sample_tmr);
     
-    
-
 	while(1)
 	{
         tx_thread_sleep(1000);

@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "service_motor.h"
+#include "nx_msg.h"
 #include "tx_api.h"
 #include "tx_queue.h"
 #include "log.h"
@@ -36,11 +37,6 @@ void service_motor_start(void)
                      TX_AUTO_START);
 }
 
-msg_addr service_motor_get_addr(void)
-{
-    return &g_motor_queue;
-}
-
 
 static int do_msg_handler(MSG_MGR_T* msg)
 {
@@ -70,7 +66,7 @@ static int do_msg_handler(MSG_MGR_T* msg)
         case MSG_ID_MOTOR_BREAK : {
             motor_break_start();
 
-        } break;      
+        } break;
         default:break;
     }
     return 0;
@@ -95,4 +91,27 @@ static  void  task_motor (ULONG thread_input)
             nx_msg_free(msg);
         }
 	}
+}
+
+
+void ext_motor_start(unsigned int dir , unsigned int target)
+{
+    unsigned int data[2] = {dir,target};
+    nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_START, data, sizeof(data));
+}
+
+void ext_motor_speed(unsigned int speed)
+{
+    unsigned int freq = speed;
+    nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_VF, &freq, 4);
+}
+
+void ext_motor_reverse(void)
+{
+    nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_REVERSE, NULL, 0);
+}
+
+void ext_motor_break(void)
+{
+    nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BREAK, NULL, 0);
 }

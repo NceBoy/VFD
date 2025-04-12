@@ -30,28 +30,32 @@ typedef struct
     float               next_step_freq;
 }motor_ctl_t;
 
-/*
-typedef struct 
-{
-
-}motor_para_t;
-*/
 
 static motor_ctl_t g_motor_real;
 
 void motor_target_info_update(float target_freq)
 {
-    if  ((g_motor_real.motor_status == motor_in_break) || 
-         (g_motor_real.motor_status == motor_in_reverse))
+    switch(g_motor_real.motor_status)
     {
-        g_motor_real.target_should_be = target_freq;
-    }
-    else
-    {
-        g_motor_real.target_should_be = target_freq;
-        g_motor_real.target_freq = target_freq;
-    }
-    
+        case motor_in_reverse:{
+            g_motor_real.target_should_be = target_freq;
+        }break;
+        case motor_in_run:{
+            g_motor_real.target_should_be = target_freq;
+            g_motor_real.target_freq = target_freq;            
+        }break;
+        default:break;
+    }   
+}
+
+int motor_is_working(void)
+{
+    return (g_motor_real.motor_status == motor_in_idle) ?  0 : 1;
+}
+
+int motor_target_current_get(void)
+{
+    return (int)g_motor_real.target_should_be;
 }
 
 void motor_reverse_start(void)
@@ -77,7 +81,12 @@ void motor_break_start(void)
     g_motor_real.motor_status = motor_in_break;
 }
 
-
+void motor_break(void)
+{
+    //bsp_tmr_stop();
+    bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
+    g_motor_real.motor_status = motor_in_idle;
+}
 
 
 static unsigned int float_equal_in_step(float a , float b, float step)
@@ -131,6 +140,8 @@ static unsigned int motor_arrive_freq(float freq)
 void motor_init(void)
 {
     bsp_tmr_init();
+    if(g_motor_real.motor_status != motor_in_idle)
+        bsp_tmr_start();
 }
 
 
@@ -145,7 +156,8 @@ void motor_start(unsigned int dir , float target_freq)
     g_motor_real.angle = 0.0f;
     g_motor_real.current_freq = 0.0f;
     g_motor_real.next_step_freq = 5.0f;
-    motor_target_info_update(target_freq);
+    g_motor_real.target_should_be = target_freq;
+    g_motor_real.target_freq = target_freq;
     /*step 3 . start timer*/
     bsp_tmr_start();
 }
@@ -191,19 +203,17 @@ static void motor_update_spwm(void)
 
 }
 
-void motor_break(void)
-{
-    bsp_tmr_stop();
-    //bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
-    g_motor_real.motor_status = motor_in_idle;
-}
+
 
 unsigned int interrupt_times = 0;
  void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
  {
-    if(htim->Instance == TIM8)
+    if(htim->Instance == TIM1)
     {
-        if((g_motor_real.motor_status == motor_in_reverse) && 
+        interrupt_times++;
+        if(g_motor_real.motor_status == motor_in_idle)
+            return;
+        if((g_motor_real.motor_status == motor_in_reverse) &&
             (motor_arrive_freq(5.0) == 1))
         {
             motor_reverse_recovery();
@@ -214,6 +224,6 @@ unsigned int interrupt_times = 0;
             motor_break();
         }
         motor_update_spwm();
-        interrupt_times++;
+        
     }
  }
