@@ -29,10 +29,14 @@ typedef enum
     IO_ID_SP2,                          //速度调节2
     IO_ID_DEBUG,                        //调试模式
 
-    IO_ID_LIMIT_LEFT,                   //左限位
-    IO_ID_LIMIT_RIGHT,                  //右限位
+    IO_ID_WIRE,                         //断丝
+
     IO_ID_LIMIT_EXCEED,                 //超程限位
     IO_ID_END,                          //加工结束
+    IO_ID_LIMIT_LEFT,                   //左限位
+    IO_ID_LIMIT_RIGHT,                  //右限位
+    
+    
 
     IO_ID_MOTOR_START,                  //开运丝
     IO_ID_MOTOR_STOP,                   //关运丝
@@ -85,11 +89,12 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_SP2                  ,GPIOA, GPIO_PIN_5 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW},
     {IO_ID_DEBUG                ,GPIOA, GPIO_PIN_6 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW},//调试，有效电平0
 
+    {IO_ID_WIRE                 ,GPIOC, GPIO_PIN_2 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_HIGH}, //断丝检测，按照常闭极性控制
 
+    {IO_ID_LIMIT_EXCEED         ,GPIOC, GPIO_PIN_2 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW}, //超程NPN接(根据常开常闭设置有效电平) 
+    {IO_ID_END                  ,GPIOC, GPIO_PIN_3 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW}, //加工结束(根据常开常闭设置有效电平)
     {IO_ID_LIMIT_LEFT           ,GPIOC, GPIO_PIN_0 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW}, //左限位NPN(根据常开常闭设置有效电平)
     {IO_ID_LIMIT_RIGHT          ,GPIOC, GPIO_PIN_1 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW}, //右限位NPN(根据常开常闭设置有效电平)
-    {IO_ID_LIMIT_EXCEED         ,GPIOC, GPIO_PIN_2 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW}, //超程NPN接(根据常开常闭设置有效电平)
-    {IO_ID_END                  ,GPIOC, GPIO_PIN_3 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW}, //加工结束(根据常开常闭设置有效电平)
 
     {IO_ID_MOTOR_START          ,GPIOB, GPIO_PIN_11 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_LOW},//开丝，常开开关，上拉，有效电平0
     {IO_ID_MOTOR_STOP           ,GPIOB, GPIO_PIN_12 ,   0 , 100 , IO_MAX_TIME_MS ,EFFECTIVE_POLARITY_HIGH},//关丝，常闭开关，下拉，有效电平1
@@ -105,6 +110,8 @@ static void update_err(void)
 
 static void motor_start_from_key(void)
 {
+    if((g_vfd_ctrl.flag[IO_ID_WIRE] != 0) &&(g_vfd_ctrl.flag[IO_ID_DEBUG] != 1))
+        return ;
     uint8_t speed = 0;
     pullOneItem(PARAM0X01, g_vfd_ctrl.sp, &speed);
     uint8_t left = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_LIMIT_LEFT].port, g_vfd_io_tab[IO_ID_LIMIT_LEFT].pin) == \
@@ -123,8 +130,14 @@ static void motor_start_from_key(void)
             else dir  = 0;
             ext_motor_start(dir , speed);
         }break;
-        case 0x01 : ext_motor_start(0,speed);break;
-        case 0x10 : ext_motor_start(1,speed);break;
+        case 0x01 : {
+            g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] = 1;
+            ext_motor_start(0,speed);
+        }break;
+        case 0x10 : {
+            g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] = 1;
+            ext_motor_start(1,speed);
+        }break;
         default:break;
     }
 }
@@ -136,6 +149,9 @@ static void motor_stop_from_key(void)
 
 static void update_active_polarity(void)
 {
+    /*极性控制只能在电机未启动时设置*/
+    if(motor_is_working())
+        return ;    
     g_vfd_ctrl.ctl = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_CTRL_MODE].port, g_vfd_io_tab[IO_ID_CTRL_MODE].pin) == GPIO_PIN_SET) ? \
                     CTRL_MODE_JOG : CTRL_MODE_FOUR_KEY;
 
@@ -155,6 +171,9 @@ static void update_active_polarity(void)
         g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity = EFFECTIVE_POLARITY_HIGH;
         g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity = EFFECTIVE_POLARITY_HIGH;        
     }
+    uint8_t value = 0;
+    pullOneItem(PARAM0X03, PARAM_WIRE_BREAK_DETECT_TIME, &value); /*更新断丝检测时间*/
+    g_vfd_io_tab[IO_ID_WIRE].debounce_ticks = value * 100;
 }
 
 static void update_debug(void)
@@ -194,18 +213,55 @@ static void update_speed(void)
     g_vfd_ctrl.sp = sp;
     if(g_vfd_ctrl.work_end != 0)
         return ;
-    ctrl_speed();
+    if(motor_is_working())
+    {
+        ctrl_speed();
+    }
+    
 }
+
+static void ctrl_wire(void)
+{
+    if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
+        return ;
+    motor_stop_from_key();
+    return ;
+}
+
+
+static void update_wire(void)
+{  
+
+    if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_WIRE].port, g_vfd_io_tab[IO_ID_WIRE].pin) == g_vfd_io_tab[IO_ID_WIRE].active_polarity)
+    {
+        if(g_vfd_io_tab[IO_ID_WIRE].now_ticks < IO_MAX_TIME_MS)
+            g_vfd_io_tab[IO_ID_WIRE].now_ticks += IO_SCAN_INTERVAL;
+    }
+    else
+    {
+        g_vfd_ctrl.flag[IO_ID_WIRE] = 0;
+        g_vfd_io_tab[IO_ID_WIRE].now_ticks = 0;
+    }
+
+    if(g_vfd_io_tab[IO_ID_WIRE].now_ticks > g_vfd_io_tab[IO_ID_WIRE].debounce_ticks)
+    {
+        if(g_vfd_ctrl.flag[IO_ID_WIRE] == 0)
+        {
+            g_vfd_ctrl.flag[IO_ID_WIRE] = 1;
+
+            /*断丝*/
+            ctrl_wire();
+        }          
+    }    
+}
+
 
 static void ctrl_dir(void)
 {
-    if(g_vfd_ctrl.flag[IO_ID_LIMIT_EXCEED] != 0)
-    {
-        motor_stop_from_key();
-        return ;
-    }
     if(g_vfd_ctrl.flag[IO_ID_END] != 0 ) /*加工结束*/
     {
+        if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
+            return ;
         uint8_t stop = 0;
         pullOneItem(PARAM0X03, PARAM_STOP_MODE, &stop);
         switch(stop)
@@ -239,6 +295,13 @@ static void ctrl_dir(void)
             default: motor_stop_from_key(); break;
         }
     }
+
+    if(g_vfd_ctrl.flag[IO_ID_LIMIT_EXCEED] != 0)
+    {
+        motor_stop_from_key();
+        return ;
+    }
+
     if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0)
     {
         if(g_vfd_ctrl.work_end != 0)
@@ -263,14 +326,14 @@ static void update_direction(void)
 {  
     if(motor_is_working() != 1)
     {
-        g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks = 0;
-        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks = 0;
         g_vfd_io_tab[IO_ID_LIMIT_EXCEED].now_ticks = 0;
         g_vfd_io_tab[IO_ID_END].now_ticks = 0;
+        g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks = 0;
+        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks = 0;
         return ;
     }
         
-    for(int i = IO_ID_LIMIT_LEFT ; i <= IO_ID_END ; i++)
+    for(int i = IO_ID_LIMIT_EXCEED ; i <= IO_ID_LIMIT_RIGHT ; i++)
     {
         if(HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin) == g_vfd_io_tab[i].active_polarity)
         {
@@ -282,13 +345,13 @@ static void update_direction(void)
             g_vfd_ctrl.flag[i] = 0;
             g_vfd_io_tab[i].now_ticks = 0;
         }
-            
 
         if(g_vfd_io_tab[i].now_ticks > g_vfd_io_tab[i].debounce_ticks)
         {
             if(g_vfd_ctrl.flag[i] == 0)
             {
                 g_vfd_ctrl.flag[i] = 1;
+
                 /*通知电机换向或者结束加工*/
                 ctrl_dir();
             }
@@ -396,7 +459,7 @@ void inout_sp_sync_from_ext(uint8_t sp)
 
 void inout_init(void) 
 {
-    /*16个输入信号线*/
+    /*17个输入信号线*/
     bsp_io_init_input();
     /*2个输出信号线*/
     bsp_io_init_output();
@@ -411,11 +474,13 @@ void inout_scan(void)
     /*step 2 . 速度及调试模式*/
     update_debug();
     update_speed();
-    /*step 3 . 限位*/
+    /*step 3 . 断丝*/
+    update_wire();
+    /*step 4 . 左右限位,超程和加工结束*/
     update_direction();
-    /*step 4 . 开关运丝和水泵*/
+    /*step 5 . 开关运丝和水泵*/
     update_onoff();
 
-    /*step 5 . 错误处理*/
+    /*step 6 . 错误处理*/
     update_err();
 }

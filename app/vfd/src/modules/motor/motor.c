@@ -4,6 +4,7 @@
 #include "log.h"
 #include "cordic.h"
 #include "motor.h"
+#include "vfd_param.h"
 
 
 extern TIM_HandleTypeDef htim8;
@@ -30,8 +31,27 @@ typedef struct
     float               next_step_freq;
 }motor_ctl_t;
 
+typedef struct 
+{
+    float start_freg;
+    unsigned int acceleration_time_us;
+    unsigned int deceleration_time_us;
+}motor_para_t;
 
+
+static motor_para_t g_motor_param;
 static motor_ctl_t g_motor_real;
+
+static void motor_param_get(void)
+{
+    uint8_t value = 0;
+    pullOneItem(PARAM0X02, PARAM_ACCELERATION_TIME, &value);
+    g_motor_param.acceleration_time_us = value * 100 * 1000;
+    pullOneItem(PARAM0X02, PARAM_DECELERATION_TIME, &value);
+    g_motor_param.deceleration_time_us = value * 100 * 1000;
+    pullOneItem(PARAM0X03, PARAM_START_FREQ, &value);
+    g_motor_param.start_freg = (float)value;
+}
 
 void motor_target_info_update(float target_freq)
 {
@@ -65,7 +85,7 @@ int motor_target_current_dir(void)
 
 void motor_reverse_start(void)
 {
-    g_motor_real.target_freq = 5.0;
+    g_motor_real.target_freq = g_motor_param.start_freg;
     g_motor_real.motor_status = motor_in_reverse;
 }
 
@@ -82,7 +102,7 @@ static void motor_reverse_recovery(void)
 
 void motor_break_start(void)
 {
-    g_motor_real.target_freq = 5.0;
+    g_motor_real.target_freq = g_motor_param.start_freg;
     g_motor_real.motor_status = motor_in_break;
 }
 
@@ -153,14 +173,14 @@ void motor_init(void)
 void motor_start(unsigned int dir , float target_freq)
 {
     /*step 1 . init tmr*/
-   
+    motor_param_get();
     /*step 2 . init motor value*/
     g_motor_real.motor_status = motor_in_run;
     g_motor_real.ratio = 0.9;
     g_motor_real.motor_dir = dir;
     g_motor_real.angle = 0.0f;
     g_motor_real.current_freq = 0.0f;
-    g_motor_real.next_step_freq = 5.0f;
+    g_motor_real.next_step_freq = g_motor_param.start_freg;
     g_motor_real.target_should_be = target_freq;
     g_motor_real.target_freq = target_freq;
     /*step 3 . start timer*/
@@ -199,9 +219,9 @@ static void motor_update_spwm(void)
     if(motor_arrive_freq(g_motor_real.target_freq))
         g_motor_real.next_step_freq = g_motor_real.target_freq;
     else
-        g_motor_real.next_step_freq = motor_calcu_next_step_freq(   5 , 
-                                                                    800 * 1000 ,
-                                                                    600 * 1000 ,
+        g_motor_real.next_step_freq = motor_calcu_next_step_freq(   g_motor_param.start_freg , 
+                                                                    g_motor_param.acceleration_time_us ,
+                                                                    g_motor_param.deceleration_time_us ,
                                                                     (unsigned int)(PWM_CRCLE * 1000000 ),
                                                                     g_motor_real.current_freq,
                                                                     g_motor_real.target_freq);
@@ -219,12 +239,12 @@ unsigned int interrupt_times = 0;
         if(g_motor_real.motor_status == motor_in_idle)
             return;
         if((g_motor_real.motor_status == motor_in_reverse) &&
-            (motor_arrive_freq(5.0) == 1))
+            (motor_arrive_freq(g_motor_param.start_freg) == 1))
         {
             motor_reverse_recovery();
         }
         else if((g_motor_real.motor_status == motor_in_break) &&
-                (motor_arrive_freq(5.0) == 1))
+                (motor_arrive_freq(g_motor_param.start_freg) == 1))
         {
             motor_break();
         }
