@@ -3,6 +3,7 @@
 #include "inout.h"
 #include "service_motor.h"
 #include "vfd_param.h"
+#include "motor.h"
 
 #define EFFECTIVE_POLARITY_LOW              (0)
 #define EFFECTIVE_POLARITY_HIGH             (1)
@@ -65,11 +66,12 @@ typedef struct
 {
     ctl_mode_t      ctl;
     uint8_t         flag[IO_ID_MAX];
+    uint8_t         work_end;
     uint8_t         sp;
     uint8_t         err;
 }vfd_ctrl_t;
 
-static vfd_ctrl_t g_vfd_ctrl = {0};
+static vfd_ctrl_t g_vfd_ctrl;
 
 static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 
@@ -96,9 +98,40 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 };
 
 /*外部IO的错误信息处理*/
-static void update_ctrl(void)
+static void update_err(void)
 {  
     
+}
+
+static void motor_start_from_key(void)
+{
+    uint8_t speed = 0;
+    pullOneItem(PARAM0X01, g_vfd_ctrl.sp, &speed);
+    uint8_t left = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_LIMIT_LEFT].port, g_vfd_io_tab[IO_ID_LIMIT_LEFT].pin) == \
+    g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity) ? 1 : 0;
+    uint8_t right = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_LIMIT_RIGHT].port, g_vfd_io_tab[IO_ID_LIMIT_RIGHT].pin) == \
+    g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity) ? 1 : 0;
+    uint8_t dir = left << 4 | right;
+    switch(dir)
+    {
+        case 0x00 : {
+            uint8_t dir = 0;
+            pullOneItem(PARAM0X03, PARAM_WIRE_START_DIRECTION, &dir);
+            if(dir == START_MODE_CONTINUE_PREVIOUS_DIRECTION) dir = motor_target_current_dir();
+            else if(dir == START_MODE_FORWARD) dir = 0;
+            else if(dir == START_MODE_REVERSE) dir = 1;
+            else dir  = 0;
+            ext_motor_start(dir , speed);
+        }break;
+        case 0x01 : ext_motor_start(0,speed);break;
+        case 0x10 : ext_motor_start(1,speed);break;
+        default:break;
+    }
+}
+
+static void motor_stop_from_key(void)
+{
+    ext_motor_break();
 }
 
 static void update_active_polarity(void)
@@ -129,16 +162,24 @@ static void update_debug(void)
     g_vfd_ctrl.flag[IO_ID_DEBUG] = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_DEBUG].port, g_vfd_io_tab[IO_ID_DEBUG].pin) == GPIO_PIN_SET) ? 0 : 1;
 }
 
+
+static void ctrl_speed_get_and_send(uint8_t sp)
+{
+    uint8_t speed = 0;
+    pullOneItem(PARAM0X01, sp, &speed);
+    ext_motor_speed(speed);  
+}
+
 static void ctrl_speed(void)
 {
     if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*用手控盒控制过速度*/
     {   /*通知手控盒取消相关显示*/
 
     }
-    uint8_t speed = 0;
-    pullOneItem(PARAM0X01, g_vfd_ctrl.sp, &speed);
-    ext_motor_speed(speed);  
+    ctrl_speed_get_and_send(g_vfd_ctrl.sp);  
 }
+
+
 
 static void update_speed(void)
 {  
@@ -147,20 +188,88 @@ static void update_speed(void)
     uint8_t sp2 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP2].port, g_vfd_io_tab[IO_ID_SP2].pin) == GPIO_PIN_SET) ? 1 : 0;
 
     uint8_t sp = (sp2 << 2) | (sp1 << 1) | sp0 ;
-    if(sp != g_vfd_ctrl.sp)
-    {
-        g_vfd_ctrl.sp = sp;
-        ctrl_speed();
-    }
+    if(sp == g_vfd_ctrl.sp)
+        return ;
+
+    g_vfd_ctrl.sp = sp;
+    if(g_vfd_ctrl.work_end != 0)
+        return ;
+    ctrl_speed();
 }
 
 static void ctrl_dir(void)
 {
-
+    if(g_vfd_ctrl.flag[IO_ID_LIMIT_EXCEED] != 0)
+    {
+        motor_stop_from_key();
+        return ;
+    }
+    if(g_vfd_ctrl.flag[IO_ID_END] != 0 ) /*加工结束*/
+    {
+        uint8_t stop = 0;
+        pullOneItem(PARAM0X03, PARAM_STOP_MODE, &stop);
+        switch(stop)
+        {
+            case STOP_ON_RIGHT :{
+                if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0){
+                    motor_stop_from_key();
+                }
+                else
+                {
+                    ctrl_speed_get_and_send(0);
+                    g_vfd_ctrl.work_end = 1;
+                    if(motor_target_current_dir() == 0){
+                        ext_motor_reverse();
+                    }
+                }
+            }break;
+            case STOP_ON_LEFT:{
+                if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0){
+                    motor_stop_from_key();
+                }
+                else
+                {
+                    ctrl_speed_get_and_send(0);
+                    g_vfd_ctrl.work_end = 1;
+                    if(motor_target_current_dir() != 0){
+                        ext_motor_reverse();
+                    }
+                }
+            }break;
+            default: motor_stop_from_key(); break;
+        }
+    }
+    if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0)
+    {
+        if(g_vfd_ctrl.work_end != 0)
+        {
+            motor_stop_from_key();
+            g_vfd_ctrl.work_end = 0;
+        }
+        else ext_motor_reverse();
+    }
+    if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0)
+    {
+        if(g_vfd_ctrl.work_end != 0)
+        {
+            motor_stop_from_key();
+            g_vfd_ctrl.work_end = 0;
+        }
+        else ext_motor_reverse();
+    }
 }
 
 static void update_direction(void)
 {  
+    if(motor_is_working() != 1)
+    {
+        g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks = 0;
+        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks = 0;
+        g_vfd_io_tab[IO_ID_LIMIT_EXCEED].now_ticks = 0;
+        g_vfd_io_tab[IO_ID_END].now_ticks = 0;
+        return ;
+    }
+        
     for(int i = IO_ID_LIMIT_LEFT ; i <= IO_ID_END ; i++)
     {
         if(HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin) == g_vfd_io_tab[i].active_polarity)
@@ -182,15 +291,15 @@ static void update_direction(void)
                 g_vfd_ctrl.flag[i] = 1;
                 /*通知电机换向或者结束加工*/
                 ctrl_dir();
-            }   
+            }
         }
     }
     //左限位长时间触发，异常
-    if(g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_LEFT].exceed_ticks) 
+    if((g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_LEFT].exceed_ticks))
         g_vfd_ctrl.err |= ERROR_LEFT_KEY;
         
     //右限位长时间触发，异常
-    if(g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_RIGHT].debounce_ticks) 
+    if(g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_RIGHT].exceed_ticks) 
         g_vfd_ctrl.err |= ERROR_RIGHT_KEY;
 
     /*左右限位同时触发*/
@@ -199,9 +308,51 @@ static void update_direction(void)
 
 }
 
+
+
 static void ctrl_onoff(void)
 {
+    switch(g_vfd_ctrl.ctl)
+    {
+        case CTRL_MODE_JOG :{ /*忽略关丝和关水逻辑*/
+            if(g_vfd_ctrl.flag[IO_ID_MOTOR_START] != 0) /*开关丝*/
+            {
+                if(motor_is_working() != 1){
+                    motor_start_from_key();
+                }
+                else{
+                    motor_stop_from_key();
+                }
+            }
+            if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开关水*/
+            {
 
+            }            
+        }break;
+        case CTRL_MODE_FOUR_KEY :{
+            if(g_vfd_ctrl.flag[IO_ID_MOTOR_START] != 0) /*开丝*/
+            {
+                if(motor_is_working() != 1){
+                    motor_start_from_key();
+                }
+            }
+            if(g_vfd_ctrl.flag[IO_ID_MOTOR_STOP] != 0) /*关丝*/
+            {
+                if(motor_is_working() == 1){
+                    motor_stop_from_key();
+                }
+            }
+            if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开水*/
+            {
+
+            }  
+            if(g_vfd_ctrl.flag[IO_ID_PUMP_STOP] != 0) /*关水*/
+            {
+
+            } 
+        }break;
+        default:break;
+    }
 }
 
 static void update_onoff(void)
@@ -237,6 +388,7 @@ void inout_sp_sync_from_ext(uint8_t sp)
 {
     g_vfd_ctrl.sp = sp;
     g_vfd_ctrl.flag[IO_ID_SP0] = 1;
+    ctrl_speed_get_and_send(g_vfd_ctrl.sp);
 }
 
 
@@ -264,6 +416,6 @@ void inout_scan(void)
     /*step 4 . 开关运丝和水泵*/
     update_onoff();
 
-    /*step 5 . 根据上述结果控制电机*/
-    update_ctrl();
+    /*step 5 . 错误处理*/
+    update_err();
 }

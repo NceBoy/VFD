@@ -96,22 +96,30 @@ static  void  task_motor (ULONG thread_input)
 
 void ext_motor_start(unsigned int dir , unsigned int target)
 {
+    if(motor_is_working() == 1)
+        return ;
     unsigned int data[2] = {dir,target};
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_START, data, sizeof(data));
 }
 
 void ext_motor_speed(unsigned int speed)
 {
+    if(motor_is_working() == 0)
+        return ;
     unsigned int freq = speed;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_VF, &freq, 4);
 }
 
 void ext_motor_reverse(void)
 {
+    if(motor_is_working() == 0)
+        return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_REVERSE, NULL, 0);
 }
 
 void ext_motor_break(void)
 {
+    if(motor_is_working() == 0)
+        return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BREAK, NULL, 0);
 }

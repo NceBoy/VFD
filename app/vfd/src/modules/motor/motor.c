@@ -58,6 +58,11 @@ int motor_target_current_get(void)
     return (int)g_motor_real.target_should_be;
 }
 
+int motor_target_current_dir(void)
+{
+    return (int)g_motor_real.motor_dir;
+}
+
 void motor_reverse_start(void)
 {
     g_motor_real.target_freq = 5.0;

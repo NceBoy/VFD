@@ -7,12 +7,14 @@ extern "C" {
 #endif
 
 
+
 void motor_start(unsigned int dir , float target_freq);     /*启动*/
 void motor_target_info_update(float target_freq);           /*变速*/
 void motor_reverse_start(void);                             /*反向*/
 void motor_break_start(void);                               /*停机*/
 
 int motor_target_current_get(void);
+int motor_target_current_dir(void);
 int motor_is_working(void);
 
 
