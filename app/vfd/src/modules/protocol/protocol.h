@@ -74,5 +74,6 @@ uint16_t deserialize_packet_byte(CallbackRead funcRead, int timeout, Packet* pac
 uint16_t calculate_modbus_crc(const uint8_t* data, uint16_t length);
 void print_packet(const Packet* packet);
 void protocol_mem_init();
-
+Packet* packet_allocate(uint16_t body_length);
+void packet_free(Packet* packet);
 #endif // PROTOCOL_H

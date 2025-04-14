@@ -200,3 +200,26 @@ void protocol_mem_init() {
     ret = tx_byte_pool_create(&g_protocol_mem_pool, "protocol_mem", (VOID*)protocol_mem, PROTOCOL_MEM_POOL_BYTES);
     assert(ret == TX_SUCCESS);
 }
+
+// 新增函数：分配Packet内存
+Packet* packet_allocate(uint16_t body_length) {
+    if (body_length == 0) {
+        return NULL;
+    }
+    Packet* packet = (Packet*)protocol_malloc(sizeof(Packet));
+    if (packet == NULL) {
+        return NULL;
+    }
+    packet->body = NULL;
+    return packet;
+}
+
+// 新增函数：释放Packet内存
+void packet_free(Packet* packet) {
+    if (packet == NULL) {
+        return;
+    }
+    if(packet->body != NULL)
+        protocol_free(packet->body);
+    protocol_free(packet);
+}
