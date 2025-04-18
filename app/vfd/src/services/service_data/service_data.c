@@ -57,7 +57,7 @@ static int do_handler(MSG_MGR_T* msg)
     if(deserialize_packet((const uint8_t*) msg->buf, msg->len , &pkt))
     {
         data_process(&pkt , &ack_pkt);
-        free_packet(&pkt);
+        packet_body_free(&pkt);
         ack_len = serialize_packet((const Packet*) &ack_pkt, g_ack_buf);
         if(msg->from == (TX_QUEUE*)1) /*数据从UART发送过来的，应答再发回UART*/
             lpuart_send(g_ack_buf , ack_len);

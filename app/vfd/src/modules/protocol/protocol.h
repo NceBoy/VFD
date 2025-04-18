@@ -68,12 +68,13 @@ typedef int (*CallbackRead)(uint8_t* buff, uint16_t len, uint32_t timeout);
 
 // 辅助函数声明
 void create_packet(Packet* packet, ActionCode action, MessageType type, uint16_t source_id, uint16_t target_id, uint16_t subtype, uint8_t* body, uint16_t body_length);
-int serialize_packet(const Packet* packet, uint8_t* buffer);
+int  serialize_packet(const Packet* packet, uint8_t* buffer);
 uint16_t deserialize_packet(const uint8_t* buffer, uint16_t length , Packet* packet);
 uint16_t deserialize_packet_byte(CallbackRead funcRead, int timeout, Packet* packet);
 uint16_t calculate_modbus_crc(const uint8_t* data, uint16_t length);
 void print_packet(const Packet* packet);
-void free_packet(Packet* packet);
 void protocol_mem_init();
-
+Packet* packet_allocate(uint16_t body_length);
+void packet_free(Packet* packet);
+void packet_body_free(Packet* packet);
 #endif // PROTOCOL_H

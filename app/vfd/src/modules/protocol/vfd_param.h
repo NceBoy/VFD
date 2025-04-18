@@ -37,6 +37,7 @@ typedef enum {
     PARAM0X01 = 0x00,  //
     PARAM0X02 = 0x01,  // 
     PARAM0X03 = 0x02,  // 
+    PARAM_ALL = 0xff,  // 
 } ModuleParameterType;
 ///----------------------------------------------------------------------------//
 typedef enum {
@@ -65,6 +66,24 @@ typedef enum {
 
 ///----------------------------------------------------------------------------//
 typedef enum {
+    PARAM_HIGH_FREQ_DELAY = 0x00,  // 开高频延时
+    PARAM_MAX_POWER_OFF_TIME = 0x01,  // 允许掉电最长时间
+    PARAM_STOP_MODE = 0x02,  // 加工停机结束方式
+    PARAM_START_FREQ = 0x03,  // 启动、换向、刹车起始频率
+    PARAM_WIRE_BREAK_DETECT_TIME = 0x04,  // 断丝检测时间
+    PARAM_WIRE_START_DIRECTION = 0x05,  // 丝筒启动方向
+    PARAM_PROCESS_END_SIGNAL = 0x06,  // 加工结束信号
+    PARAM_WIRE_BREAK_SIGNAL = 0x07  // 断丝检测信号
+} ModuleParameterType_0x03;
+
+///----------------------------------------------------------------------------//
+
+typedef enum {
+    PARAM_DATA_ALL = 0x00  //全参数下发
+} ModuleParameterType_All;
+
+///----------------------------------------------------------------------------//
+typedef enum {
     STOP_IMMEDIATE = 0x00,//立即停机
     STOP_ON_RIGHT  = 0x01,//停在右边
     STOP_ON_LEFT  = 0x02,//停在左边
@@ -81,18 +100,7 @@ typedef enum {
     CONTACT_TYPE_OPEN = 0x01     // 常开
 } ContactType;
 
-typedef enum {
-    PARAM_HIGH_FREQ_DELAY = 0x00,  // 开高频延时
-    PARAM_MAX_POWER_OFF_TIME = 0x01,  // 允许掉电最长时间
-    PARAM_STOP_MODE = 0x02,  // 加工停机结束方式
-    PARAM_START_FREQ = 0x03,  // 启动、换向、刹车起始频率
-    PARAM_WIRE_BREAK_DETECT_TIME = 0x04,  // 断丝检测时间
-    PARAM_WIRE_START_DIRECTION = 0x05,  // 丝筒启动方向
-    PARAM_PROCESS_END_SIGNAL = 0x06,  // 加工结束信号
-    PARAM_WIRE_BREAK_SIGNAL = 0x07  // 断丝检测信号
-} ModuleParameterType_0x03;
 
-///----------------------------------------------------------------------------//
 typedef enum {
     FAULT_OVER_VOLTAGE = 0xE01,  // 过压
     FAULT_UNDER_VOLTAGE = 0xE02,  // 低压
