@@ -363,12 +363,14 @@
                     <state>$PROJ_DIR$\..\src\services\service_motor</state>
                     <state>$PROJ_DIR$\..\src\drivers\cordic</state>
                     <state>$PROJ_DIR$\..\src\modules\motor</state>
-                    <state>$PROJ_DIR$\..\src\modules\tmr</state>
                     <state>$PROJ_DIR$\..\src\drivers\eeprom</state>
                     <state>$PROJ_DIR$\..\src\bsp\softi2c</state>
                     <state>$PROJ_DIR$\..\src\modules\protocol</state>
                     <state>$PROJ_DIR$\..\src\drivers\adc</state>
                     <state>$PROJ_DIR$\..\src\modules\inout</state>
+                    <state>$PROJ_DIR$\..\src\modules\uart</state>
+                    <state>$PROJ_DIR$\..\src\services\service_data</state>
+                    <state>$PROJ_DIR$\..\src\modules\data</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2488,6 +2490,15 @@
     <group>
         <name>modules</name>
         <group>
+            <name>data</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\data\data.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\data\data.h</name>
+            </file>
+        </group>
+        <group>
             <name>inout</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\inout\inout.c</name>
@@ -2530,17 +2541,26 @@
             </file>
         </group>
         <group>
-            <name>tmr</name>
+            <name>uart</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\tmr\tmr.c</name>
+                <name>$PROJ_DIR$\..\src\modules\uart\uart.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\tmr\tmr.h</name>
+                <name>$PROJ_DIR$\..\src\modules\uart\uart.h</name>
             </file>
         </group>
     </group>
     <group>
         <name>services</name>
+        <group>
+            <name>service_data</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_data\service_data.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_data\service_data.h</name>
+            </file>
+        </group>
         <group>
             <name>service_motor</name>
             <file>

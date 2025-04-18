@@ -6,7 +6,6 @@
 #include "log.h"
 #include "cordic.h"
 #include "motor.h"
-#include "tmr.h"
 
 /*线程参数*/
 

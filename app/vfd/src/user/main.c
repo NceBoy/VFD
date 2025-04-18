@@ -4,12 +4,13 @@
 #include "nx_msg.h"
 #include "log.h"
 #include "bsp_adc.h"
-#include "tmr.h"
+#include "uart.h"
 #include "tx_api.h"
 #include "tx_initialize.h"
 #include "tx_thread.h"
 #include "service_test.h"
 #include "service_motor.h"
+#include "service_data.h"
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
@@ -21,7 +22,7 @@ static  ULONG64     taskstartstk[CFG_TASK_START_STK_SIZE/8];
 static  void        taskstart          (ULONG thread_input);
 
 static VOID adc_sample_tmr_cb(ULONG);
-static tmr_t g_adc_sample_tmr = {0};
+static TX_TIMER g_adc_sample_tmr = {0};
 
 /**
   * @brief  The application entry point.
@@ -71,17 +72,18 @@ static  void  taskstart (ULONG thread_input)
 	nx_msg_init();
 
     service_test_start();
+    
+    service_data_start();
 
     service_motor_start();
  
     /*创建一个定时器，以100ms的间隔采集电压电流*/
-    tmr_init(&g_adc_sample_tmr ,"adc sample" , adc_sample_tmr_cb, 0 ,200);
-    tmr_create(&g_adc_sample_tmr);    
-    tmr_start(&g_adc_sample_tmr);
-    
+    tx_timer_create(&g_adc_sample_tmr,"adc sample",adc_sample_tmr_cb,0,500,100,TX_AUTO_ACTIVATE); 
+  
 	while(1)
 	{
-        tx_thread_sleep(1000);
+        uart_recv_to_data();
+        tx_thread_sleep(10);
 	}
 }
 

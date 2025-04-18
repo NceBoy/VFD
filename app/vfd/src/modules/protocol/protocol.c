@@ -34,8 +34,15 @@ void create_packet(Packet* packet, ActionCode action, MessageType type, uint16_t
     packet->target_id = target_id; // 小端存储
     packet->subtype = subtype; // 小端存储
     packet->body_length = body_length; // 小端存储
-    packet->body = (uint8_t*)protocol_malloc(body_length);
-    memcpy(packet->body, body, body_length);
+    if(packet->body_length)
+    {
+        packet->body = (uint8_t*)protocol_malloc(body_length);
+        if(packet->body)
+            memcpy(packet->body, body, body_length);  
+        else 
+            packet->body_length = 0;
+    }
+
     // 计算CRC时，从 header 到 crc 之前的字段都需要参与计算
     uint8_t* data = (uint8_t*)packet;
     uint16_t crc = calculate_modbus_crc(data, packet->body_length+12);
@@ -43,26 +50,37 @@ void create_packet(Packet* packet, ActionCode action, MessageType type, uint16_t
     packet->footer = FOOTER_VALUE;
 }
 
-void serialize_packet(const Packet* packet, uint8_t* buffer) {
+int serialize_packet(const Packet* packet, uint8_t* buffer) {
     uint8_t* temp = buffer;
     *temp++ = packet->header;
     *temp++ = packet->action;
     *temp++ = packet->type;
     *temp++ = packet->reserved; // 预留字段
     // 源设备ID和目标设备ID以小端存储
-    *temp++ = (packet->source_id >> 8) & 0xFF;  // 高字节
     *temp++ = (packet->source_id >> 0) & 0xFF;  // 低字节
-    *temp++ = (packet->target_id >> 8) & 0xFF;  // 高字节
+    *temp++ = (packet->source_id >> 8) & 0xFF;  // 高字节
+
     *temp++ = (packet->target_id >> 0) & 0xFF;  // 低字节
-    *temp++ = (packet->subtype >> 8) & 0xFF;    // 高字节
+    *temp++ = (packet->target_id >> 8) & 0xFF;  // 高字节
+
     *temp++ = (packet->subtype >> 0) & 0xFF;    // 低字节
-    *temp++ = (packet->body_length >> 8) & 0xFF; // 高字节
+    *temp++ = (packet->subtype >> 8) & 0xFF;    // 高字节
+
     *temp++ = (packet->body_length >> 0) & 0xFF; // 低字节
-    memcpy(temp, packet->body, packet->body_length);
+    *temp++ = (packet->body_length >> 8) & 0xFF; // 高字节
+
+    if(packet->body_length)
+    {
+        memcpy(temp, packet->body, packet->body_length);
+        protocol_free(packet->body);
+    }
     temp += packet->body_length;
-    *temp++ = (packet->crc >> 8) & 0xFF;        // 高字节
+    
     *temp++ = (packet->crc >> 0) & 0xFF;        // 低字节
+    *temp++ = (packet->crc >> 8) & 0xFF;        // 高字节
+
     *temp++ = packet->footer;
+    return temp - buffer;
 }
 
 uint16_t deserialize_packet_byte(CallbackRead funcRead, int timeout, Packet* packet) {
@@ -113,23 +131,40 @@ exit2:
     return 0;
 }
 
-uint16_t deserialize_packet(const uint8_t* buffer, Packet* packet) {
+uint16_t deserialize_packet(const uint8_t* buffer, uint16_t length , Packet* packet) {
+
+    if(length < 15)
+        return 0;
+
     const uint8_t* temp = buffer;
+    uint16_t body_length = temp[10] | (temp[11] << 8);
+    //验证包长
+    if(length != (body_length + 15))
+        return 0;
+    //验证包头和包尾
+    if (temp[0] != HEADER_VALUE || temp[length -1] != FOOTER_VALUE) 
+        return 0;
+    //验证CRC
+    uint16_t crc_pack = temp[12 + body_length] | (temp[13 + body_length] << 8);
+    uint16_t expected_crc = calculate_modbus_crc(temp, 12 + body_length);
+    if (crc_pack != expected_crc)
+        return 0;
+
     packet->header = *temp++;
     packet->action = *temp++;
     packet->type = *temp++;
     packet->reserved = *temp++; // 预留字段
 
     // 源设备ID和目标设备ID
-    packet->source_id = (temp[0] << 8) | temp[1];
+    packet->source_id = (temp[1] << 8) | temp[0];
     temp += 2;
-    packet->target_id = (temp[0] << 8) | temp[1];
+    packet->target_id = (temp[1] << 8) | temp[0];
     temp += 2;
 
     // 子类型和消息体长度
-    packet->subtype = (temp[0] << 8) | temp[1];
+    packet->subtype = (temp[1] << 8) | temp[0];
     temp += 2;
-    packet->body_length = (temp[0] << 8) | temp[1];
+    packet->body_length = (temp[1] << 8) | temp[0];
     temp += 2;
 
     packet->body = (uint8_t*)protocol_malloc(packet->body_length);
@@ -137,23 +172,23 @@ uint16_t deserialize_packet(const uint8_t* buffer, Packet* packet) {
     temp += packet->body_length;
 
     // CRC和包尾
-    packet->crc = (temp[0] << 8) | temp[1];
+    packet->crc = (temp[1] << 8) | temp[0];
     temp += 2;
     packet->footer = *temp++;
 
     // 验证包头和包尾
-    if (packet->header != HEADER_VALUE || packet->footer != FOOTER_VALUE) {
-        protocol_free(packet->body);
-        return 0;
-    }
+    //if (packet->header != HEADER_VALUE || packet->footer != FOOTER_VALUE) {
+    //    protocol_free(packet->body);
+    //    return 0;
+    //}
 
     // 验证CRC
-    uint8_t* data = (uint8_t*)packet;
-    uint16_t expected_crc = calculate_modbus_crc(data, packet->body_length+12);
-    if (packet->crc != expected_crc) { 
-        protocol_free(packet->body);
-        return 0;
-    }
+    //uint8_t* data = (uint8_t*)packet;
+    //uint16_t expected_crc = calculate_modbus_crc(data, packet->body_length+12);
+    //if (packet->crc != expected_crc) { 
+    //    protocol_free(packet->body);
+    //    return 0;
+    //}
 
     return 1;
 }
@@ -193,6 +228,16 @@ void print_packet(const Packet* packet) {
     //printf("\n");
     //printf("  CRC: 0x%04X\n", packet->crc);
     //printf("  Footer: 0x%02X\n", packet->footer);
+}
+
+void free_packet(Packet* packet)
+{
+    if(packet->body)
+    {
+        protocol_free(packet->body);
+        packet->body = NULL;
+    }
+        
 }
 
 void protocol_mem_init() {

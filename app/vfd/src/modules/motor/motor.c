@@ -248,7 +248,6 @@ unsigned int interrupt_times = 0;
         {
             motor_break();
         }
-        motor_update_spwm();
-        
+        motor_update_spwm(); 
     }
  }
