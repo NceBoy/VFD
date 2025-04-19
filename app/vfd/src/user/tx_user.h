@@ -115,7 +115,6 @@
 #define TX_TIMER_THREAD_STACK_SIZE              512
 #define TX_TIMER_THREAD_PRIORITY                0
 
-
 /* Define the common timer tick reference for use by other middleware components. The default
    value is 10ms (i.e. 100 ticks, defined in tx_api.h), but may be replaced by a port-specific
    version in tx_port.h or here.

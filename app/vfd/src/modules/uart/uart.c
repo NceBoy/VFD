@@ -81,8 +81,7 @@ void uart_recv_to_data(void)
     {
         ext_send_to_data(1 , lpuart_param.recv_buf , lpuart_param.recv_len);
         lpuart_param.recv_state = UART_RECV_IDLE;
-    }
-        
+    }     
 }
 
 void lpuart_init(void)

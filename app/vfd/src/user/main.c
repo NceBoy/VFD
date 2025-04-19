@@ -5,6 +5,7 @@
 #include "log.h"
 #include "bsp_adc.h"
 #include "uart.h"
+#include "inout.h"
 #include "tx_api.h"
 #include "tx_initialize.h"
 #include "tx_thread.h"
@@ -82,8 +83,9 @@ static  void  taskstart (ULONG thread_input)
   
 	while(1)
 	{
+        inout_scan();
         uart_recv_to_data();
-        tx_thread_sleep(10);
+        tx_thread_sleep(5);
 	}
 }
 

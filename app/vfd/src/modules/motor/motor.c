@@ -62,10 +62,10 @@ void motor_target_info_update(float target_freq)
         }break;
         case motor_in_run:{
             g_motor_real.target_should_be = target_freq;
-            g_motor_real.target_freq = target_freq;            
+            g_motor_real.target_freq = target_freq;
         }break;
         default:break;
-    }   
+    }
 }
 
 int motor_is_working(void)

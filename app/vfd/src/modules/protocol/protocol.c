@@ -53,8 +53,8 @@ void create_packet(Packet* packet, ActionCode action, MessageType type, uint16_t
 int serialize_packet(const Packet* packet, uint8_t* buffer) {
     uint8_t* temp = buffer;
     *temp++ = packet->header;
-    *temp++ = packet->action;
     *temp++ = packet->type;
+    *temp++ = packet->action;
     *temp++ = packet->reserved; // 预留字段
     // 源设备ID和目标设备ID以小端存储
     *temp++ = (packet->source_id >> 0) & 0xFF;  // 低字节
@@ -151,8 +151,9 @@ uint16_t deserialize_packet(const uint8_t* buffer, uint16_t length , Packet* pac
         return 0;
 
     packet->header = *temp++;
-    packet->action = *temp++;
     packet->type = *temp++;
+    packet->action = *temp++;
+
     packet->reserved = *temp++; // 预留字段
 
     // 源设备ID和目标设备ID
@@ -167,8 +168,12 @@ uint16_t deserialize_packet(const uint8_t* buffer, uint16_t length , Packet* pac
     packet->body_length = (temp[1] << 8) | temp[0];
     temp += 2;
 
-    packet->body = (uint8_t*)protocol_malloc(packet->body_length);
-    memcpy(packet->body, temp, packet->body_length);
+    if(packet->body_length != 0)
+    {
+        packet->body = (uint8_t*)protocol_malloc(packet->body_length);
+        memcpy(packet->body, temp, packet->body_length);        
+    }
+
     temp += packet->body_length;
 
     // CRC和包尾
@@ -176,19 +181,6 @@ uint16_t deserialize_packet(const uint8_t* buffer, uint16_t length , Packet* pac
     temp += 2;
     packet->footer = *temp++;
 
-    // 验证包头和包尾
-    //if (packet->header != HEADER_VALUE || packet->footer != FOOTER_VALUE) {
-    //    protocol_free(packet->body);
-    //    return 0;
-    //}
-
-    // 验证CRC
-    //uint8_t* data = (uint8_t*)packet;
-    //uint16_t expected_crc = calculate_modbus_crc(data, packet->body_length+12);
-    //if (packet->crc != expected_crc) { 
-    //    protocol_free(packet->body);
-    //    return 0;
-    //}
 
     return 1;
 }

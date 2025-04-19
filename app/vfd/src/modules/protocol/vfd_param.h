@@ -31,12 +31,11 @@ typedef struct {
 } DeviceStatus;
 
 
-
-
 typedef enum {
     PARAM0X01 = 0x00,  //
     PARAM0X02 = 0x01,  // 
     PARAM0X03 = 0x02,  // 
+    PARAM0X04 = 0x03,
     PARAM_ALL = 0xff,  // 
 } ModuleParameterType;
 ///----------------------------------------------------------------------------//
@@ -77,7 +76,15 @@ typedef enum {
 } ModuleParameterType_0x03;
 
 ///----------------------------------------------------------------------------//
+typedef enum {
+    PARAM_TRANSPORT_SILK,  // 00=开运丝，01=关运丝
+    PARAM_WATER_PUMP,      // 00=开水泵，01=关水泵
+    PARAM_MODE,            // 00=正常模式，01=调试模式
+    PARAM_RUN_RATE,        // 00=预设低段频率，1=预设中段频率，2=预设高段频率
+    PARAM_RESET            // 00=软复位，01=行程左归位，02=行程右归位
+} ModuleParameterType_0x04;
 
+///----------------------------------------------------------------------------//
 typedef enum {
     PARAM_DATA_ALL = 0x00  //全参数下发
 } ModuleParameterType_All;

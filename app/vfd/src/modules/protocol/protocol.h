@@ -9,8 +9,8 @@
 #pragma pack(1)
 typedef struct {
     uint8_t header;                  // 消息包头 (0xBB)
-    uint8_t action;                  // 消息动作
     uint8_t type;                    // 消息类型
+    uint8_t action;                  // 消息动作
     uint8_t reserved;                // 预留字段
     uint16_t source_id;              // 源设备ID (小端)
     uint16_t target_id;              // 目标设备ID (小端)
