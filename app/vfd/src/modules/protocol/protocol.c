@@ -45,7 +45,7 @@ void create_packet(Packet* packet, ActionCode action, MessageType type, uint16_t
 
     // 计算CRC时，从 header 到 crc 之前的字段都需要参与计算
     uint8_t* data = (uint8_t*)packet;
-    uint16_t crc = calculate_modbus_crc(data, packet->body_length+12);
+    uint16_t crc = calculate_modbus_crc_2(data,body, 12,packet->body_length);
     packet->crc = crc; // 存储为小端
     packet->footer = FOOTER_VALUE;
 }
@@ -113,7 +113,7 @@ uint16_t deserialize_packet_byte(CallbackRead funcRead, int timeout, Packet* pac
     packet->crc = (crc_buffer[1] << 8) | crc_buffer[0]; 
     // 验证CRC，无需转换大小端
     data = (uint8_t*)packet;
-    expected_crc = calculate_modbus_crc(data, packet->body_length+12);
+    expected_crc = calculate_modbus_crc_2(data,packet->body, 12,packet->body_length);
     if (packet->crc != expected_crc)
         goto exit1;
 
@@ -199,6 +199,33 @@ uint16_t calculate_modbus_crc(const uint8_t* data, uint16_t length) {
         }
     }
 
+    // 返回小端格式的CRC值（十六进制字节顺序：低字节在前）
+    return crc;
+}
+
+uint16_t calculate_modbus_crc_2(const uint8_t* data,uint8_t* data_body, uint16_t length,uint16_t lenth_body) {
+    uint16_t crc = 0xFFFF;
+    uint16_t i, j;
+    for (i = 0; i < length; i++) {
+        crc ^= (uint16_t)data[i];
+        for (j = 0; j < 8; j++) {
+            if (crc & 0x0001) {
+                crc = (crc >> 1) ^ 0xA001;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    for (i = 0; i < lenth_body; i++) {
+        crc ^= (uint16_t)data_body[i];
+        for (j = 0; j < 8; j++) {
+            if (crc & 0x0001) {
+                crc = (crc >> 1) ^ 0xA001;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
     // 返回小端格式的CRC值（十六进制字节顺序：低字节在前）
     return crc;
 }
