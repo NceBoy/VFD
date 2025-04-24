@@ -64,8 +64,6 @@ static int do_handler(MSG_MGR_T* msg)
         if(msg->from == (TX_QUEUE*)1) /*数据从UART发送过来的，应答再发回UART*/
             lpuart_send(g_ack_buf , ack_len);
     }
-    
-
     return 0;
 }
 
@@ -75,7 +73,7 @@ static  void  task_data (ULONG thread_input)
 	(void)thread_input;
     protocol_mem_init();
     lpuart_init();
-    tx_timer_create(&g_uart_timeout_tmr,"uart timeout",timeout_cb,0,100,1,TX_AUTO_ACTIVATE); 
+    tx_timer_create(&g_uart_timeout_tmr,"uart timeout",timeout_cb,0,10,10,TX_AUTO_ACTIVATE); 
 
 	MSG_MGR_T* recv_info  = NULL;
 	
@@ -94,7 +92,7 @@ static  void  task_data (ULONG thread_input)
 static VOID timeout_cb(ULONG para)
 {
     (void)para;
-    lpuart_period(1);
+    lpuart_period(10);
 }
 
 void ext_send_to_data(int from_id , unsigned char* buf , int len)

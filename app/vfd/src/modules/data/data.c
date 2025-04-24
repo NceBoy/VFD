@@ -1,4 +1,3 @@
-#include <assert.h>
 #include "data.h"
 #include "protocol.h"
 #include "vfd_param.h"
@@ -6,12 +5,15 @@
 
 typedef int (*protocol_cb)(Packet* in , Packet* out);
 
-#define CMD_PARAM_SET           0x000300FF
-#define CMD_MOTOR_SET           0x00030104
+#define CMD_BUILD(action,main_type,sub_type)        (action << 16 | sub_type << 8 | main_type)
+
+#define CMD_PARAM_SET           CMD_BUILD(ACTION_SET,0xFF,0x00)
+#define CMD_MOTOR_SET           CMD_BUILD(ACTION_SET,0x04,0x01)
 
 
 
-#define CMD_PARAM_GET           0x000200FF
+#define CMD_PARAM_GET           CMD_BUILD(ACTION_GET,0xFF,0x00)
+
 
 
 
@@ -43,8 +45,7 @@ int data_process(Packet* in , Packet* out)
         if((data_tab[i].cmd == cmd) && (data_tab[i].cb != NULL))
         {
             return data_tab[i].cb(in , out);
-        }
-            
+        }   
     }
     return -1;
 }
@@ -52,7 +53,8 @@ int data_process(Packet* in , Packet* out)
 
 static int vfd_param_set(Packet* in ,Packet* out)
 {
-    assert(in->body_length == 48);
+    if(in->body_length != 48)
+        return 0;
     pushAllParams(in->body);
     flushAllParams();
     uint8_t result = 1;
@@ -61,7 +63,8 @@ static int vfd_param_set(Packet* in ,Packet* out)
 }
 static int vfd_param_get(Packet* in , Packet* out)
 {
-    assert(in->body_length == 0);
+    if(in->body_length != 0)
+        return 0;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, (uint8_t*)g_vfdParam, sizeof(g_vfdParam));
     return sizeof(g_vfdParam);
 }

@@ -24,18 +24,18 @@ typedef struct {
 
 // 协议消息动作代码
 typedef enum {
-    ACTION_STATUS_REPORT = 0x01,     // 状态上报
-    ACTION_QUERY = 0x02,             // 主动查询
+    ACTION_REPORT = 0x01,             // 状态上报
+    ACTION_GET = 0x02,             // 主动查询
     ACTION_SET = 0x03,               // 主动设置
     ACTION_REPLY = 0x04,             // 消息回复
-    ACTION_NETWORKING = 0x05,        // 组网
+    ACTION_NET = 0x05,              // 组网
     ACTION_ERROR = 0xFF              // 异常错误
 } ActionCode;
 
 // 协议消息类型代码
 typedef enum {
     TYPE_DEFAULT = 0x00,             // 默认通用
-    TYPE_BATTERY_MANAGEMENT = 0x01,  // 电池管理
+    TYPE_BATTERY = 0x01,             // 电池管理
     TYPE_VFD = 0x02                  // 线切割变频器
 } MessageType;
 

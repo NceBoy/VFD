@@ -81,7 +81,7 @@ void uart_recv_to_data(void)
     {
         ext_send_to_data(1 , lpuart_param.recv_buf , lpuart_param.recv_len);
         lpuart_param.recv_state = UART_RECV_IDLE;
-    }     
+    }
 }
 
 void lpuart_init(void)
@@ -108,6 +108,7 @@ void lpuart_init(void)
     __HAL_UART_ENABLE_IT(&hlpuart1, UART_IT_RXNE);
 }
 
+/*定时器中调用，定时器周期10ms*/
 void lpuart_period(int period_ms)
 {
     /*LPUART接收状态处理*/
