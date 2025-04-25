@@ -7,7 +7,8 @@
 #include "vfd_param.h"
 
 
-extern TIM_HandleTypeDef htim8;
+extern TIM_HandleTypeDef htim8; /*电机控制*/
+static TIM_HandleTypeDef htim7; /*开高频延时*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
 
@@ -23,7 +24,9 @@ typedef struct
 {
     motor_status_enum   motor_status;
     unsigned int        motor_dir;
-    float               ratio;
+    unsigned int        freq_arrive;
+    unsigned int        break_release;
+    unsigned int        high_status;  /*高频状态*/
     float               angle;        /*当前的角度，一直累加的值，用于计算sin值*/
     float               target_should_be;
     float               target_freq;
@@ -33,24 +36,106 @@ typedef struct
 
 typedef struct 
 {
-    float start_freg;
-    unsigned int acceleration_time_us;
-    unsigned int deceleration_time_us;
+    float start_freg;           /*启动频率*/
+    float open_freq;            /*开高频最低频率*/
+    unsigned int radio;                /*转矩提升*/
+    unsigned int delay;                /*高频延时*/
+    unsigned int economy;                /*自动省电*/
+
+    unsigned int vari_freq;                 /*变频关高频标志位*/
+    unsigned int acceleration_time_us;      /*加速时间*/
+    unsigned int deceleration_time_us;      /*减速时间*/
 }motor_para_t;
 
 
 static motor_para_t g_motor_param;
 static motor_ctl_t g_motor_real;
+static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
 
 static void motor_param_get(void)
 {
     uint8_t value = 0;
-    pullOneItem(PARAM0X02, PARAM_ACCELERATION_TIME, &value);
-    g_motor_param.acceleration_time_us = value * 100 * 1000;
-    pullOneItem(PARAM0X02, PARAM_DECELERATION_TIME, &value);
-    g_motor_param.deceleration_time_us = value * 100 * 1000;
-    pullOneItem(PARAM0X03, PARAM_START_FREQ, &value);
+    pullOneItem(PARAM0X03, PARAM_START_FREQ, &value);  /*启动频率*/
     g_motor_param.start_freg = (float)value;
+
+    pullOneItem(PARAM0X02, PARAM_MIN_OPEN_FREQ, &value);    /*开高频频率*/
+    g_motor_param.open_freq = (float)value;
+
+    pullOneItem(PARAM0X02, PARAM_LOW_FREQ_TORQUE_BOOST, &value);    /*低频转矩提升*/
+    g_motor_param.radio = value;
+
+    pullOneItem(PARAM0X02, PARAM_HIGH_FREQ_DELAY, &value);    /*开高频延时*/
+    g_motor_param.delay = value;
+
+    pullOneItem(PARAM0X02, PARAM_AUTO_ECONOMY_PERCENT, &value);    /*自动省电*/
+    g_motor_param.economy = value;
+
+    pullOneItem(PARAM0X02, PARAM_VARI_FREQ_CLOSE, &value);    /*变频关高频*/
+    g_motor_param.vari_freq = value;
+
+    pullOneItem(PARAM0X02, PARAM_ACCELERATION_TIME, &value); /*加速时间*/
+    g_motor_param.acceleration_time_us = value * 100 * 1000;
+
+    pullOneItem(PARAM0X02, PARAM_DECELERATION_TIME, &value); /*减速时间*/
+    g_motor_param.deceleration_time_us = value * 100 * 1000;
+
+
+}
+
+static float radio_from_freq(float freq)
+{
+    float radio = 0.0f;
+    if(g_motor_param.radio > 6)
+        g_motor_param.radio = 6;
+    radio = g_radio_rate[g_motor_param.radio];
+    return 220.0f * (1 - radio) / 50.0f * freq + 220.0f * radio;
+}
+
+static int open_high_frequery_init(void)
+{
+    /* Peripheral clock enable */
+    __HAL_RCC_TIM7_CLK_ENABLE();
+
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+    htim7.Instance = TIM7;  /*160MHz  32000  5000Hz*/
+    htim7.Init.Prescaler = 32000 - 1;
+    htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim7.Init.Period = (g_motor_param.delay * 100 * 5) - 1 ;
+    htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    HAL_TIM_Base_Init(&htim7);
+
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig);
+
+    /* TIM7 interrupt Init */
+    HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(TIM7_IRQn);
+    return 0;
+}
+
+static void high_frequery_open(void)
+{
+    if(g_motor_real.high_status == 0)
+    {
+        htim7.Instance->CNT = 0;
+        __HAL_TIM_ENABLE_IT(&htim7, TIM_IT_UPDATE);
+        __HAL_TIM_ENABLE(&htim7);   
+        g_motor_real.high_status = 1; 
+    }
+
+}
+
+static void high_frequery_close(void)
+{
+    if(g_motor_real.high_status == 1)
+    {
+        htim7.Instance->CNT = 0;
+        __HAL_TIM_DISABLE_IT(&htim7, TIM_IT_UPDATE);
+        __HAL_TIM_DISABLE(&htim7);  
+        g_motor_real.high_status = 0;      
+    }
+
 }
 
 void motor_target_info_update(float target_freq)
@@ -111,6 +196,7 @@ void motor_break(void)
     //bsp_tmr_stop();
     bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
     g_motor_real.motor_status = motor_in_idle;
+    g_motor_real.break_release = 10 * 1000;
 }
 
 
@@ -165,6 +251,7 @@ static unsigned int motor_arrive_freq(float freq)
 void motor_init(void)
 {
     bsp_tmr_init();
+    open_high_frequery_init();
     if(g_motor_real.motor_status != motor_in_idle)
         bsp_tmr_start();
 }
@@ -173,10 +260,10 @@ void motor_init(void)
 void motor_start(unsigned int dir , float target_freq)
 {
     /*step 1 . init tmr*/
+    
     motor_param_get();
     /*step 2 . init motor value*/
     g_motor_real.motor_status = motor_in_run;
-    g_motor_real.ratio = 0.9;
     g_motor_real.motor_dir = dir;
     g_motor_real.angle = 0.0f;
     g_motor_real.current_freq = 0.0f;
@@ -193,16 +280,19 @@ static void motor_update_spwm(void)
     unsigned short phaseA = 0;
     unsigned short phaseB = 0;
     unsigned short phaseC = 0;
-    phaseA = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle)));
+
+    float radio = radio_from_freq(g_motor_real.current_freq);
+
+    phaseA = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle)));
     if(g_motor_real.motor_dir == 0)
     {
-        phaseC = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));
-        phaseB = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));        
+        phaseC = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));
+        phaseB = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));        
     }
     else
     {
-        phaseC = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));
-        phaseB = (unsigned short)(g_motor_real.ratio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));         
+        phaseC = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));
+        phaseB = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));         
     }
 
 
@@ -216,19 +306,42 @@ static void motor_update_spwm(void)
     if (g_motor_real.angle >= PI_2) g_motor_real.angle -= PI_2;
 
     /*计算下一步的频率*/
-    if(motor_arrive_freq(g_motor_real.target_freq))
+    if(motor_arrive_freq(g_motor_real.target_freq)){
         g_motor_real.next_step_freq = g_motor_real.target_freq;
-    else
+        g_motor_real.freq_arrive = 1;
+    }
+    else{
+        g_motor_real.freq_arrive = 0;
         g_motor_real.next_step_freq = motor_calcu_next_step_freq(   g_motor_param.start_freg , 
-                                                                    g_motor_param.acceleration_time_us ,
-                                                                    g_motor_param.deceleration_time_us ,
-                                                                    (unsigned int)(PWM_CRCLE * 1000000 ),
-                                                                    g_motor_real.current_freq,
-                                                                    g_motor_real.target_freq);
-
+            g_motor_param.acceleration_time_us ,
+            g_motor_param.deceleration_time_us ,
+            (unsigned int)(PWM_CRCLE * 1000000 ),
+            g_motor_real.current_freq,
+            g_motor_real.target_freq);
+    }
 }
 
+static void high_freq_control(void)
+{
+    if(g_motor_real.current_freq > g_motor_param.open_freq)
+    {
+        if((g_motor_param.vari_freq) &&( g_motor_real.freq_arrive == 0)) /*变频关高频*/
+        {
+            /*关*/
+            high_frequery_close();
+        }
+        else
+        {
+            /*开*/
+            high_frequery_open();
+        }
+    }
+    else
+    {/*关*/
+        high_frequery_close();
+    }
 
+}
 
 unsigned int interrupt_times = 0;
  void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
@@ -236,6 +349,12 @@ unsigned int interrupt_times = 0;
     if(htim->Instance == TIM1)
     {
         interrupt_times++;
+        if(g_motor_real.break_release != 0)
+            g_motor_real.break_release --;
+        else
+            bsp_tmr_stop();
+        
+        
         if(g_motor_real.motor_status == motor_in_idle)
             return;
         if((g_motor_real.motor_status == motor_in_reverse) &&
@@ -249,5 +368,10 @@ unsigned int interrupt_times = 0;
             motor_break();
         }
         motor_update_spwm(); 
+        high_freq_control();     
+    }
+    else if(htim->Instance == TIM7)
+    {
+        /*开高频*/
     }
  }

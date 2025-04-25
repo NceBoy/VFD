@@ -71,7 +71,9 @@ static int vfd_param_get(Packet* in , Packet* out)
 
 static int vfd_motor_set(Packet* in , Packet* out)
 {
-    assert(in->body_length == 1);
+    if(in->body_length != 1)
+        return -1;
+    
     if(in->body[0])
         motor_stop_ctl();
     else

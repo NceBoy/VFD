@@ -59,6 +59,9 @@
 ![image](docs/pin.png) 
 ![image](docs/ctl.png) 
 
+# 测试内容
+1. 验证电机发热到底是刹车方式不对还是电压不对
+
 # 下一步计划
 1. 刹车逻辑
 2. eeprom参数校验

@@ -60,19 +60,21 @@ typedef enum {
     PARAM_LOW_FREQ_TORQUE_BOOST = 0x02,  // 低频力矩提升
     PARAM_AUTO_ECONOMY_PERCENT = 0x03,  // 自动省电百分比
     PARAM_OVER_VOLTAGE_ADJUST = 0x04,  // 过压调节
-    PARAM_MIN_START_FREQ = 0x05  // 最低开高频率
+    PARAM_MIN_OPEN_FREQ = 0x05 , // 最低开高频率
+    PARAM_HIGH_FREQ_DELAY = 0x06,  // 开高频延时
+    PARAM_VARI_FREQ_CLOSE = 0x07  // 变频关高频   
+
 } ModuleParameterType_0x02;
 
 ///----------------------------------------------------------------------------//
 typedef enum {
-    PARAM_HIGH_FREQ_DELAY = 0x00,  // 开高频延时
-    PARAM_MAX_POWER_OFF_TIME = 0x01,  // 允许掉电最长时间
-    PARAM_STOP_MODE = 0x02,  // 加工停机结束方式
-    PARAM_START_FREQ = 0x03,  // 启动、换向、刹车起始频率
-    PARAM_WIRE_BREAK_DETECT_TIME = 0x04,  // 断丝检测时间
-    PARAM_WIRE_START_DIRECTION = 0x05,  // 丝筒启动方向
-    PARAM_PROCESS_END_SIGNAL = 0x06,  // 加工结束信号
-    PARAM_WIRE_BREAK_SIGNAL = 0x07  // 断丝检测信号
+    PARAM_MAX_POWER_OFF_TIME = 0x00,  // 允许掉电最长时间
+    PARAM_STOP_MODE = 0x01,  // 加工停机结束方式
+    PARAM_START_FREQ = 0x02,  // 启动、换向、刹车起始频率
+    PARAM_WIRE_BREAK_DETECT_TIME = 0x03,  // 断丝检测时间
+    PARAM_WIRE_START_DIRECTION = 0x04,  // 丝筒启动方向
+    PARAM_PROCESS_END_SIGNAL = 0x05,  // 加工结束信号
+    PARAM_WIRE_BREAK_SIGNAL = 0x06  // 断丝检测信号
 } ModuleParameterType_0x03;
 
 ///----------------------------------------------------------------------------//
