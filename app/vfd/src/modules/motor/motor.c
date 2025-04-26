@@ -85,10 +85,12 @@ static void motor_param_get(void)
 static float radio_from_freq(float freq)
 {
     float radio = 0.0f;
+    if(freq > 50.0f)
+        return 1.0f;
     if(g_motor_param.radio > 6)
         g_motor_param.radio = 6;
     radio = g_radio_rate[g_motor_param.radio];
-    return 220.0f * (1 - radio) / 50.0f * freq + 220.0f * radio;
+    return (1 - radio) / 50.0f * freq + radio;
 }
 
 static int open_high_frequery_init(void)
@@ -133,7 +135,7 @@ static void high_frequery_close(void)
         htim7.Instance->CNT = 0;
         __HAL_TIM_DISABLE_IT(&htim7, TIM_IT_UPDATE);
         __HAL_TIM_DISABLE(&htim7);  
-        g_motor_real.high_status = 0;      
+        g_motor_real.high_status = 0;
     }
 
 }
@@ -282,6 +284,8 @@ static void motor_update_spwm(void)
     unsigned short phaseC = 0;
 
     float radio = radio_from_freq(g_motor_real.current_freq);
+    if(radio > 1) /*保护IPM模块*/
+        radio = 1;
 
     phaseA = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle)));
     if(g_motor_real.motor_dir == 0)
