@@ -6,9 +6,9 @@
 extern "C" {
 #endif
 
-#if 0  /*170M*/
-#define PWM_PSC                 16
-#define PWM_RESOLUTION          500
+#if 1  /*170M*/
+#define PWM_PSC                 0
+#define PWM_RESOLUTION          8500
 #define PWM_APB2_CLK            170000000
 #else /*160M*/
 #define PWM_PSC                 1

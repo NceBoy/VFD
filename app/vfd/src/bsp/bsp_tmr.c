@@ -144,10 +144,10 @@ void bsp_tmr_init(void)
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
     htim1.Instance = TIM1;
-    htim1.Init.Prescaler = PWM_PSC;  /* 160MHz / (psc + 1) = clk , 80MHz*/
+    htim1.Init.Prescaler = PWM_PSC;  /* 170MHz / (psc + 1) = clk , 170MHz*/
     htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
     htim1.Init.Period = PWM_RESOLUTION;  /*对称计数模式，周期为10KHz*/
-    htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;  /*APB2 clk = 160MHz ,计算死区时间*/
+    htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;  /*APB2 clk = 170MHz ,计算死区时间*/
     htim1.Init.RepetitionCounter = 1;
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
     if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
@@ -193,7 +193,7 @@ void bsp_tmr_init(void)
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
     sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
     sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-    sBreakDeadTimeConfig.DeadTime = 0xBF;  /*Ttds = 1/160M=0.00625us ==>1.5875us*/
+    sBreakDeadTimeConfig.DeadTime = 0xC2;  /*Ttds = 1/170M ==>1.6us*/
 
     sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
     sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;

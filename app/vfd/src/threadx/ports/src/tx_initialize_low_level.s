@@ -28,7 +28,7 @@
     EXTERN  _tx_execution_isr_exit
 ;
 ;
-SYSTEM_CLOCK      EQU   160000000
+SYSTEM_CLOCK      EQU   170000000
 SYSTICK_CYCLES    EQU   ((SYSTEM_CLOCK / 1000) -1)
 
     RSEG    FREE_MEM:DATA

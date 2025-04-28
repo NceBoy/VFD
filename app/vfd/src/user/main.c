@@ -100,7 +100,7 @@ static VOID adc_sample_tmr_cb(ULONG para)
   * @brief System Clock Configuration
   * @retval None
   */
-#if 0 /*170M*/
+#if 1 /*170M*/
 static void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
