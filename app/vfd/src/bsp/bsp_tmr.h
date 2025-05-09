@@ -6,18 +6,20 @@
 extern "C" {
 #endif
 
-#if 1  /*170M*/
+
 #define PWM_PSC                 0
 #define PWM_RESOLUTION          8500
 #define PWM_APB2_CLK            170000000
-#else /*160M*/
-#define PWM_PSC                 1
-#define PWM_RESOLUTION          4000
-#define PWM_APB2_CLK            160000000
-#endif
 
-/*中心对称模式下PWM周期，单位秒*/
-#define PWM_CRCLE               ( (float)(2 * PWM_RESOLUTION * (PWM_PSC + 1)) / PWM_APB2_CLK)
+/*中心对称模式下PWM周期，单位微秒*/
+#define PWM_CRCLE_IN_US         ((2 * PWM_RESOLUTION * (PWM_PSC + 1) * 1000000) / PWM_APB2_CLK)
+#define TMR_RCR                 1
+
+/*定时器中断周期，多长时间更新一次pwm波*/
+#define TMR_INT_PERIOD_US       100   /*该值根据rcr和周期计算得出*/
+
+
+
 
 void bsp_tmr_init(void);
 

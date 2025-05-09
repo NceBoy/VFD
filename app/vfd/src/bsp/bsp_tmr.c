@@ -1,137 +1,8 @@
 #include "main.h"
 #include "bsp_tmr.h"
 
-#if 0
-static TIM_HandleTypeDef htim8;
 
-extern void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
-void bsp_tmr_init(void)
-{
-
-    TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-    TIM_MasterConfigTypeDef sMasterConfig = {0};
-    TIM_OC_InitTypeDef sConfigOC = {0};
-    TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
-
-    htim8.Instance = TIM8;
-    htim8.Init.Prescaler = PWM_PSC;  /* 160MHz / (psc + 1) = clk , 80MHz*/
-    htim8.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
-    htim8.Init.Period = PWM_RESOLUTION;  /*对称计数模式，周期为10KHz*/
-    htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;  /*APB2 clk = 160MHz ,计算死区时间*/
-    htim8.Init.RepetitionCounter = 1;
-    htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-    if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
-    {
-        Error_Handler();
-    }
-
-    sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-    if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
-    {
-        Error_Handler();
-    }
-    if (HAL_TIM_PWM_Init(&htim8) != HAL_OK)
-    {
-        Error_Handler();
-    }
-    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-    sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-    if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
-    {
-        Error_Handler();
-    }
-    sConfigOC.OCMode = TIM_OCMODE_PWM2;
-    sConfigOC.Pulse = 0;
-    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-    sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-    sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-    sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-    if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-    {
-        Error_Handler();
-    }
-    if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-    {
-        Error_Handler();
-    }
-    if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-    {
-        Error_Handler();
-    }
-    sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-    sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-    sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-    sBreakDeadTimeConfig.DeadTime = 0xBF;  /*Ttds = 1/160M=0.00625us ==>1.5875us*/
-
-    sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-    sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-    sBreakDeadTimeConfig.BreakFilter = 0;
-    sBreakDeadTimeConfig.BreakAFMode = TIM_BREAK_AFMODE_INPUT;
-
-    sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
-    sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
-    sBreakDeadTimeConfig.Break2Filter = 0;
-    sBreakDeadTimeConfig.Break2AFMode = TIM_BREAK_AFMODE_INPUT;
-
-    sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-    if (HAL_TIMEx_ConfigBreakDeadTime(&htim8, &sBreakDeadTimeConfig) != HAL_OK)
-    {
-        Error_Handler();
-    }
-
-    HAL_TIM_MspPostInit(&htim8);
-
-}
-
-void bsp_tmr_start(void)
-{
-    HAL_TIM_Base_Start_IT(&htim8);
-
-    HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
-    HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_1);
-
-    HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
-    HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
-
-    HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
-    HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
-}
-
-void bsp_tmr_stop(void)
-{
-    HAL_TIM_Base_Stop_IT(&htim8);
-
-    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_1);
-    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_1);
-
-    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_2);
-    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_2);
-
-    HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_3);
-    HAL_TIMEx_PWMN_Stop(&htim8, TIM_CHANNEL_3);   
-}
-
-void bsp_tmr_update_compare(unsigned short ch1_ccr , unsigned short ch2_ccr , unsigned short ch3_ccr)
-{
-    htim8.Instance->CCR1 = ch1_ccr;
-    htim8.Instance->CCR2 = ch2_ccr;
-    htim8.Instance->CCR3 = ch3_ccr;
-}
-
-/**
-  * @brief This function handles TIM8 update interrupt.
-  */
- void TIM8_UP_IRQHandler(void)
- {
-    HAL_TIM_IRQHandler(&htim8);
- }
-
- #else
-
- static TIM_HandleTypeDef htim1;
+static TIM_HandleTypeDef htim1;
 
 extern void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
@@ -148,7 +19,7 @@ void bsp_tmr_init(void)
     htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
     htim1.Init.Period = PWM_RESOLUTION;  /*对称计数模式，周期为10KHz*/
     htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;  /*APB2 clk = 170MHz ,计算死区时间*/
-    htim1.Init.RepetitionCounter = 1;
+    htim1.Init.RepetitionCounter = TMR_RCR;
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
     if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
     {
@@ -171,7 +42,7 @@ void bsp_tmr_init(void)
     {
         Error_Handler();
     }
-    sConfigOC.OCMode = TIM_OCMODE_PWM2;
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
     sConfigOC.Pulse = 0;
     sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
@@ -190,6 +61,10 @@ void bsp_tmr_init(void)
     {
         Error_Handler();
     }
+    if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+    {
+        Error_Handler();
+    }    
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
     sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
     sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
@@ -213,6 +88,7 @@ void bsp_tmr_init(void)
 
     HAL_TIM_MspPostInit(&htim1);
 
+    htim1.Instance->CCR4 = PWM_RESOLUTION - 500;
 }
 
 void bsp_tmr_start(void)
@@ -227,6 +103,9 @@ void bsp_tmr_start(void)
 
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+
+    
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 }
 
 void bsp_tmr_stop(void)
@@ -241,6 +120,8 @@ void bsp_tmr_stop(void)
 
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3);   
+
+    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
 }
 
 void bsp_tmr_update_compare(unsigned short ch1_ccr , unsigned short ch2_ccr , unsigned short ch3_ccr)
@@ -254,6 +135,3 @@ void TIM1_UP_TIM16_IRQHandler(void)
 {
     HAL_TIM_IRQHandler(&htim1);
 }
-
-
- #endif

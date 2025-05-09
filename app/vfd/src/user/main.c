@@ -22,9 +22,6 @@ static  TX_THREAD   taskstarttcb;
 static  ULONG64     taskstartstk[CFG_TASK_START_STK_SIZE/8];
 static  void        taskstart          (ULONG thread_input);
 
-static VOID adc_sample_tmr_cb(ULONG);
-static TX_TIMER g_adc_sample_tmr = {0};
-
 /**
   * @brief  The application entry point.
   * @retval int
@@ -78,9 +75,7 @@ static  void  taskstart (ULONG thread_input)
 
     service_motor_start();
  
-    /*创建一个定时器，以100ms的间隔采集电压电流*/
-    tx_timer_create(&g_adc_sample_tmr,"adc sample",adc_sample_tmr_cb,0,500,100,TX_AUTO_ACTIVATE); 
-  
+ 
 	while(1)
 	{
         inout_scan();
@@ -89,13 +84,7 @@ static  void  taskstart (ULONG thread_input)
 	}
 }
 
-uint32_t start_ticks = 0;
-static VOID adc_sample_tmr_cb(ULONG para)
-{
-    (void)para;
-    start_ticks = (uint32_t)_tx_time_get();
-    bsp_adc_start_once();
-}
+
 /**
   * @brief System Clock Configuration
   * @retval None

@@ -10,9 +10,7 @@ extern "C" {
 
 void bsp_adc_init(void);
 
-void bsp_adc_start_once(void);
 
-//void bsp_adc_stop(void);
 
 #ifdef __cplusplus
 }

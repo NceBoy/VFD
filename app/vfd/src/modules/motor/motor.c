@@ -6,11 +6,10 @@
 #include "motor.h"
 #include "vfd_param.h"
 
-
-extern TIM_HandleTypeDef htim8; /*电机控制*/
 static TIM_HandleTypeDef htim7; /*开高频延时*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
+#define RADIO_MAX               (0.9f)
 
 typedef enum
 {
@@ -49,7 +48,7 @@ typedef struct
 
 
 static motor_para_t g_motor_param;
-static motor_ctl_t g_motor_real;
+static motor_ctl_t g_motor_real;        /*开高频标志位*/
 static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
 
 static void motor_param_get(void)
@@ -86,11 +85,11 @@ static float radio_from_freq(float freq)
 {
     float radio = 0.0f;
     if(freq > 50.0f)
-        return 1.0f;
+        return RADIO_MAX;
     if(g_motor_param.radio > 6)
         g_motor_param.radio = 6;
     radio = g_radio_rate[g_motor_param.radio];
-    return (1 - radio) / 50.0f * freq + radio;
+    return ((1 - radio) / 50.0f * freq + radio) * RADIO_MAX;
 }
 
 static int open_high_frequery_init(void)
@@ -125,7 +124,6 @@ static void high_frequery_open(void)
         __HAL_TIM_ENABLE(&htim7);   
         g_motor_real.high_status = 1; 
     }
-
 }
 
 static void high_frequery_close(void)
@@ -137,7 +135,6 @@ static void high_frequery_close(void)
         __HAL_TIM_DISABLE(&htim7);  
         g_motor_real.high_status = 0;
     }
-
 }
 
 void motor_target_info_update(float target_freq)
@@ -195,7 +192,6 @@ void motor_break_start(void)
 
 void motor_break(void)
 {
-    //bsp_tmr_stop();
     bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
     g_motor_real.motor_status = motor_in_idle;
     g_motor_real.break_release = 10 * 1000;
@@ -276,6 +272,7 @@ void motor_start(unsigned int dir , float target_freq)
     bsp_tmr_start();
 }
 
+/*每次中断调用一次*/
 static void motor_update_spwm(void)
 {   
     // 计算三相占空比
@@ -284,8 +281,8 @@ static void motor_update_spwm(void)
     unsigned short phaseC = 0;
 
     float radio = radio_from_freq(g_motor_real.current_freq);
-    if(radio > 1) /*保护IPM模块*/
-        radio = 1;
+    if(radio > RADIO_MAX) /*保护IPM模块*/
+        radio = RADIO_MAX;
 
     phaseA = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle)));
     if(g_motor_real.motor_dir == 0)
@@ -305,7 +302,7 @@ static void motor_update_spwm(void)
     g_motor_real.current_freq = g_motor_real.next_step_freq;
 
     /*计算下一步的角度*/
-    float delta = PI_2 * PWM_CRCLE * g_motor_real.current_freq;
+    float delta = PI_2 * TMR_INT_PERIOD_US * g_motor_real.current_freq / 1000000;
     g_motor_real.angle += delta;
     if (g_motor_real.angle >= PI_2) g_motor_real.angle -= PI_2;
 
@@ -319,7 +316,7 @@ static void motor_update_spwm(void)
         g_motor_real.next_step_freq = motor_calcu_next_step_freq(   g_motor_param.start_freg , 
             g_motor_param.acceleration_time_us ,
             g_motor_param.deceleration_time_us ,
-            (unsigned int)(PWM_CRCLE * 1000000 ),
+            TMR_INT_PERIOD_US,
             g_motor_real.current_freq,
             g_motor_real.target_freq);
     }
@@ -329,10 +326,11 @@ static void high_freq_control(void)
 {
     if(g_motor_real.current_freq > g_motor_param.open_freq)
     {
-        if((g_motor_param.vari_freq) &&( g_motor_real.freq_arrive == 0)) /*变频关高频*/
+        if((g_motor_param.vari_freq) &&(g_motor_real.freq_arrive == 0)) /*变频关高频*/
         {
             /*关*/
             high_frequery_close();
+            /*IO操作*/
         }
         else
         {
@@ -341,8 +339,10 @@ static void high_freq_control(void)
         }
     }
     else
-    {/*关*/
+    {   /*关*/
         high_frequery_close();
+        /*IO操作*/
+
     }
 
 }
@@ -376,6 +376,6 @@ unsigned int interrupt_times = 0;
     }
     else if(htim->Instance == TIM7)
     {
-        /*开高频*/
+        /*开高频IO操作*/
     }
  }
