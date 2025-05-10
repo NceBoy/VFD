@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 #define     IO_SCAN_INTERVAL        5
-#define     IO_MAX_TIME_MS          5000
+#define     IO_TIMEOUT_MS           5000
 
 /*初始化所有输入输出引脚*/
 void inout_init(void);

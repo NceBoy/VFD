@@ -9,7 +9,6 @@
 #include "inout.h"
 
 /*线程参数*/
-
 #define  CFG_TASK_MOTOR_PRIO                          1u
 #define  CFG_TASK_MOTOR_STK_SIZE                    1024u
 static  TX_THREAD   task_motor_tcb;
@@ -20,9 +19,6 @@ static  void        task_motor          (ULONG thread_input);
 #define  QUEUE_MOTOR_MAX_NUM                          8
 static TX_QUEUE g_motor_queue = {0};
 static UINT g_motor_queue_addr[QUEUE_MOTOR_MAX_NUM] = {0};
-/*IO扫描定时器*/
-static VOID io_tmr_cb(ULONG);
-static TX_TIMER g_io_tmr = {0};
 
 void service_motor_start(void)
 {
@@ -80,17 +76,13 @@ static  void  task_motor (ULONG thread_input)
 	(void)thread_input;
 
     MSG_MGR_T *msg = NULL;
-    
-    inout_init();
+
+    bsp_adc_init();
 
     cordic_init();
 
     motor_init();
-    
-    /*创建一个定时器，以100ms的间隔采集电压电流*/
-    tx_timer_create(&g_io_tmr,"io scan",io_tmr_cb,0,100,5,TX_AUTO_ACTIVATE); 
-    
-    
+      
 	while(1)
 	{
         if(nx_msg_recv(&g_motor_queue, &msg , 1000) == 0)
@@ -130,10 +122,4 @@ void ext_motor_break(void)
     if(motor_is_working() == 0)
         return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BREAK, NULL, 0);
-}
-
-static VOID io_tmr_cb(ULONG para)
-{
-    (void)para;
-    //inout_scan();
 }
