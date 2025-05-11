@@ -63,7 +63,7 @@ static void motor_param_get(void)
     pullOneItem(PARAM0X02, PARAM_LOW_FREQ_TORQUE_BOOST, &value);    /*低频转矩提升*/
     g_motor_param.radio = value;
 
-    pullOneItem(PARAM0X02, PARAM_HIGH_FREQ_DELAY, &value);    /*开高频延时*/
+    pullOneItem(PARAM0X02, PARAM_HIGH_FREQ_DELAY, &value);    /*开高频延时，单位0.1秒*/
     g_motor_param.delay = value;
 
     pullOneItem(PARAM0X02, PARAM_AUTO_ECONOMY_PERCENT, &value);    /*自动省电*/
@@ -72,10 +72,10 @@ static void motor_param_get(void)
     pullOneItem(PARAM0X02, PARAM_VARI_FREQ_CLOSE, &value);    /*变频关高频*/
     g_motor_param.vari_freq = value;
 
-    pullOneItem(PARAM0X02, PARAM_ACCELERATION_TIME, &value); /*加速时间*/
+    pullOneItem(PARAM0X02, PARAM_ACCELERATION_TIME, &value); /*加速时间，单位0.1秒*/
     g_motor_param.acceleration_time_us = value * 100 * 1000;
 
-    pullOneItem(PARAM0X02, PARAM_DECELERATION_TIME, &value); /*减速时间*/
+    pullOneItem(PARAM0X02, PARAM_DECELERATION_TIME, &value); /*减速时间，单位0.1秒*/
     g_motor_param.deceleration_time_us = value * 100 * 1000;
 
 
@@ -101,7 +101,7 @@ static int open_high_frequery_init(void)
     htim7.Instance = TIM7;  /*160MHz  32000  5000Hz*/
     htim7.Init.Prescaler = 32000 - 1;
     htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim7.Init.Period = (g_motor_param.delay * 100 * 5) - 1 ;
+    htim7.Init.Period = (g_motor_param.delay * 100 * 5) - 1 ;  //delay单位0.1秒
     htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
     HAL_TIM_Base_Init(&htim7);
 
