@@ -8,6 +8,7 @@ static ADC_HandleTypeDef hadc1;
 uint32_t u_ima = 0;
 uint32_t v_ima = 0;
 uint32_t w_ima = 0;
+uint32_t vdc_v = 0;
 
 void bsp_adc_init(void)
 {
@@ -102,11 +103,12 @@ void bsp_adc_init(void)
       Error_Handler();
     }
 
+    __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_EOC);
     __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
     HAL_ADCEx_InjectedStart(&hadc1);
 }
 
-static void adc_get_value(void)
+static void adc_get_current_value(void)
 {
     uint32_t adc_u_data = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_1);
 	uint32_t adc_v_data = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_3);
@@ -117,9 +119,32 @@ static void adc_get_value(void)
 	w_ima = (uint32_t)(((adc_w_data / 4096.0) * 3.3 / 0.03) * 1000) ;
 }
 
+static void adc_get_voltage_value(void)
+{
+    uint32_t adc_data = HAL_ADC_GetValue(&hadc1);
+	
+	vdc_v = (uint32_t)(adc_data / 4096.0 * 3.3 * 160 / 1.414);
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    if(hadc->Instance == ADC1)
+    {
+        adc_get_voltage_value();
+    }
+}
+
+
+void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    if(hadc->Instance == ADC1)
+    {
+        adc_get_current_value();
+    }
+}
+
 void ADC1_2_IRQHandler(void)
 {
     HAL_ADC_IRQHandler(&hadc1);
-    adc_get_value();
 }
 
