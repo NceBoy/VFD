@@ -1,5 +1,6 @@
 #include "main.h"
 #include "bsp_tmr.h"
+#include "bsp_io.h"
 #include "motor.h"
 #include "log.h"
 #include "cordic.h"
@@ -331,6 +332,7 @@ static void high_freq_control(void)
             /*关*/
             high_frequery_close();
             /*IO操作*/
+            HIGH_FREQ_DISABLE;
         }
         else
         {
@@ -342,7 +344,7 @@ static void high_freq_control(void)
     {   /*关*/
         high_frequery_close();
         /*IO操作*/
-
+        HIGH_FREQ_DISABLE;
     }
 
 }
@@ -372,10 +374,11 @@ unsigned int interrupt_times = 0;
             motor_break();
         }
         motor_update_spwm(); 
-        high_freq_control();     
+        high_freq_control();
     }
     else if(htim->Instance == TIM7)
     {
         /*开高频IO操作*/
+        HIGH_FREQ_ENABLE;
     }
  }

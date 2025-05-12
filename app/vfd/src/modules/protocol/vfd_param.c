@@ -40,14 +40,13 @@ static void param_default(void)
     g_vfdParam[PARAM0X02][PARAM_VARI_FREQ_CLOSE] = 1;// 变频关高频  
 
     /*表三，共有7个参数*/
-    g_vfdParam[PARAM0X03][PARAM_MAX_POWER_OFF_TIME] = 1;// 允许掉电最长时间
+    g_vfdParam[PARAM0X03][PARAM_MAX_POWER_OFF_TIME] = 1;// 允许掉电最长时间，单位0.1秒
+    g_vfdParam[PARAM0X03][PARAM_PROCESS_END_SIGNAL] = 0;// 加工结束信号
     g_vfdParam[PARAM0X03][PARAM_STOP_MODE] = 1;// 加工停机结束方式
     g_vfdParam[PARAM0X03][PARAM_START_FREQ] = 5;// 启动、换向、刹车起始频率
+    g_vfdParam[PARAM0X03][PARAM_WIRE_BREAK_SIGNAL] = 0;// 断丝检测信号    
     g_vfdParam[PARAM0X03][PARAM_WIRE_BREAK_DETECT_TIME] = 0;// 断丝检测时间，单位0.1秒
     g_vfdParam[PARAM0X03][PARAM_WIRE_START_DIRECTION] = 1;// 丝筒启动方向
-    g_vfdParam[PARAM0X03][PARAM_PROCESS_END_SIGNAL] = 0;// 加工结束信号
-    g_vfdParam[PARAM0X03][PARAM_WIRE_BREAK_SIGNAL] = 0;// 断丝检测信号
-
 }
 
 // 从EEPROM读取所有参数
@@ -114,6 +113,8 @@ void flushOneDimension(ModuleParameterType type) {
             return; // 无效的ModuleParameterType
     }
     EEPROM_Write(regionStart, g_vfdParam[type], MAX_PARAM_ENTRIES);
+    uint16_t crc_param = calculate_modbus_crc(g_vfdParam, sizeof(g_vfdParam));
+    EEPROM_Write(PARAM_CHECK_START, &crc_param, sizeof(crc_param));
 }
 
 // 获取具体某项参数
@@ -149,20 +150,15 @@ void flushOneItem(ModuleParameterType type, uint8_t index) {
     }
     offset = index;
     EEPROM_Write(regionStart + offset, &g_vfdParam[type][index], EEPROM_ENTRY_SIZE);
+    uint16_t crc_param = calculate_modbus_crc(g_vfdParam, sizeof(g_vfdParam));
+    EEPROM_Write(PARAM_CHECK_START, &crc_param, sizeof(crc_param));    
 }
 
 // 初始化参数表
 void initParameterTable() {
-    uint8_t error;
     
     // 初始化EEPROM
-    error = EEPROM_Init();
-    if (error != EEPROM_ERR_NONE) {
-        // EEPROM初始化失败，可能需要恢复默认值或等待重试
-        //printf("EEPROM initialization failed: error code %d\n", error);
-        return;
-    }
-
+     EEPROM_Init();
     // 从EEPROM读取所有参数
     pullAllParams();
 }

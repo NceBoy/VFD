@@ -69,12 +69,12 @@ typedef enum {
 ///----------------------------------------------------------------------------//
 typedef enum {
     PARAM_MAX_POWER_OFF_TIME = 0x00,  // 允许掉电最长时间
-    PARAM_STOP_MODE = 0x01,  // 加工停机结束方式
-    PARAM_START_FREQ = 0x02,  // 启动、换向、刹车起始频率
-    PARAM_WIRE_BREAK_DETECT_TIME = 0x03,  // 断丝检测时间
-    PARAM_WIRE_START_DIRECTION = 0x04,  // 丝筒启动方向
-    PARAM_PROCESS_END_SIGNAL = 0x05,  // 加工结束信号
-    PARAM_WIRE_BREAK_SIGNAL = 0x06  // 断丝检测信号
+    PARAM_PROCESS_END_SIGNAL = 0x01,  // 加工结束信号
+    PARAM_STOP_MODE = 0x02,  // 加工停机结束方式
+    PARAM_START_FREQ = 0x03,  // 启动、换向、刹车起始频率
+    PARAM_WIRE_BREAK_SIGNAL = 0x04,  // 断丝检测信号
+    PARAM_WIRE_BREAK_DETECT_TIME = 0x05,  // 断丝检测时间
+    PARAM_WIRE_START_DIRECTION = 0x06,  // 丝筒启动方向
 } ModuleParameterType_0x03;
 
 ///----------------------------------------------------------------------------//

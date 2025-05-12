@@ -488,9 +488,9 @@ void inout_init(void)
 {
     /*17个输入信号线*/
     bsp_io_init_input();
-    /*2个输出信号线*/
+    /*3个输出信号线*/
     bsp_io_init_output();
-
+    
     return ;
 }
 
