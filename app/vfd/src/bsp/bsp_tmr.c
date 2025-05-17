@@ -1,6 +1,7 @@
 #include "main.h"
 #include "bsp_tmr.h"
 #include "bsp_io.h"
+#include "bsp_led.h"
 
 
 static TIM_HandleTypeDef htim1;
@@ -96,6 +97,8 @@ void bsp_tmr_start(void)
 {
     VFD_VDC_ENABLE;
 
+    bsp_led_ctl(600);
+
     HAL_TIM_Base_Start_IT(&htim1);
 
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -127,6 +130,8 @@ void bsp_tmr_stop(void)
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
 
     VFD_VDC_DISABLE;
+
+    bsp_led_ctl(1000);
 }
 
 void bsp_tmr_update_compare(unsigned short ch1_ccr , unsigned short ch2_ccr , unsigned short ch3_ccr)

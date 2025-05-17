@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "service_motor.h"
+#include "bsp_adc.h"
 #include "nx_msg.h"
 #include "tx_api.h"
 #include "tx_queue.h"

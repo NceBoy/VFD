@@ -59,7 +59,7 @@ void pullAllParams() {
 
     uint16_t crc = 0;
     EEPROM_Read(PARAM_CHECK_START, &crc, sizeof(crc));
-    uint16_t crc_param = calculate_modbus_crc(g_vfdParam, sizeof(g_vfdParam));
+    uint16_t crc_param = calculate_modbus_crc((uint8_t*)g_vfdParam, sizeof(g_vfdParam));
     if(crc != crc_param)
         param_default();
 }
@@ -78,7 +78,7 @@ void flushAllParams() {
     //EEPROM_Write(PARAM_REGION3_START, g_vfdParam[PARAM0X03], MAX_PARAM_ENTRIES);
 
     EEPROM_Write(PARAM_BASE_START, g_vfdParam, sizeof(g_vfdParam));
-    uint16_t crc_param = calculate_modbus_crc(g_vfdParam, sizeof(g_vfdParam));
+    uint16_t crc_param = calculate_modbus_crc((uint8_t*)g_vfdParam, sizeof(g_vfdParam));
     EEPROM_Write(PARAM_CHECK_START, &crc_param, sizeof(crc_param));
 }
 
@@ -113,7 +113,7 @@ void flushOneDimension(ModuleParameterType type) {
             return; // 无效的ModuleParameterType
     }
     EEPROM_Write(regionStart, g_vfdParam[type], MAX_PARAM_ENTRIES);
-    uint16_t crc_param = calculate_modbus_crc(g_vfdParam, sizeof(g_vfdParam));
+    uint16_t crc_param = calculate_modbus_crc((uint8_t*)g_vfdParam, sizeof(g_vfdParam));
     EEPROM_Write(PARAM_CHECK_START, &crc_param, sizeof(crc_param));
 }
 
@@ -150,7 +150,7 @@ void flushOneItem(ModuleParameterType type, uint8_t index) {
     }
     offset = index;
     EEPROM_Write(regionStart + offset, &g_vfdParam[type][index], EEPROM_ENTRY_SIZE);
-    uint16_t crc_param = calculate_modbus_crc(g_vfdParam, sizeof(g_vfdParam));
+    uint16_t crc_param = calculate_modbus_crc((uint8_t*)g_vfdParam, sizeof(g_vfdParam));
     EEPROM_Write(PARAM_CHECK_START, &crc_param, sizeof(crc_param));    
 }
 
