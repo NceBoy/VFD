@@ -10,14 +10,15 @@
 static TIM_HandleTypeDef htim7; /*开高频延时*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
-#define RADIO_MAX               (0.9f)
+#define RADIO_MAX               (0.95f)
 
 typedef enum
 {
-    motor_in_idle,
-    motor_in_run,
-    motor_in_reverse,
-    motor_in_break,
+    motor_in_idle,          /*空闲*/
+    motor_in_release,       /*刹车释放*/
+    motor_in_run,           /*正常运行*/
+    motor_in_reverse,       /*反向*/
+    motor_in_break,         /*刹车*/
 }motor_status_enum;
 /*为了计算精度，统一为float*/
 typedef struct
@@ -47,7 +48,7 @@ typedef struct
     unsigned int deceleration_time_us;      /*减速时间*/
 }motor_para_t;
 
-
+static int g_highfreq_delay = 0;
 static motor_para_t g_motor_param;
 static motor_ctl_t g_motor_real;        /*开高频标志位*/
 static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
@@ -93,37 +94,13 @@ static float radio_from_freq(float freq)
     return ((1 - radio) / 50.0f * freq + radio) * RADIO_MAX;
 }
 
-static int open_high_frequery_init(void)
-{
-    /* Peripheral clock enable */
-    __HAL_RCC_TIM7_CLK_ENABLE();
-
-    TIM_MasterConfigTypeDef sMasterConfig = {0};
-    htim7.Instance = TIM7;  /*160MHz  32000  5000Hz*/
-    htim7.Init.Prescaler = 32000 - 1;
-    htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim7.Init.Period = (g_motor_param.delay * 100 * 5) - 1 ;  //delay单位0.1秒
-    htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-    HAL_TIM_Base_Init(&htim7);
-
-    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-    HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig);
-
-    /* TIM7 interrupt Init */
-    HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(TIM7_IRQn);
-    return 0;
-}
 
 static void high_frequery_open(void)
 {
     if(g_motor_real.high_status == 0)
     {
-        htim7.Instance->CNT = 0;
-        __HAL_TIM_ENABLE_IT(&htim7, TIM_IT_UPDATE);
-        __HAL_TIM_ENABLE(&htim7);   
         g_motor_real.high_status = 1; 
+        g_highfreq_delay = g_motor_real.delay * 1000; //单位:100us
     }
 }
 
@@ -131,10 +108,8 @@ static void high_frequery_close(void)
 {
     if(g_motor_real.high_status == 1)
     {
-        htim7.Instance->CNT = 0;
-        __HAL_TIM_DISABLE_IT(&htim7, TIM_IT_UPDATE);
-        __HAL_TIM_DISABLE(&htim7);  
         g_motor_real.high_status = 0;
+        HIGH_FREQ_DISABLE();
     }
 }
 
@@ -194,8 +169,8 @@ void motor_break_start(void)
 void motor_break(void)
 {
     bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
-    g_motor_real.motor_status = motor_in_idle;
-    g_motor_real.break_release = 10 * 1000;
+    g_motor_real.motor_status = motor_in_release;
+    g_motor_real.break_release = 10 * 1000;   //单位:100us，实际时间1秒钟
 }
 
 
@@ -250,7 +225,6 @@ static unsigned int motor_arrive_freq(float freq)
 void motor_init(void)
 {
     bsp_tmr_init();
-    open_high_frequery_init();
     if(g_motor_real.motor_status != motor_in_idle)
         bsp_tmr_start();
 }
@@ -331,8 +305,6 @@ static void high_freq_control(void)
         {
             /*关*/
             high_frequery_close();
-            /*IO操作*/
-            HIGH_FREQ_DISABLE;
         }
         else
         {
@@ -343,8 +315,6 @@ static void high_freq_control(void)
     else
     {   /*关*/
         high_frequery_close();
-        /*IO操作*/
-        HIGH_FREQ_DISABLE;
     }
 
 }
@@ -355,14 +325,28 @@ unsigned int interrupt_times = 0;
     if(htim->Instance == TIM1)
     {
         interrupt_times++;
-        if(g_motor_real.break_release != 0)
-            g_motor_real.break_release --;
-        else
-            bsp_tmr_stop();
-        
-        
+        if(g_motor_real.high_status) /*开高频延时*/
+        {
+            if(g_highfreq_delay > 0)
+            {
+                g_highfreq_delay--;
+                if(g_highfreq_delay == 0)
+                    HIGH_FREQ_ENABLE();
+            }
+        }
+
         if(g_motor_real.motor_status == motor_in_idle)
             return;
+
+        if(g_motor_real.motor_status == motor_in_release)
+        {
+            if(g_motor_real.break_release != 0)
+                g_motor_real.break_release --;
+            else
+                bsp_tmr_stop();
+            return ;            
+        }
+
         if((g_motor_real.motor_status == motor_in_reverse) &&
             (motor_arrive_freq(g_motor_param.start_freg) == 1))
         {
@@ -375,10 +359,5 @@ unsigned int interrupt_times = 0;
         }
         motor_update_spwm(); 
         high_freq_control();
-    }
-    else if(htim->Instance == TIM7)
-    {
-        /*开高频IO操作*/
-        HIGH_FREQ_ENABLE;
     }
  }
