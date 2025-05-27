@@ -78,6 +78,8 @@ static  void  task_motor (ULONG thread_input)
 
     MSG_MGR_T *msg = NULL;
 
+    initParameterTable();
+
     bsp_adc_init();
 
     cordic_init();

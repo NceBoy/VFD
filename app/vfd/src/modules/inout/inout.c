@@ -149,6 +149,7 @@ void motor_start_ctl(void)
 void motor_stop_ctl(void)
 {
     ext_motor_break();
+    EXT_PUMP_DISABLE;
 }
 
 static void io_scan_active_polarity(void)
@@ -159,26 +160,26 @@ static void io_scan_active_polarity(void)
     
     /*点动控制还是4键控制*/
     g_vfd_ctrl.ctl = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_CTRL_MODE].port, g_vfd_io_tab[IO_ID_CTRL_MODE].pin) == GPIO_PIN_SET) ? \
-                    CTRL_MODE_JOG : CTRL_MODE_FOUR_KEY;
+                    CTRL_MODE_FOUR_KEY : CTRL_MODE_JOG ;
 
     /*超程信号极性*/
     g_vfd_io_tab[IO_ID_LIMIT_EXCEED].active_polarity = \
         (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_EXCEED_POLARITY].port, g_vfd_io_tab[IO_ID_EXCEED_POLARITY].pin) == GPIO_PIN_SET) ? \
-        ACTIVE_HIGH : ACTIVE_LOW;
+        ACTIVE_LOW : ACTIVE_HIGH ;
 
     /*加工结束信号极性*/
     g_vfd_io_tab[IO_ID_END].active_polarity = \
         (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_END_POLARITY].port, g_vfd_io_tab[IO_ID_END_POLARITY].pin) == GPIO_PIN_SET) ? \
-        ACTIVE_HIGH : ACTIVE_LOW;
+        ACTIVE_LOW : ACTIVE_HIGH ;
 
     /*左右信号极性*/
     if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_LR_POLARITY].port, g_vfd_io_tab[IO_ID_LR_POLARITY].pin) == GPIO_PIN_SET){
-        g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity = ACTIVE_HIGH;
-        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity = ACTIVE_HIGH;
+        g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity = ACTIVE_LOW;
+        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity = ACTIVE_LOW;
     }       
     else{
-        g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity = ACTIVE_LOW;
-        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity = ACTIVE_LOW;        
+        g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity = ACTIVE_HIGH;
+        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity = ACTIVE_HIGH;        
     }
     /*断丝检测时间，消抖作用*/
     uint8_t value = 0;
@@ -290,6 +291,7 @@ static void io_ctrl_dir(void)
             return ;
         uint8_t stop = 0;
         pullOneItem(PARAM0X03, PARAM_STOP_MODE, &stop);
+        EXT_PUMP_DISABLE;
         switch(stop)
         {
             case STOP_ON_RIGHT :{
@@ -416,7 +418,7 @@ static void io_ctrl_onoff(void)
             }
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开关水*/
             {
-
+                EXT_PUMP_TOGGLE;
             }            
         }break;
         case CTRL_MODE_FOUR_KEY :{
@@ -434,11 +436,11 @@ static void io_ctrl_onoff(void)
             }
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开水*/
             {
-
+                EXT_PUMP_ENABLE;
             }  
             if(g_vfd_ctrl.flag[IO_ID_PUMP_STOP] != 0) /*关水*/
             {
-
+                EXT_PUMP_DISABLE;
             } 
         }break;
         default:break;

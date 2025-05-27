@@ -100,7 +100,7 @@ static void high_frequery_open(void)
     if(g_motor_real.high_status == 0)
     {
         g_motor_real.high_status = 1; 
-        g_highfreq_delay = g_motor_real.delay * 1000; //单位:100us
+        g_highfreq_delay = g_motor_param.delay * 1000; //单位:100us
     }
 }
 
@@ -109,7 +109,7 @@ static void high_frequery_close(void)
     if(g_motor_real.high_status == 1)
     {
         g_motor_real.high_status = 0;
-        HIGH_FREQ_DISABLE();
+        HIGH_FREQ_DISABLE;
     }
 }
 
@@ -331,7 +331,7 @@ unsigned int interrupt_times = 0;
             {
                 g_highfreq_delay--;
                 if(g_highfreq_delay == 0)
-                    HIGH_FREQ_ENABLE();
+                    HIGH_FREQ_ENABLE;
             }
         }
 
@@ -343,7 +343,11 @@ unsigned int interrupt_times = 0;
             if(g_motor_real.break_release != 0)
                 g_motor_real.break_release --;
             else
+            {
                 bsp_tmr_stop();
+                g_motor_real.motor_status = motor_in_idle;
+            }
+                
             return ;            
         }
 
