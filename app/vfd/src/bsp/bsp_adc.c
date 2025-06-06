@@ -1,5 +1,6 @@
 #include "main.h"
 #include "bsp_adc.h"
+#include "log.h"
 
 
 
@@ -9,6 +10,11 @@ uint32_t u_ima = 0;
 uint32_t v_ima = 0;
 uint32_t w_ima = 0;
 uint32_t vdc_v = 0;
+
+uint32_t adc_u_data = 0;
+uint32_t adc_w_data = 0;
+uint32_t adc_v_data = 0;
+uint32_t adc_data;
 
 void bsp_adc_init(void)
 {
@@ -49,7 +55,7 @@ void bsp_adc_init(void)
      */
     sConfigInjected.InjectedChannel = ADC_CHANNEL_1;
     sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
-    sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+    sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_24CYCLES_5;
     sConfigInjected.InjectedSingleDiff = ADC_SINGLE_ENDED;
     sConfigInjected.InjectedOffsetNumber = ADC_OFFSET_NONE;
     sConfigInjected.InjectedOffset = 0;
@@ -68,7 +74,7 @@ void bsp_adc_init(void)
     /** Configure Injected Channel
      */
     sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
-    sConfigInjected.InjectedRank = ADC_INJECTED_RANK_2;
+    sConfigInjected.InjectedRank = ADC_INJECTED_RANK_4;
     if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
     {
         Error_Handler();
@@ -86,7 +92,7 @@ void bsp_adc_init(void)
     /** Configure Injected Channel
      */
     sConfigInjected.InjectedChannel = ADC_CHANNEL_7;
-    sConfigInjected.InjectedRank = ADC_INJECTED_RANK_4;
+    sConfigInjected.InjectedRank = ADC_INJECTED_RANK_2;
     if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
     {
         Error_Handler();
@@ -98,16 +104,17 @@ void bsp_adc_init(void)
 
 static void adc_get_value(void)
 {
-    uint32_t adc_u_data = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_1);
-	uint32_t adc_w_data = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_3);
-    uint32_t adc_v_data = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_4);
-	uint32_t adc_data   = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_2);
+    adc_u_data = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_1);
+	adc_v_data = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_2);
+    adc_w_data = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_3);
+	adc_data   = HAL_ADCEx_InjectedGetValue(&hadc1,ADC_INJECTED_RANK_4);
 
 	
     vdc_v = (uint32_t)(adc_data / 4096.0 * 3.3 * 160 / 1.414);
 	u_ima = (uint32_t)(((adc_u_data / 4096.0) * 3.3 / 0.03) * 1000) ;
 	v_ima = (uint32_t)(((adc_v_data / 4096.0) * 3.3 / 0.03) * 1000) ;
 	w_ima = (uint32_t)(((adc_w_data / 4096.0) * 3.3 / 0.03) * 1000) ;
+    
 }
 
 

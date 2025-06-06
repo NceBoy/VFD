@@ -196,10 +196,15 @@ static void io_scan_debug(void)
     if(debug_now == debug_last)
         return ;
     debug_last = debug_now;
-    if(debug_now == 0)
+    if(debug_now == 0){}
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;
-    else
+    else{
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
+        if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
+        {
+            motor_stop_ctl();
+        }
+    }
 }
 #else
 static void io_scan_debug(void)
@@ -339,7 +344,11 @@ static void io_ctrl_dir(void)
             motor_stop_ctl();
             g_vfd_ctrl.work_end = 0;
         }
-        else ext_motor_reverse();
+        else 
+        {
+            if(motor_target_current_dir() == 0) /*正在向左运动*/
+                ext_motor_reverse();
+        }
     }
     if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0)
     {
@@ -348,7 +357,11 @@ static void io_ctrl_dir(void)
             motor_stop_ctl();
             g_vfd_ctrl.work_end = 0;
         }
-        else ext_motor_reverse();
+        else
+        {
+            if(motor_target_current_dir() == 1) /*正在向右运动*/
+                ext_motor_reverse();            
+        }
     }
 }
 

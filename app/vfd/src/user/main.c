@@ -4,6 +4,7 @@
 #include "nx_msg.h"
 #include "log.h"
 #include "bsp_led.h"
+#include "bsp_adc.h"
 #include "uart.h"
 #include "inout.h"
 #include "tx_api.h"
@@ -81,8 +82,9 @@ static  void  taskstart (ULONG thread_input)
 	while(1)
 	{
         inout_scan();
-        uart_recv_to_data();
+        uart3_recv_to_data();
         bsp_led_run();
+        logdbg("%d,%d,%d\n",u_ima,v_ima,w_ima);
         tx_thread_sleep(5);
 	}
 }

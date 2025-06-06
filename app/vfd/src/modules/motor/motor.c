@@ -346,6 +346,9 @@ unsigned int interrupt_times = 0;
             {
                 bsp_tmr_stop();
                 g_motor_real.motor_status = motor_in_idle;
+                high_frequery_close();
+                EXT_PUMP_DISABLE;
+
             }
                 
             return ;            
