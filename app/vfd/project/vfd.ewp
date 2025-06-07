@@ -286,7 +286,7 @@
                 <option>
                     <name>CCAllowList</name>
                     <version>1</version>
-                    <state>00000000</state>
+                    <state>10010100</state>
                 </option>
                 <option>
                     <name>CCDebugInfo</name>
@@ -386,7 +386,7 @@
                 </option>
                 <option>
                     <name>CCOptLevel</name>
-                    <state>1</state>
+                    <state>2</state>
                 </option>
                 <option>
                     <name>CCOptStrategy</name>
@@ -395,7 +395,7 @@
                 </option>
                 <option>
                     <name>CCOptLevelSlave</name>
-                    <state>1</state>
+                    <state>2</state>
                 </option>
                 <option>
                     <name>CompilerMisraRules98</name>
@@ -672,11 +672,11 @@
                 </option>
                 <option>
                     <name>OCOutputOverride</name>
-                    <state>0</state>
+                    <state>1</state>
                 </option>
                 <option>
                     <name>OOCOutputFile</name>
-                    <state>vfd.bin</state>
+                    <state>VFD_V1.0.0_20250517.bin</state>
                 </option>
                 <option>
                     <name>OOCCommandLineProducer</name>
@@ -2143,6 +2143,12 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\src\bsp\bsp_io.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_led.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_led.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\src\bsp\bsp_log.c</name>

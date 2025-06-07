@@ -20,11 +20,11 @@ typedef struct
 	uart_recv_state_t   recv_state;		        //接收状态标志
 }uart_recv_t;
 
-#define LP_UART_RECV_BUF_LEN          128     /*串口接收缓冲区大小*/
+#define UART3_RECV_BUF_LEN          128     /*串口接收缓冲区大小*/
 
-uint8_t lpuart_recv_buf[LP_UART_RECV_BUF_LEN];
-uart_recv_t lpuart_param;
-static UART_HandleTypeDef hlpuart1;
+uint8_t uart3_recv_buf[UART3_RECV_BUF_LEN];
+uart_recv_t uart3_param;
+static UART_HandleTypeDef huart3;
 
 
 static void uart_para_init(uart_recv_t *param , uint8_t* recv_buf , uint32_t recv_buf_max_len , uint32_t recv_timeout_ms)
@@ -75,69 +75,69 @@ static void uart_recv_status(uart_recv_t *param , uint32_t period_ms)
 }
 
 
-void uart_recv_to_data(void)
+void uart3_recv_to_data(void)
 {
-    if(lpuart_param.recv_state == UART_RECV_FINISH)
+    if(uart3_param.recv_state == UART_RECV_FINISH)
     {
-        ext_send_to_data(1 , lpuart_param.recv_buf , lpuart_param.recv_len);
-        lpuart_param.recv_state = UART_RECV_IDLE;
+        ext_send_to_data(1 , uart3_param.recv_buf , uart3_param.recv_len);
+        uart3_param.recv_state = UART_RECV_IDLE;
     }
 }
 
-void lpuart_init(void)
+void uart3_init(void)
 {
-    hlpuart1.Instance = LPUART1;
-    hlpuart1.Init.BaudRate = 115200;
-    hlpuart1.Init.WordLength = UART_WORDLENGTH_8B;
-    hlpuart1.Init.StopBits = UART_STOPBITS_1;
-    hlpuart1.Init.Parity = UART_PARITY_NONE;
-    hlpuart1.Init.Mode = UART_MODE_TX_RX;
-    hlpuart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-    hlpuart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-    hlpuart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-    hlpuart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-    HAL_UART_Init(&hlpuart1);
+    huart3.Instance = USART3;
+    huart3.Init.BaudRate = 115200;
+    huart3.Init.WordLength = UART_WORDLENGTH_8B;
+    huart3.Init.StopBits = UART_STOPBITS_1;
+    huart3.Init.Parity = UART_PARITY_NONE;
+    huart3.Init.Mode = UART_MODE_TX_RX;
+    huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+    huart3.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+    huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+    HAL_UART_Init(&huart3);
 
-    HAL_UARTEx_SetTxFifoThreshold(&hlpuart1, UART_TXFIFO_THRESHOLD_1_8);
+    HAL_UARTEx_SetTxFifoThreshold(&huart3, UART_TXFIFO_THRESHOLD_1_8);
 
-    HAL_UARTEx_SetRxFifoThreshold(&hlpuart1, UART_RXFIFO_THRESHOLD_1_8);
+    HAL_UARTEx_SetRxFifoThreshold(&huart3, UART_RXFIFO_THRESHOLD_1_8);
 
-    HAL_UARTEx_DisableFifoMode(&hlpuart1);
+    HAL_UARTEx_DisableFifoMode(&huart3);
 
-    uart_para_init(&lpuart_param,lpuart_recv_buf,LP_UART_RECV_BUF_LEN , 50);
-    __HAL_UART_ENABLE_IT(&hlpuart1, UART_IT_RXNE);
+    uart_para_init(&uart3_param,uart3_recv_buf,UART3_RECV_BUF_LEN , 50);
+    __HAL_UART_ENABLE_IT(&huart3, UART_IT_RXNE);
 }
 
 /*定时器中调用，定时器周期10ms*/
-void lpuart_period(int period_ms)
+void uart3_period(int period_ms)
 {
-    /*LPUART接收状态处理*/
-    uart_recv_status(&lpuart_param , period_ms);
+    /*UART接收状态处理*/
+    uart_recv_status(&uart3_param , period_ms);
 }
 
 
 
-void lpuart_send(unsigned char *buf, int len)
+void uart3_send(unsigned char *buf, int len)
 {
-    HAL_UART_Transmit(&hlpuart1, buf, len, 0xFFFF);
+    HAL_UART_Transmit(&huart3, buf, len, 0xFFFF);
 }
 
 
-void LPUART1_IRQHandler(void)
+void USART3_IRQHandler(void)
 {
-	HAL_UART_IRQHandler(&hlpuart1);
+	HAL_UART_IRQHandler(&huart3);
 	
     uint32_t tmp_flag = 0, tmp_it_source = 0;
-	tmp_flag = __HAL_UART_GET_FLAG(&hlpuart1, UART_FLAG_RXNE);
-	tmp_it_source = __HAL_UART_GET_IT_SOURCE(&hlpuart1, UART_IT_RXNE);
+	tmp_flag = __HAL_UART_GET_FLAG(&huart3, UART_FLAG_RXNE);
+	tmp_it_source = __HAL_UART_GET_IT_SOURCE(&huart3, UART_IT_RXNE);
     if((tmp_flag != RESET) && (tmp_it_source != RESET))
     {
-		uint8_t data = (uint8_t)(hlpuart1.Instance->RDR & 0xFF);
-		uart_in_data(&lpuart_param,data);
+		uint8_t data = (uint8_t)(huart3.Instance->RDR & 0xFF);
+		uart_in_data(&uart3_param,data);
     }
 }
 
-uint32_t lpuart_err = 0;
+uint32_t uart_err = 0;
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
     uint32_t err = HAL_UART_GetError(huart);
@@ -149,8 +149,8 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
         }  
         huart->ErrorCode = HAL_UART_ERROR_NONE;
     }
-    if(huart->Instance == LPUART1)
+    if(huart->Instance == USART3)
     {
-        lpuart_err++;
+        uart_err++;
     }
 }

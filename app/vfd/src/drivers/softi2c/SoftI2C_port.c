@@ -1,11 +1,11 @@
 #include "SoftI2C_port.h"
 #include "tx_api.h"
-#define _I2C_0_SCL_PORT   GPIOB
-#define _I2C_0_SDA_PORT   GPIOB
+#define _I2C_0_SCL_PORT   GPIOC
+#define _I2C_0_SDA_PORT   GPIOC
 
 
-#define _I2C_0_SCL_PIN    GPIO_PIN_6
-#define _I2C_0_SDA_PIN    GPIO_PIN_7
+#define _I2C_0_SCL_PIN    GPIO_PIN_8
+#define _I2C_0_SDA_PIN    GPIO_PIN_9
 
 
 #define _I2C_1_SCL_PORT   GPIOA
@@ -145,13 +145,12 @@ void _i2c_dly_scl(void)
 /// <param name="ms">毫秒数</param>
 void _i2c_dly_ms(uint8_t ms)
 {
-  /*uint32_t Delay = 1 * (SystemCoreClock / 8U / 1000U);
-  Delay = 1000;
+    uint32_t Delay = 1 * (SystemCoreClock / 8U / 1000U);
+    //Delay = 1000;
 	while (Delay--)
 	{
 		__no_operation();
-	}*/
-         tx_thread_sleep(ms);
+	}
 }
 
 #if I2C_MULTI_TASK > 0

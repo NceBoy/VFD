@@ -3,6 +3,7 @@
 #include "tx_api.h"
 #include "nx_msg.h"
 #include "log.h"
+#include "bsp_led.h"
 #include "bsp_adc.h"
 #include "uart.h"
 #include "inout.h"
@@ -65,7 +66,9 @@ static  void  taskstart (ULONG thread_input)
 
     log_init();
 
-    bsp_adc_init();
+    bsp_led_init();
+
+    inout_init();
 
 	nx_msg_init();
 
@@ -79,7 +82,9 @@ static  void  taskstart (ULONG thread_input)
 	while(1)
 	{
         inout_scan();
-        uart_recv_to_data();
+        uart3_recv_to_data();
+        bsp_led_run();
+        logdbg("%d,%d,%d\n",u_ima,v_ima,w_ima);
         tx_thread_sleep(5);
 	}
 }
@@ -133,7 +138,6 @@ static void SystemClock_Config(void)
   */
   HAL_RCC_EnableCSS();
 }
-
 
 
 /**

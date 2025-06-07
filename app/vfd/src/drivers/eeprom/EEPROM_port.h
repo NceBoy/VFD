@@ -21,19 +21,22 @@ extern "C" {
 #define AT24C02             1
 #define AT24C04             2
 #define AT24C08             3
-#define AT24C16             4
+#define AT24C16             4       /*128页，每页16个字节，1个地址寻址*/
 #define AT24C32             5
 #define AT24C64             6
 #define AT24C128            7
-#define AT24C256            8
+#define AT24C256            8       /*512页，每页64个字节，2个地址寻址*/
 #define AT24C512            9
 
 #define EEPROM_I2C_INDEX        (0)
-#define EEPROM_SIZE             (256 * 1024 / 8)      // 24C064 (8192 * 8)
-#define EEPROM_PAGE_SIZE        (64)   //
+
+/*以下参数根据实际的器件配置*/
+#define EEPROM_TYPE             (AT24C16)
+#define EEPROM_SIZE             (16 * 1024 / 8)      // 24C016
+#define EEPROM_PAGE_SIZE        (16)   
 #define EEPROM_SLAVE_ADDR       (0xA0)
-#define EEPROM_DATA_ADDR_BYTES  (2)
-#define EEPROM_TYPE             (AT24C256)
+#define EEPROM_DATA_ADDR_BYTES  (1)
+
 
 
 
