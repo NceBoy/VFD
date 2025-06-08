@@ -30,11 +30,18 @@ menu_state_t g_menu_state = {0, {0, 0, 0,0}};  // 初始在第一级菜单第0�
 #define LEVEL1_MENU_ITEMS     4
 
 // 第二级菜单项数（每个一级菜单对应不同数量的二级菜单项）
-//const uint8_t level2_menu_items[LEVEL1_MENU_ITEMS] = {11, 8, 5, 3};
-#define LEVEL2_MENU_ITEMS       12
+const uint8_t level2_menu_items[LEVEL1_MENU_ITEMS] = {11, 8, 7, 2};
+//#define LEVEL2_MENU_ITEMS       12
 
 // 第三级菜单项数（每个二级菜单下都固定有100个三级菜单项）
-#define LEVEL3_MENU_ITEMS    100
+//#define LEVEL3_MENU_ITEMS    100
+// 三级菜单项数查找表（按实际需求填写）
+const uint8_t level3_menu_items[LEVEL1_MENU_ITEMS][12] = {
+    {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100,100}, // 第一级菜单项 0 的每个二级菜单对应的三级菜单项数
+    {51, 31, 7, 61, 50, 14, 100, 2, 10, 10, 10, 10},   // 第一级菜单项 1
+    {21, 2, 3, 14, 3, 2, 16, 5, 5, 5, 5, 5},               // 第一级菜单项 2
+    {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}                // 第一级菜单项 3
+};
 /**
  * @brief 控制菜单导航
  * 
@@ -61,11 +68,13 @@ void menu_ctl_func(uint8_t key)
                     g_menu_state.index[1]++;
                 }
             } else if (g_menu_state.level == 2) {
-                if (g_menu_state.index[2] < LEVEL2_MENU_ITEMS - 1) {
+                uint8_t items = level2_menu_items[g_menu_state.index[1]];
+                if (g_menu_state.index[2] < items - 1) {
                     g_menu_state.index[2]++;
                 }
             } else if (g_menu_state.level == 3) {
-                if (g_menu_state.index[3] < LEVEL3_MENU_ITEMS - 1) {
+                uint8_t items = level3_menu_items[g_menu_state.index[1]][g_menu_state.index[2]];
+                if (g_menu_state.index[3] < items - 1) {
                     g_menu_state.index[3]++;
                 }
             }
@@ -245,7 +254,7 @@ static void scan_key(void)
         // Key released
         if (is_key_pressed)
         {
-            logdbg("Key released: %d\n", last_key);
+            //logdbg("Key released: %d\n", last_key);
             is_key_pressed = 0;
         }
     }
