@@ -28,6 +28,10 @@ extern "C" {
 #endif
 
 
+
+
+
+
 #include "stm32g4xx_hal.h"
 
 

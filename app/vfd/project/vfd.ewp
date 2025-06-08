@@ -371,6 +371,11 @@
                     <state>$PROJ_DIR$\..\src\services\service_data</state>
                     <state>$PROJ_DIR$\..\src\modules\data</state>
                     <state>$PROJ_DIR$\..\src\drivers\softi2c</state>
+                    <state>$PROJ_DIR$\..\src\modules\param</state>
+                    <state>$PROJ_DIR$\..\src\modules\utility</state>
+                    <state>$PROJ_DIR$\..\src\drivers\tm1628a</state>
+                    <state>$PROJ_DIR$\..\src\services\service_hmi</state>
+                    <state>$PROJ_DIR$\..\src\modules\hmi</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2234,6 +2239,15 @@
                 <name>$PROJ_DIR$\..\src\drivers\softi2c\SoftI2C_port.h</name>
             </file>
         </group>
+        <group>
+            <name>tm1628a</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\tm1628a\tm1628a.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\tm1628a\tm1628a.h</name>
+            </file>
+        </group>
     </group>
     <group>
         <name>lib</name>
@@ -2505,6 +2519,15 @@
             </file>
         </group>
         <group>
+            <name>hmi</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\hmi\hmi.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\hmi\hmi.h</name>
+            </file>
+        </group>
+        <group>
             <name>inout</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\inout\inout.c</name>
@@ -2532,18 +2555,21 @@
             </file>
         </group>
         <group>
+            <name>param</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\param\param.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\param\param.h</name>
+            </file>
+        </group>
+        <group>
             <name>protocol</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\protocol\protocol.c</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\protocol\protocol.h</name>
-            </file>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\protocol\vfd_param.c</name>
-            </file>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\protocol\vfd_param.h</name>
             </file>
         </group>
         <group>
@@ -2553,6 +2579,15 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\uart\uart.h</name>
+            </file>
+        </group>
+        <group>
+            <name>utility</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\utility\utility.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\utility\utility.h</name>
             </file>
         </group>
     </group>
@@ -2565,6 +2600,15 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\services\service_data\service_data.h</name>
+            </file>
+        </group>
+        <group>
+            <name>service_hmi</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_hmi\service_hmi.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_hmi\service_hmi.h</name>
             </file>
         </group>
         <group>

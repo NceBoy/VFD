@@ -5,7 +5,7 @@
 #include "log.h"
 #include "cordic.h"
 #include "motor.h"
-#include "vfd_param.h"
+#include "param.h"
 
 static TIM_HandleTypeDef htim7; /*开高频延时*/
 
@@ -37,13 +37,15 @@ typedef struct
 
 typedef struct 
 {
-    float start_freg;           /*启动频率*/
+    float start_freq;           /*启动频率*/
     float open_freq;            /*开高频最低频率*/
+    unsigned int open_freq_delay;    /*开高频延时*/
+    unsigned int vari_freq_close;   /*变频关高频标志位*/
+    
     unsigned int radio;                /*转矩提升*/
-    unsigned int delay;                /*高频延时*/
-    unsigned int economy;                /*自动省电*/
-
-    unsigned int vari_freq;                 /*变频关高频标志位*/
+    unsigned int auto_economy;          /*自动省电*/
+    unsigned int start_dir;             /*启动方向*/
+    
     unsigned int acceleration_time_us;      /*加速时间*/
     unsigned int deceleration_time_us;      /*减速时间*/
 }motor_para_t;
@@ -56,30 +58,33 @@ static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f};
 static void motor_param_get(void)
 {
     uint8_t value = 0;
-    pullOneItem(PARAM0X03, PARAM_START_FREQ, &value);  /*启动频率*/
-    g_motor_param.start_freg = (float)value;
-
-    pullOneItem(PARAM0X02, PARAM_MIN_OPEN_FREQ, &value);    /*开高频频率*/
+    /*启动频率*/
+    param_get(PARAM0X03, PARAM_START_FREQ, &value);
+    g_motor_param.start_freq = (float)value;
+    /*开高频频率*/
+    param_get(PARAM0X02, PARAM_HIGH_FREQ, &value);
     g_motor_param.open_freq = (float)value;
-
-    pullOneItem(PARAM0X02, PARAM_LOW_FREQ_TORQUE_BOOST, &value);    /*低频转矩提升*/
+    /*开高频延时，单位：0.1秒*/
+    param_get(PARAM0X02, PARAM_HIGH_FREQ_DELAY, &value);
+    g_motor_param.open_freq_delay = value;
+    /*变频关高频*/
+    param_get(PARAM0X02, PARAM_VARI_FREQ_CLOSE, &value);
+    g_motor_param.vari_freq_close = value;
+    /*转矩提升*/
+    param_get(PARAM0X02, PARAM_ORQUE_BOOST, &value);
     g_motor_param.radio = value;
-
-    pullOneItem(PARAM0X02, PARAM_HIGH_FREQ_DELAY, &value);    /*开高频延时，单位0.1秒*/
-    g_motor_param.delay = value;
-
-    pullOneItem(PARAM0X02, PARAM_AUTO_ECONOMY_PERCENT, &value);    /*自动省电*/
-    g_motor_param.economy = value;
-
-    pullOneItem(PARAM0X02, PARAM_VARI_FREQ_CLOSE, &value);    /*变频关高频*/
-    g_motor_param.vari_freq = value;
-
-    pullOneItem(PARAM0X02, PARAM_ACCELERATION_TIME, &value); /*加速时间，单位0.1秒*/
-    g_motor_param.acceleration_time_us = value * 100 * 1000;
-
-    pullOneItem(PARAM0X02, PARAM_DECELERATION_TIME, &value); /*减速时间，单位0.1秒*/
-    g_motor_param.deceleration_time_us = value * 100 * 1000;
-
+    /*自动省电*/
+    param_get(PARAM0X02, PARAM_AUTO_ECONOMY, &value);
+    g_motor_param.auto_economy = value;
+    /*启动方向:0:之前的方向，1:向左 ， 2:向右 */
+    param_get(PARAM0X03, PARAM_START_DIRECTION, &value);
+    g_motor_param.start_dir = value;
+    /*加速时间，单位0.1秒*/
+    param_get(PARAM0X02, PARAM_ACCE_TIME, &value);
+    g_motor_param.acceleration_time_us = value* 100 * 1000;
+    /*减速时间，单位0.1秒*/
+    param_get(PARAM0X02, PARAM_DECE_TIME, &value);
+    g_motor_param.deceleration_time_us = value* 100 * 1000;
 
 }
 
@@ -100,7 +105,7 @@ static void high_frequery_open(void)
     if(g_motor_real.high_status == 0)
     {
         g_motor_real.high_status = 1; 
-        g_highfreq_delay = g_motor_param.delay * 1000; //单位:100us
+        g_highfreq_delay = g_motor_param.open_freq_delay * 1000; //单位:100us
     }
 }
 
@@ -145,7 +150,7 @@ int motor_target_current_dir(void)
 
 void motor_reverse_start(void)
 {
-    g_motor_real.target_freq = g_motor_param.start_freg;
+    g_motor_real.target_freq = g_motor_param.start_freq;
     g_motor_real.motor_status = motor_in_reverse;
 }
 
@@ -162,7 +167,7 @@ static void motor_reverse_recovery(void)
 
 void motor_break_start(void)
 {
-    g_motor_real.target_freq = g_motor_param.start_freg;
+    g_motor_real.target_freq = g_motor_param.start_freq;
     g_motor_real.motor_status = motor_in_break;
 }
 
@@ -240,11 +245,12 @@ void motor_start(unsigned int dir , float target_freq)
     g_motor_real.motor_dir = dir;
     g_motor_real.angle = 0.0f;
     g_motor_real.current_freq = 0.0f;
-    g_motor_real.next_step_freq = g_motor_param.start_freg;
+    g_motor_real.next_step_freq = g_motor_param.start_freq;
     g_motor_real.target_should_be = target_freq;
     g_motor_real.target_freq = target_freq;
     /*step 3 . start timer*/
     bsp_tmr_start();
+    hmi_clear_menu();
 }
 
 /*每次中断调用一次*/
@@ -288,7 +294,7 @@ static void motor_update_spwm(void)
     }
     else{
         g_motor_real.freq_arrive = 0;
-        g_motor_real.next_step_freq = motor_calcu_next_step_freq(   g_motor_param.start_freg , 
+        g_motor_real.next_step_freq = motor_calcu_next_step_freq(g_motor_param.start_freq ,
             g_motor_param.acceleration_time_us ,
             g_motor_param.deceleration_time_us ,
             TMR_INT_PERIOD_US,
@@ -301,7 +307,7 @@ static void high_freq_control(void)
 {
     if(g_motor_real.current_freq > g_motor_param.open_freq)
     {
-        if((g_motor_param.vari_freq) &&(g_motor_real.freq_arrive == 0)) /*变频关高频*/
+        if((g_motor_param.vari_freq_close) &&(g_motor_real.freq_arrive == 0)) /*变频关高频*/
         {
             /*关*/
             high_frequery_close();
@@ -348,19 +354,18 @@ unsigned int interrupt_times = 0;
                 g_motor_real.motor_status = motor_in_idle;
                 high_frequery_close();
                 EXT_PUMP_DISABLE;
-
             }
                 
             return ;            
         }
 
         if((g_motor_real.motor_status == motor_in_reverse) &&
-            (motor_arrive_freq(g_motor_param.start_freg) == 1))
+            (motor_arrive_freq(g_motor_param.start_freq) == 1))
         {
             motor_reverse_recovery();
         }
         else if((g_motor_real.motor_status == motor_in_break) &&
-                (motor_arrive_freq(g_motor_param.start_freg) == 1))
+                (motor_arrive_freq(g_motor_param.start_freq) == 1))
         {
             motor_break();
         }

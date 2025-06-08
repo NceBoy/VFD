@@ -8,6 +8,7 @@
 #include "cordic.h"
 #include "motor.h"
 #include "inout.h"
+#include "param.h"
 
 /*线程参数*/
 #define  CFG_TASK_MOTOR_PRIO                          1u
@@ -78,7 +79,7 @@ static  void  task_motor (ULONG thread_input)
 
     MSG_MGR_T *msg = NULL;
 
-    initParameterTable();
+    param_init();
 
     bsp_adc_init();
 

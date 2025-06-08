@@ -13,6 +13,8 @@
 #include "service_test.h"
 #include "service_motor.h"
 #include "service_data.h"
+#include "service_hmi.h"
+
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
@@ -78,13 +80,15 @@ static  void  taskstart (ULONG thread_input)
 
     service_motor_start();
  
+    service_hmi_start();
+    
+    logdbg("system start .\n");
  
 	while(1)
 	{
         inout_scan();
         uart3_recv_to_data();
         bsp_led_run();
-        logdbg("%d,%d,%d\n",u_ima,v_ima,w_ima);
         tx_thread_sleep(5);
 	}
 }

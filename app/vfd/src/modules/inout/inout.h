@@ -23,6 +23,8 @@ void motor_start_ctl(void);
 
 void motor_stop_ctl(void);
 
+void motor_get_current_sp(unsigned char* sp , unsigned char* value);
+
 
 
 #ifdef __cplusplus

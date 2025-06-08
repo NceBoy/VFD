@@ -1,6 +1,6 @@
 #include "data.h"
 #include "protocol.h"
-#include "vfd_param.h"
+#include "param.h"
 #include "inout.h"
 
 typedef int (*protocol_cb)(Packet* in , Packet* out);
@@ -55,8 +55,8 @@ static int vfd_param_set(Packet* in ,Packet* out)
 {
     if(in->body_length != 48)
         return 0;
-    pushAllParams(in->body);
-    flushAllParams();
+    //pushAllParams(in->body);
+    //flushAllParams();
     uint8_t result = 1;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, &result, 1);
     return 1;
@@ -65,7 +65,7 @@ static int vfd_param_get(Packet* in , Packet* out)
 {
     if(in->body_length != 0)
         return 0;
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, (uint8_t*)g_vfdParam, sizeof(g_vfdParam));
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, (uint8_t*)&g_vfdParam, sizeof(g_vfdParam));
     return sizeof(g_vfdParam);
 }
 

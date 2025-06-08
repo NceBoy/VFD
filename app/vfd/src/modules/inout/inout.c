@@ -2,7 +2,7 @@
 #include "bsp_io.h"
 #include "inout.h"
 #include "service_motor.h"
-#include "vfd_param.h"
+#include "param.h"
 #include "motor.h"
 
 #define ACTIVE_NULL             (0xffffffff)
@@ -113,24 +113,33 @@ void motor_start_ctl(void)
     uint8_t speed = 0;
     uint8_t left = 0 , right = 0;
     if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*手控盒控速*/
-        pullOneItem(PARAM0X01, g_vfd_ctrl.sp_manual, &speed);
+    {
+        if(g_vfd_ctrl.sp_manual > 10 || g_vfd_ctrl.sp_manual < 8)
+            return ;
+        param_get(PARAM0X01, g_vfd_ctrl.sp_manual, &speed);
+    }
     else 
-        pullOneItem(PARAM0X01, g_vfd_ctrl.sp, &speed);
+    {
+        if(g_vfd_ctrl.sp > 7)
+            return ;
+        param_get(PARAM0X01, g_vfd_ctrl.sp, &speed);
+    }
+        
     if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_LIMIT_LEFT].port, g_vfd_io_tab[IO_ID_LIMIT_LEFT].pin) == \
                                                     g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity)
         left = 1;
     if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_LIMIT_RIGHT].port, g_vfd_io_tab[IO_ID_LIMIT_RIGHT].pin) == \
                                                     g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity)
         right = 1;
-    uint8_t dir = left << 4 | right;
-    switch(dir)
+    uint8_t limit = left << 4 | right;
+    switch(limit)
     {
         case 0x00 : {
             uint8_t dir = 0;
-            pullOneItem(PARAM0X03, PARAM_WIRE_START_DIRECTION, &dir);
-            if(dir == START_MODE_CONTINUE_PREVIOUS_DIRECTION) dir = motor_target_current_dir();
-            else if(dir == START_MODE_FORWARD) dir = 0;
-            else if(dir == START_MODE_REVERSE) dir = 1;
+            param_get(PARAM0X03, PARAM_START_DIRECTION, &dir);
+            if(dir == 0) dir = motor_target_current_dir(); /*之前的方向*/
+            else if(dir == 1) dir = 0;      /*正向*/
+            else if(dir == 2) dir = 1;      /*反向*/
             else dir  = 0;
             ext_motor_start(dir , speed);
         }break;
@@ -183,8 +192,8 @@ static void io_scan_active_polarity(void)
     }
     /*断丝检测时间，消抖作用*/
     uint8_t value = 0;
-    pullOneItem(PARAM0X03, PARAM_WIRE_BREAK_DETECT_TIME, &value); /*更新断丝检测时间*/
-    g_vfd_io_tab[IO_ID_WIRE].debounce_ticks = value * 100;
+    param_get(PARAM0X03, PARAM_WIRE_BREAK_TIME, &value); /*更新断丝检测时间*/
+    g_vfd_io_tab[IO_ID_WIRE].debounce_ticks = value * 100; /*ms*/
 }
 
 #if 1
@@ -196,7 +205,7 @@ static void io_scan_debug(void)
     if(debug_now == debug_last)
         return ;
     debug_last = debug_now;
-    if(debug_now == 0){}
+    if(debug_now == 0)
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;
     else{
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
@@ -217,8 +226,10 @@ static void io_scan_debug(void)
 
 static void ctrl_speed(uint8_t sp)
 {
+    if(sp > 10)
+        return ;
     uint8_t speed = 0;
-    pullOneItem(PARAM0X01, sp, &speed);
+    param_get(PARAM0X01, sp, &speed);
     ext_motor_speed(speed);  
 }
 
@@ -294,12 +305,12 @@ static void io_ctrl_dir(void)
     {
         if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
             return ;
-        uint8_t stop = 0;
-        pullOneItem(PARAM0X03, PARAM_STOP_MODE, &stop);
+        uint8_t stop = 0;/*0:立即停止 1:靠右停 2:靠左停*/
+        param_get(PARAM0X03, PARAM_STOP_MODE, &stop);
         EXT_PUMP_DISABLE;
         switch(stop)
         {
-            case STOP_ON_RIGHT :{
+            case 1 :{
                 if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0){
                     g_vfd_ctrl.work_end = 0;
                     motor_stop_ctl();
@@ -313,7 +324,7 @@ static void io_ctrl_dir(void)
                     }
                 }
             }break;
-            case STOP_ON_LEFT:{
+            case 2:{
                 if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0){
                     g_vfd_ctrl.work_end = 0;
                     motor_stop_ctl();
@@ -496,7 +507,20 @@ void inout_sp_sync_from_ext(uint8_t sp)
     ctrl_speed(g_vfd_ctrl.sp_manual);
 }
 
+void motor_get_current_sp(unsigned char* sp , unsigned char* value)
+{
+    if(g_vfd_ctrl.flag[IO_ID_SP0])
+    {
+        *sp = g_vfd_ctrl.sp_manual;
+        param_get(PARAM0X01, g_vfd_ctrl.sp_manual, value);
+    }
+    else
+    {
+        *sp = g_vfd_ctrl.sp;
+        param_get(PARAM0X01, g_vfd_ctrl.sp, value);
+    }
 
+}
 
 
 void inout_init(void) 
