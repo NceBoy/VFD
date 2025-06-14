@@ -22,7 +22,7 @@ void bsp_led_run(void)
 {
     g_led_now = HAL_GetTick ();
     g_led_now %= g_led_period;
-    if(g_led_now < 200)
+    if(g_led_now < 50)
         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
     else
         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);

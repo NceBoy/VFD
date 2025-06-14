@@ -1,11 +1,13 @@
 #include "param.h"
 #include "EEPROM.h"
 #include "utility.h"
+#include <string.h>
 
 uint8_t g_vfdParam[MAX_MODULE_TYPES][MAX_PARAM_ENTRIES];
 
-static void param_default(void)
+void param_default(void)
 {
+    memset(g_vfdParam, 0xff, sizeof(g_vfdParam));
     g_vfdParam[PARAM0X01][SEGMENT_FREQ_0] = 50; // 0段频率
     g_vfdParam[PARAM0X01][SEGMENT_FREQ_1] = 50; // 1段频率
     g_vfdParam[PARAM0X01][SEGMENT_FREQ_2] = 35; // 2段频率
@@ -35,12 +37,12 @@ static void param_default(void)
     g_vfdParam[PARAM0X03][PARAM_WIRE_BREAK_SIGNAL] = 0;// 断丝检测信号    
     g_vfdParam[PARAM0X03][PARAM_WIRE_BREAK_TIME] = 5;// 断丝检测时间，单位0.1秒
 
-    g_vfdParam[PARAM0X04][PARAM_WRITE_PROTECT] = 0;// 数据写保护
+    g_vfdParam[PARAM0X04][PARAM_WRITE_PROTECT] = 1;// 数据写保护
     g_vfdParam[PARAM0X04][PARAM_RECOVERY] = 0;// 数据恢复出厂设置
    
 }
 
- void param_init(void)
+ void param_load(void)
  {
     EEPROM_Init();
     EEPROM_Read(0, g_vfdParam, sizeof(g_vfdParam));

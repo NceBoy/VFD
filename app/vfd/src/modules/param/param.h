@@ -70,8 +70,9 @@ typedef enum {
 
 extern uint8_t g_vfdParam[MAX_MODULE_TYPES][MAX_PARAM_ENTRIES];
 
-void param_init();
+void param_load();
 
+void param_default(void);
 
 void param_update_all(uint8_t *newParams);
 

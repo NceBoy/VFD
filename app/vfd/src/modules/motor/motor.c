@@ -6,6 +6,7 @@
 #include "cordic.h"
 #include "motor.h"
 #include "param.h"
+#include "hmi.h"
 
 static TIM_HandleTypeDef htim7; /*开高频延时*/
 

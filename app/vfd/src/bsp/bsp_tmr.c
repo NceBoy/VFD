@@ -97,7 +97,7 @@ void bsp_tmr_start(void)
 {
     VFD_VDC_ENABLE;
 
-    bsp_led_ctl(600);
+    bsp_led_ctl(200);
 
     HAL_TIM_Base_Start_IT(&htim1);
 

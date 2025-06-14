@@ -79,7 +79,7 @@ static  void  task_motor (ULONG thread_input)
 
     MSG_MGR_T *msg = NULL;
 
-    param_init();
+    param_load();
 
     bsp_adc_init();
 
