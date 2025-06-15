@@ -31,7 +31,7 @@ static key_t g_key = {0, 0, 0, 0, 0};
 static menu_state_t g_menu_state = {0, {0, 0, 0,0}};  // 初始在第一级菜单第0项
 
 static uint8_t g_level_refresh = 0;
-
+static uint8_t g_code_refresh = 0;
 // 第0级菜单项数
 #define LEVEL0_MENU_ITEMS     1
 
@@ -248,7 +248,7 @@ void menu_ctl_func(uint8_t key)
         !(g_menu_state.index[1] == 3 && g_menu_state.index[2] == 0)) {
         param_get(PARAM0X04, PARAM_WRITE_PROTECT, &write_protect);
     }
-    
+    g_code_refresh = 0; /*清除code显示，进入菜单显示*/
     switch (key)
     {
         case 8: // 上键：选择上一项（仅 level 1 & level 2 循环）
@@ -370,8 +370,10 @@ static void show_speed_info(void)
 { 
     static uint8_t sp_last;
     static uint32_t time_last;
-    if(g_menu_state.level == 0){
-        if(motor_is_working()){
+    if(g_menu_state.level == 0)
+    {
+        if(motor_is_working())
+        {
              /*电机运行中*/
             uint8_t sp , value;
             inout_get_current_sp(&sp , &value);
@@ -383,7 +385,8 @@ static void show_speed_info(void)
                 g_level_refresh = 0;
             }          
         }
-        else{
+        else
+        {
             /*电机未运行*/
             uint32_t now = HAL_GetTick();
             if((now - time_last > 800) || (g_level_refresh))
@@ -419,7 +422,8 @@ static void show_led_info(void)
 static void show_speed_and_led_info(void)
 {
     show_led_info();
-    show_speed_info();
+    if(g_code_refresh == 0)
+        show_speed_info();
 }
 
 
@@ -496,7 +500,8 @@ void hmi_stop_code(int code)
     data[2] = code / 100 ;
     data[4] = (code / 10) % 10;
     data[6] = code % 10;
-    tm1628a_write_continuous(data , sizeof(data));  
+    tm1628a_write_continuous(data , sizeof(data)); 
+    g_code_refresh = 1; 
 }
 
 void hmi_clear_menu(void)
