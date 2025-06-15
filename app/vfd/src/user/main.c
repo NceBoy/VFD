@@ -25,6 +25,11 @@ static  TX_THREAD   taskstarttcb;
 static  ULONG64     taskstartstk[CFG_TASK_START_STK_SIZE/8];
 static  void        taskstart          (ULONG thread_input);
 
+/*电压采样定时器*/
+TX_TIMER adc_timer;
+static void adc_timer_expire(ULONG id);
+
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -81,6 +86,8 @@ static  void  taskstart (ULONG thread_input)
     service_motor_start();
  
     service_hmi_start();
+
+    tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 500, 500, TX_AUTO_ACTIVATE);
     
     logdbg("system start .\n");
  
@@ -93,7 +100,11 @@ static  void  taskstart (ULONG thread_input)
 	}
 }
 
-
+static void adc_timer_expire(ULONG id)
+{
+    (void)id;
+    bsp_adc_start();
+}
 /**
   * @brief System Clock Configuration
   * @retval None

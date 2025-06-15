@@ -105,18 +105,6 @@ void tm1628a_clear(void)
 {
     uint8_t data[10] = {0};
     tm1628a_write_continuous(data, sizeof(data));
-#if 0
-    stb_reset();
-    send_command(0x44);     /*地址固定*/
-    stb_set();  
-    
-    for(int i = 0; i < 5; i++)
-    {
-        stb_reset();
-        send_command(code_addr[i]);     /*起始地址为第一个数码管*/
-        send_command(code_table[i + 5]);
-        stb_set();         
-#endif
 }
 
 /*地址固定写*/
@@ -127,8 +115,9 @@ void tm1628a_write_once(uint8_t addr , uint8_t data)
     stb_set();   
     delay_us(1);
     stb_reset();
-    send_command(addr);     /*起始地址为第一个数码管*/
+    send_command(addr); 
     send_command(data);
+    delay_us(1); 
     stb_set();   
 }
 /*亮度等级1~8,设置为0时关闭显示*/

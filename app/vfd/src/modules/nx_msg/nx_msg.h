@@ -17,6 +17,9 @@ typedef enum
     MSG_ID_MOTOR_BREAK,
 
     MSG_ID_UART_DATA,
+
+    MSG_ID_KEY_SCAN,
+    MSG_ID_STOP_CODE,
 }MSG_ID;
 
 typedef TX_QUEUE  *msg_addr;

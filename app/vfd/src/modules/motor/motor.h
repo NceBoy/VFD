@@ -20,7 +20,8 @@ int motor_is_working(void);
 
 void motor_init(void);
 
-
+/*获取当前是否开高频*/
+unsigned char motor_is_open_freq(void);
 
 
 #ifdef __cplusplus

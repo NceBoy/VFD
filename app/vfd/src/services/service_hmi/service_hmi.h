@@ -5,11 +5,9 @@
  extern "C" {
 #endif
 
-#include "nx_msg.h"
-
 void service_hmi_start(void);
 
-msg_addr service_hmi_get_addr(void);
+void ext_notify_stop_code(unsigned char code);
      
  
 #ifdef __cplusplus

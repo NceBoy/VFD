@@ -75,7 +75,7 @@ static int vfd_motor_set(Packet* in , Packet* out)
         return -1;
     
     if(in->body[0])
-        motor_stop_ctl();
+        motor_stop_ctl(CODE_END);
     else
         motor_start_ctl();
     uint8_t result = 1;

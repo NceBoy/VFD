@@ -119,6 +119,11 @@ static void high_frequery_close(void)
     }
 }
 
+unsigned char motor_is_open_freq(void)
+{
+    return g_motor_real.high_status;
+}
+
 void motor_target_info_update(float target_freq)
 {
     switch(g_motor_real.motor_status)

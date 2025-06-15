@@ -1,7 +1,9 @@
 #include "main.h"
+#include "bsp_adc.h"
 #include "bsp_io.h"
 #include "inout.h"
 #include "service_motor.h"
+#include "service_hmi.h"
 #include "param.h"
 #include "motor.h"
 
@@ -12,6 +14,8 @@
 #define ERROR_LEFT_KEY                      0x01            //左限位长时间触发
 #define ERROR_RIGHT_KEY                     0x02            //右限位长时间触发
 #define ERROR_DOUBLE_KEY                    0x04            //左右限位同时触发
+#define ERROR_EXCEED_KEY                    0x08            //超程触发
+
 
 typedef enum
 {
@@ -38,6 +42,8 @@ typedef enum
     IO_ID_MOTOR_STOP = 14,                   //关运丝
     IO_ID_PUMP_START = 15,                   //开水泵
     IO_ID_PUMP_STOP = 16,                    //关水泵
+
+    IO_ID_IPM_VFO = 17,                      //IPM故障
 
     IO_ID_MAX,
 }io_id_t;
@@ -66,7 +72,7 @@ typedef struct
 {
     ctl_mode_t      ctl;
     uint8_t         flag[IO_ID_MAX];
-    uint8_t         work_end;
+    uint8_t         end;                /*工作结束信号触发*/
     uint8_t         sp;
     uint8_t         sp_manual;
     uint8_t         err;
@@ -97,19 +103,40 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_4  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
     {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
     {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
+
+    {IO_ID_IPM_VFO         ,GPIOC, GPIO_PIN_7  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
 };
 
 /*外部IO的错误信息处理*/
 static void update_err(void)
 {  
-    
+    /*断丝错误，由断丝逻辑单独处理，此处不再处理*/
+
+    /*超程错误，由超程逻辑单独处理，此处不再处理*/
+
+    /*左右限位长时间触发的错误，此处不再处理*/
+
+    /*左右限位同时触发的错误，此处不再处理*/
+
+    /*IPM模块的错误，此处不再处理*/
+
 }
 
 
 void motor_start_ctl(void)
 {
     if((g_vfd_ctrl.flag[IO_ID_WIRE] != 0) &&(g_vfd_ctrl.flag[IO_ID_DEBUG] != 1))
+    {
+        ext_notify_stop_code(CODE_WIRE_BREAK);
         return ;
+    }
+
+    if(g_vfd_ctrl.flag[IO_ID_IPM_VFO] != 0)
+    {
+        ext_notify_stop_code(CODE_IPM);
+        return ;
+    }
+
     uint8_t speed = 0;
     uint8_t left = 0 , right = 0;
     if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*手控盒控速*/
@@ -151,13 +178,16 @@ void motor_start_ctl(void)
             g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] = 1;
             ext_motor_start(1,speed);
         }break;
-        default:break;
+        default:{
+            ext_notify_stop_code(CODE_LIMIT_DOUBLE);
+        }break;
     }
 }
 
-void motor_stop_ctl(void)
+void motor_stop_ctl(stopcode_t code)
 {
     ext_motor_break();
+    ext_notify_stop_code((unsigned char)code);
     EXT_PUMP_DISABLE;
 }
 
@@ -206,12 +236,16 @@ static void io_scan_debug(void)
         return ;
     debug_last = debug_now;
     if(debug_now == 0)
-        g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;
-    else{
+    {
+        g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
+        //g_vfd_ctrl.flag[IO_ID_WIRE] = 0;   /*清除断丝错误显示*/
+    }   
+    else    /*退出debug模式*/
+    {
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
         if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
         {
-            motor_stop_ctl();
+            motor_stop_ctl(CODE_WIRE_BREAK);
         }
     }
 }
@@ -255,7 +289,7 @@ static void io_scan_speed(void)
         return ;
 
     g_vfd_ctrl.sp = sp;
-    if(g_vfd_ctrl.work_end != 0)
+    if(g_vfd_ctrl.end != 0)
         return ;
     if(motor_is_working())
     {
@@ -268,7 +302,11 @@ static void io_ctrl_wire(void)
 {
     if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
         return ;
-    motor_stop_ctl();
+    if(motor_is_working())
+    {
+        motor_stop_ctl(CODE_WIRE_BREAK);
+    }
+    
     return ;
 }
 
@@ -312,13 +350,13 @@ static void io_ctrl_dir(void)
         {
             case 1 :{
                 if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0){
-                    g_vfd_ctrl.work_end = 0;
-                    motor_stop_ctl();
+                    g_vfd_ctrl.end = 0;
+                    motor_stop_ctl(CODE_END);
                 }
                 else
                 {
                     //ctrl_speed(0);
-                    g_vfd_ctrl.work_end = 1;
+                    g_vfd_ctrl.end = 1;
                     if(motor_target_current_dir() == 0){
                         ext_motor_reverse();
                     }
@@ -326,34 +364,36 @@ static void io_ctrl_dir(void)
             }break;
             case 2:{
                 if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0){
-                    g_vfd_ctrl.work_end = 0;
-                    motor_stop_ctl();
+                    g_vfd_ctrl.end = 0;
+                    motor_stop_ctl(CODE_END);
                 }
                 else
                 {
                     //ctrl_speed(0);
-                    g_vfd_ctrl.work_end = 1;
+                    g_vfd_ctrl.end = 1;
                     if(motor_target_current_dir() != 0){
                         ext_motor_reverse();
                     }
                 }
             }break;
-            default: motor_stop_ctl(); break;
+            default: {
+                motor_stop_ctl(CODE_END);
+            } break;
         }
     }
 
     if(g_vfd_ctrl.flag[IO_ID_LIMIT_EXCEED] != 0)
     {
-        motor_stop_ctl();
+        motor_stop_ctl(CODE_EXCEED);
         return ;
     }
 
     if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0)
     {
-        if(g_vfd_ctrl.work_end != 0)
+        if(g_vfd_ctrl.end != 0)
         {
-            motor_stop_ctl();
-            g_vfd_ctrl.work_end = 0;
+            motor_stop_ctl(CODE_END);
+            g_vfd_ctrl.end = 0;
         }
         else 
         {
@@ -363,10 +403,10 @@ static void io_ctrl_dir(void)
     }
     if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0)
     {
-        if(g_vfd_ctrl.work_end != 0)
+        if(g_vfd_ctrl.end != 0)
         {
-            motor_stop_ctl();
-            g_vfd_ctrl.work_end = 0;
+            motor_stop_ctl(CODE_END);
+            g_vfd_ctrl.end = 0;
         }
         else
         {
@@ -412,15 +452,40 @@ static void io_scan_direction(void)
     }
     //左限位长时间触发，异常
     if((g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_LEFT].exceed_ticks))
+    {
         g_vfd_ctrl.err |= ERROR_LEFT_KEY;
+        if(motor_is_working())
+        {
+            motor_stop_ctl(CODE_LIMIT_TIMEOUT);
+        }
+    }
+        
         
     //右限位长时间触发，异常
-    if(g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_RIGHT].exceed_ticks) 
+    if(g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_RIGHT].exceed_ticks)
+    {
         g_vfd_ctrl.err |= ERROR_RIGHT_KEY;
+        if(motor_is_working())
+        {
+            motor_stop_ctl(CODE_LIMIT_TIMEOUT);
+        }
+    } 
+        
 
     /*左右限位同时触发*/
     if((g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] == 1) && (g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] == 1))
+    {
         g_vfd_ctrl.err |= ERROR_DOUBLE_KEY;
+        if(motor_is_working())
+        {
+            motor_stop_ctl(CODE_LIMIT_DOUBLE);
+        }
+    }
+        
+    if(g_vfd_ctrl.flag[IO_ID_LIMIT_EXCEED] == 1)
+        g_vfd_ctrl.err |= ERROR_EXCEED_KEY;
+    else
+        g_vfd_ctrl.err &= ~ERROR_EXCEED_KEY;
 
 }
 
@@ -437,7 +502,7 @@ static void io_ctrl_onoff(void)
                     motor_start_ctl();
                 }
                 else{
-                    motor_stop_ctl();
+                    motor_stop_ctl(CODE_END);
                 }
             }
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开关水*/
@@ -455,7 +520,7 @@ static void io_ctrl_onoff(void)
             if(g_vfd_ctrl.flag[IO_ID_MOTOR_STOP] != 0) /*关丝*/
             {
                 if(motor_is_working() == 1){
-                    motor_stop_ctl();
+                    motor_stop_ctl(CODE_END);
                 }
             }
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开水*/
@@ -499,6 +564,33 @@ static void io_scan_onoff(void)
     }
 }
 
+static void io_scan_ipm(void)
+{
+    if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_IPM_VFO].port, g_vfd_io_tab[IO_ID_IPM_VFO].pin) == g_vfd_io_tab[IO_ID_IPM_VFO].active_polarity)
+    {
+        if(g_vfd_io_tab[IO_ID_IPM_VFO].now_ticks < IO_TIMEOUT_MS)
+            g_vfd_io_tab[IO_ID_IPM_VFO].now_ticks += IO_SCAN_INTERVAL;
+    }
+    else
+    {
+        g_vfd_io_tab[IO_ID_IPM_VFO].now_ticks = 0;
+        g_vfd_ctrl.flag[IO_ID_IPM_VFO] = 0;
+    }
+        
+    if(g_vfd_io_tab[IO_ID_IPM_VFO].now_ticks > g_vfd_io_tab[IO_ID_IPM_VFO].debounce_ticks)
+    {
+        if(g_vfd_ctrl.flag[IO_ID_IPM_VFO] == 0)
+        {
+            g_vfd_ctrl.flag[IO_ID_IPM_VFO] = 1;
+            /*IPM故障*/
+            if(motor_is_working()){
+                motor_stop_ctl(CODE_END);
+            }
+        }
+    }       
+    
+}
+
 /*手控盒控速时，同步速度*/
 void inout_sp_sync_from_ext(uint8_t sp)
 {
@@ -507,7 +599,7 @@ void inout_sp_sync_from_ext(uint8_t sp)
     ctrl_speed(g_vfd_ctrl.sp_manual);
 }
 
-void motor_get_current_sp(unsigned char* sp , unsigned char* value)
+void inout_get_current_sp(unsigned char* sp , unsigned char* value)
 {
     if(g_vfd_ctrl.flag[IO_ID_SP0])
     {
@@ -522,6 +614,40 @@ void motor_get_current_sp(unsigned char* sp , unsigned char* value)
 
 }
 
+/*获取当前断丝状态*/
+unsigned char inout_get_wire_value(void)
+{
+    return g_vfd_ctrl.flag[IO_ID_WIRE];
+}
+
+/*获取当前限位状态*/
+unsigned char inout_get_limit_value(void)
+{
+    return g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] || g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT];
+}
+
+/*获取当前超程状态*/
+unsigned char inout_get_exceed_value(void)
+{
+    return g_vfd_ctrl.flag[IO_ID_LIMIT_EXCEED];
+}
+
+/*获取当前errcode*/
+unsigned char inout_get_errcode(void)
+{
+    return g_vfd_ctrl.err != 0 ? 1 : 0;
+}
+
+/*获取加工结束状态*/
+unsigned char inout_get_work_end(void)
+{
+    return g_vfd_ctrl.flag[IO_ID_END];
+}
+
+void scan_voltage(void)
+{
+    int voltage = bsp_get_voltage();
+}
 
 void inout_init(void) 
 {
@@ -546,7 +672,10 @@ void inout_scan(void)
     io_scan_direction();
     /*step 5 . 开关运丝和水泵*/
     io_scan_onoff();
-
-    /*step 6 . 错误处理*/
+    /*step 6 . 读取模块错误*/
+    io_scan_ipm();
+    /*step 7 . 电压检测*/
+    scan_voltage();
+    /*step 7 . 错误处理*/
     update_err();
 }
