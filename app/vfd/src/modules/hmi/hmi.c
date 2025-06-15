@@ -48,7 +48,7 @@ const uint8_t level2_menu_items[LEVEL1_MENU_ITEMS] = {11, 8, 7, 2};
 const uint8_t level3_menu_items[LEVEL1_MENU_ITEMS][12] = {
     {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}, // 第一级菜单项 0 的每个二级菜单对应的三级菜单项数
     {51, 31, 7, 61, 50, 14, 100, 2, 10, 10, 10, 10},   // 第一级菜单项 1
-    {21, 2, 3, 14, 3, 2, 16, 5, 5, 5, 5, 5},               // 第一级菜单项 2
+    {51, 2, 3, 14, 3, 2, 16, 5, 5, 5, 5, 5},               // 第一级菜单项 2
     {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}                // 第一级菜单项 3
 };
 
@@ -301,8 +301,7 @@ void menu_ctl_func(uint8_t key)
         case 16: // 确认键：进入下一级菜单或保存参数
             if (g_menu_state.level < 3) {
                 g_menu_state.level++;
-                if(g_menu_state.level == 3)
-                {
+                if(g_menu_state.level == 3){
                     uint8_t value = 0;
                     param_get((ModuleParameterType)g_menu_state.index[1], g_menu_state.index[2], &value);
                     g_menu_state.index[3] = value;
@@ -311,8 +310,7 @@ void menu_ctl_func(uint8_t key)
                 // 已在第三级菜单，按确认键保存参数后返回上一级
                 if((g_menu_state.index[1] == 3) && 
                     (g_menu_state.index[2] == 1)  &&
-                    (g_menu_state.index[3] == 1))
-                {
+                    (g_menu_state.index[3] == 1)){
                     /*恢复默认参数*/
                     param_default();
                 }
@@ -372,10 +370,9 @@ static void show_speed_info(void)
 { 
     static uint8_t sp_last;
     static uint32_t time_last;
-    if(g_menu_state.level == 0)
-    {
-        if(motor_is_working()) /*电机运行中*/
-        {
+    if(g_menu_state.level == 0){
+        if(motor_is_working()){
+             /*电机运行中*/
             uint8_t sp , value;
             inout_get_current_sp(&sp , &value);
             if((sp != sp_last) || (g_level_refresh))
@@ -386,8 +383,8 @@ static void show_speed_info(void)
                 g_level_refresh = 0;
             }          
         }
-        else/*电机未运行*/
-        {
+        else{
+            /*电机未运行*/
             uint32_t now = HAL_GetTick();
             if((now - time_last > 800) || (g_level_refresh))
             {

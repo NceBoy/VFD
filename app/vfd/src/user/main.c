@@ -73,6 +73,8 @@ static  void  taskstart (ULONG thread_input)
 
     log_init();
 
+    bsp_adc_init();
+
     bsp_led_init();
 
     inout_init();

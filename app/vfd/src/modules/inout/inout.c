@@ -16,7 +16,6 @@
 #define ERROR_DOUBLE_KEY                    0x04            //左右限位同时触发
 #define ERROR_EXCEED_KEY                    0x08            //超程触发
 
-
 typedef enum
 {
     IO_ID_CTRL_MODE = 0x00,                     //点动or四键控制
@@ -36,8 +35,6 @@ typedef enum
     IO_ID_LIMIT_LEFT = 11,                   //左限位
     IO_ID_LIMIT_RIGHT = 12,                  //右限位
     
-    
-
     IO_ID_MOTOR_START = 13,                  //开运丝
     IO_ID_MOTOR_STOP = 14,                   //关运丝
     IO_ID_PUMP_START = 15,                   //开水泵
@@ -54,7 +51,6 @@ typedef enum
     CTRL_MODE_FOUR_KEY,     /*四建控制*/
 }ctl_mode_t;
 
-
 typedef struct
 {
     io_id_t         io_id;
@@ -66,8 +62,6 @@ typedef struct
     uint32_t        active_polarity;
 }vfd_io_t;
 
-
-
 typedef struct 
 {
     ctl_mode_t      ctl;
@@ -77,6 +71,8 @@ typedef struct
     uint8_t         sp_manual;
     uint8_t         err;
 }vfd_ctrl_t;
+
+static uint8_t g_vfd_voltage_flag;
 
 static vfd_ctrl_t g_vfd_ctrl;
 
@@ -134,6 +130,12 @@ void motor_start_ctl(void)
     if(g_vfd_ctrl.flag[IO_ID_IPM_VFO] != 0)
     {
         ext_notify_stop_code(CODE_IPM);
+        return ;
+    }
+
+    if(g_vfd_voltage_flag != 0)
+    {
+        ext_notify_stop_code(g_vfd_voltage_flag + 4);
         return ;
     }
 
@@ -224,6 +226,7 @@ static void io_scan_active_polarity(void)
     uint8_t value = 0;
     param_get(PARAM0X03, PARAM_WIRE_BREAK_TIME, &value); /*更新断丝检测时间*/
     g_vfd_io_tab[IO_ID_WIRE].debounce_ticks = value * 100; /*ms*/
+
 }
 
 #if 1
@@ -333,7 +336,7 @@ static void io_scan_wire(void)
             /*断丝*/
             io_ctrl_wire();
         }
-    }    
+    }
 }
 
 
@@ -644,9 +647,81 @@ unsigned char inout_get_work_end(void)
     return g_vfd_ctrl.flag[IO_ID_END];
 }
 
+static uint8_t is_power_off(int voltage , uint32_t timeout_time)
+{
+    static uint32_t power_off_start_time = 0;
+    if(voltage < 100)  /*电压低于100V，则认为掉电*/
+    {
+        if(power_off_start_time == 0){
+            power_off_start_time = HAL_GetTick(); /*记录保护时间*/
+        }
+        else{
+            uint32_t elapsed_time = HAL_GetTick() - power_off_start_time;
+            if(elapsed_time >= timeout_time)
+                return 1;
+        }
+    }
+    else
+    {
+        power_off_start_time = 0;
+    }
+    return 0;
+}
+
+static uint8_t check_voltage_status(int voltage, int low_threshold, int high_threshold, uint32_t timeout_time)
+{
+    static uint32_t voltage_abnormal_start_time = 0; // 记录异常开始时间
+    if (voltage < low_threshold) {
+        if (voltage_abnormal_start_time == 0) {
+            voltage_abnormal_start_time = HAL_GetTick(); // 第一次低于下限，记录时间
+        } else {
+            uint32_t elapsed_time = HAL_GetTick() - voltage_abnormal_start_time;
+            if (elapsed_time >= timeout_time) {
+                return 1; // 持续低于下限
+            }
+        }
+    } else if (voltage > high_threshold) {
+        if (voltage_abnormal_start_time == 0) {
+            voltage_abnormal_start_time = HAL_GetTick(); // 第一次高于上限，记录时间
+        } else {
+            uint32_t elapsed_time = HAL_GetTick() - voltage_abnormal_start_time;
+            if (elapsed_time >= timeout_time) {
+                return 2; // 持续高于上限
+            }
+        }
+    } else {
+        // 电压恢复正常区间，重置计时器
+        voltage_abnormal_start_time = 0;
+    }
+
+    return 0; // 电压在正常范围内或未超时
+}
 void scan_voltage(void)
 {
+    //根据GB/T 12325-2008，220V单相的允许偏差为标称电压的+7%（上限）和-10%（下限），即198V至235.4V‌
+
+    /*获取电压保护参数和掉电异常参数*/
+    uint8_t voltage_protect = 0;
+    param_get(PARAM0X02, PARAM_VOLTAGE_ADJUST, &voltage_protect); /*更新电压调节参数*/
+    uint8_t power_off_time = 0;
+    param_get(PARAM0X03, PARAM_POWER_OFF_TIME, &power_off_time); /*允许掉电的最长时间，单位0.1秒，最大50*/
+    power_off_time = power_off_time * 100;  /*转换成毫秒*/
     int voltage = bsp_get_voltage();
+    if(is_power_off() == 1){
+        g_vfd_voltage_flag = 3;
+        if(motor_is_working())
+            motor_stop_ctl(CODE_POWER_OFF);
+    }
+    else{
+        uint8_t voltage_status = check_voltage_status(voltage,220 - voltage_protect , 220 + voltage_protect,power_off_time)
+        if(voltage_status != 0)
+        {
+            if(motor_is_working())
+                motor_stop_ctl(voltage_status + 4);            
+        }
+        g_vfd_voltage_flag = voltage_status;
+    }
+
 }
 
 void inout_init(void) 

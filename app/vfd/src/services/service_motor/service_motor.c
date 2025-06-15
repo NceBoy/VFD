@@ -81,8 +81,6 @@ static  void  task_motor (ULONG thread_input)
 
     param_load();
 
-    bsp_adc_init();
-
     cordic_init();
 
     motor_init();
