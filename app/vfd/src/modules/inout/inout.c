@@ -707,17 +707,17 @@ void scan_voltage(void)
     param_get(PARAM0X03, PARAM_POWER_OFF_TIME, &power_off_time); /*允许掉电的最长时间，单位0.1秒，最大50*/
     power_off_time = power_off_time * 100;  /*转换成毫秒*/
     int voltage = bsp_get_voltage();
-    if(is_power_off() == 1){
+    if(is_power_off(voltage,power_off_time) == 1){
         g_vfd_voltage_flag = 3;
         if(motor_is_working())
             motor_stop_ctl(CODE_POWER_OFF);
     }
     else{
-        uint8_t voltage_status = check_voltage_status(voltage,220 - voltage_protect , 220 + voltage_protect,power_off_time)
+        uint8_t voltage_status = check_voltage_status(voltage,220 - voltage_protect , 220 + voltage_protect,power_off_time);
         if(voltage_status != 0)
         {
             if(motor_is_working())
-                motor_stop_ctl(voltage_status + 4);            
+                motor_stop_ctl((stopcode_t)(voltage_status + 4));            
         }
         g_vfd_voltage_flag = voltage_status;
     }

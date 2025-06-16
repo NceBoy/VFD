@@ -1,4 +1,5 @@
 #include "tm1628a.h"
+#include "bsp_adc.h"
 #include "log.h"
 #include "param.h"
 #include "inout.h"
@@ -33,7 +34,7 @@ static menu_state_t g_menu_state = {0, {0, 0, 0,0}};  // 初始在第一级菜�
 static uint8_t g_level_refresh = 0;
 static uint8_t g_code_refresh = 0;
 // 第0级菜单项数
-#define LEVEL0_MENU_ITEMS     1
+#define LEVEL0_MENU_ITEMS     2
 
 // 第一级菜单项数
 #define LEVEL1_MENU_ITEMS     4
@@ -255,9 +256,11 @@ void menu_ctl_func(uint8_t key)
             if (g_menu_state.level == 3 && write_protect) {
                 break; // 写保护启用，禁止操作
             }
-            if (g_menu_state.level == 1 || g_menu_state.level == 2) {
+            if (g_menu_state.level != 3) {
                 uint8_t items = 0;
-                if (g_menu_state.level == 1) {
+                if (g_menu_state.level == 0) {
+                    items = LEVEL0_MENU_ITEMS;
+                } else if (g_menu_state.level == 1) {
                     items = LEVEL1_MENU_ITEMS;
                 } else if (g_menu_state.level == 2) {
                     items = level2_menu_items[g_menu_state.index[1]];
@@ -278,9 +281,11 @@ void menu_ctl_func(uint8_t key)
             if (g_menu_state.level == 3 && write_protect) {
                 break; // 写保护启用，禁止操作
             }
-            if (g_menu_state.level == 1 || g_menu_state.level == 2) {
+            if (g_menu_state.level != 3) {
                 uint8_t items = 0;
-                if (g_menu_state.level == 1) {
+                if (g_menu_state.level == 0){
+                    items = LEVEL0_MENU_ITEMS;
+                }else if (g_menu_state.level == 1) {
                     items = LEVEL1_MENU_ITEMS;
                 } else if (g_menu_state.level == 2) {
                     items = level2_menu_items[g_menu_state.index[1]];
@@ -370,33 +375,32 @@ static void show_speed_info(void)
 { 
     static uint8_t sp_last;
     static uint32_t time_last;
-    if(g_menu_state.level == 0)
+
+    if(motor_is_working())
     {
-        if(motor_is_working())
+        /*电机运行中*/
+        uint8_t sp , value;
+        inout_get_current_sp(&sp , &value);
+        if((sp != sp_last) || (g_level_refresh))
         {
-             /*电机运行中*/
-            uint8_t sp , value;
-            inout_get_current_sp(&sp , &value);
-            if((sp != sp_last) || (g_level_refresh))
-            {
-                uint8_t data[8] = {0x00, 0x00, 0x73, 0x00,0x00, 0x00 ,0x00, 0x00};
-                tm1628a_write_continuous(data , sizeof(data));  
-                sp_last = sp;
-                g_level_refresh = 0;
-            }          
-        }
-        else
+            uint8_t data[8] = {0x00, 0x00, 0x73, 0x00,0x00, 0x00 ,0x00, 0x00};
+            tm1628a_write_continuous(data , sizeof(data));  
+            sp_last = sp;
+            g_level_refresh = 0;
+        }          
+    }
+    else
+    {
+        /*电机未运行*/
+        uint32_t now = HAL_GetTick();
+        if((now - time_last > 800) || (g_level_refresh))
         {
-            /*电机未运行*/
-            uint32_t now = HAL_GetTick();
-            if((now - time_last > 800) || (g_level_refresh))
-            {
-                show_speed_blink();
-                time_last = now;
-                g_level_refresh = 0;
-            }
+            show_speed_blink();
+            time_last = now;
+            g_level_refresh = 0;
         }
     }
+    
 }
 
 
@@ -418,12 +422,38 @@ static void show_led_info(void)
     }
 }
 
+
+static void show_voltage_info(void)
+{ 
+    static uint16_t voltage_last;
+    uint16_t voltage = bsp_get_voltage();
+    if(voltage != voltage_last)
+    {
+        voltage_last = voltage;
+        if(voltage > 999)
+            return ;
+        uint8_t data[8] = {0x79, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
+        data[2] = voltage / 100 ;
+        data[4] = (voltage / 10) % 10;
+        data[6] = voltage % 10;
+        tm1628a_write_continuous(data , sizeof(data)); 
+    }
+}
+
 /*显示速度和led灯信息*/
-static void show_speed_and_led_info(void)
+static void show_level0_and_led_info(void)
 {
     show_led_info();
-    if(g_code_refresh == 0)
-        show_speed_info();
+    if(g_code_refresh == 0) /*不显示erroce时才显示速度等信息*/
+    {
+        if(g_menu_state.level != 0)
+            return ;
+        if(g_menu_state.index[0] == 0){
+            show_speed_info();
+        }else if(g_menu_state.index[0] == 1)
+            show_voltage_info();
+    }
+        
 }
 
 
@@ -488,7 +518,7 @@ void hmi_init(void)
 void hmi_scan_key(void)
 {
     scan_key();
-    show_speed_and_led_info();
+    show_level0_and_led_info();
 }
 
 void hmi_stop_code(int code)
