@@ -58,6 +58,10 @@ void bsp_io_init_input(void)
 
       GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_15;
       HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);  
+      
+      /*IPM异常*/
+    GPIO_InitStruct.Pin = GPIO_PIN_7;
+      HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); 
 }
 
 
@@ -77,7 +81,7 @@ void bsp_io_init_output(void)
     
     HIGH_FREQ_DISABLE;
     EXT_PUMP_DISABLE;
-    VFD_VDC_DISABLE;
+    VFD_VDC_ENABLE;
     
     
 }

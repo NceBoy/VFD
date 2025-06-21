@@ -11,15 +11,15 @@ extern "C" {
 
 typedef enum
 {
-    CODE_END = 0,               /*加工结束*/
-    CODE_WIRE_BREAK,            /*断丝*/
-    CODE_EXCEED,                /*超程*/
-    CODE_LIMIT_DOUBLE,          /*左右限位同时触发*/
-    CODE_LIMIT_TIMEOUT,         /*左右限位长时间触发*/
-    CODE_UNDER_VOLTAGE,         /*欠压*/
-    CODE_OVER_VOLTAGE,          /*过压*/
-    CODE_POWER_OFF,             /*断电*/
-    CODE_IPM,                   /*IPM*/
+    CODE_END = 0,                   /*加工结束*/
+    CODE_WIRE_BREAK = 1,            /*断丝*/
+    CODE_EXCEED = 2,                /*超程*/
+    CODE_LIMIT_DOUBLE = 3,          /*左右限位同时触发*/
+    CODE_LIMIT_TIMEOUT = 4,         /*左右限位长时间触发*/
+    CODE_UNDER_VOLTAGE = 5,         /*欠压*/
+    CODE_OVER_VOLTAGE = 6,          /*过压*/
+    CODE_POWER_OFF = 7,             /*断电*/
+    CODE_IPM = 8,                   /*IPM*/
 }stopcode_t;
 
 

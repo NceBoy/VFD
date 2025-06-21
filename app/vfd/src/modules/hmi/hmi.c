@@ -32,7 +32,7 @@ static key_t g_key = {0, 0, 0, 0, 0};
 static menu_state_t g_menu_state = {0, {0, 0, 0,0}};  // 初始在第一级菜单第0项
 
 static uint8_t g_level_refresh = 0;
-static uint8_t g_code_refresh = 0;
+static uint8_t g_errcode_display = 0;
 // 第0级菜单项数
 #define LEVEL0_MENU_ITEMS     2
 
@@ -249,7 +249,7 @@ void menu_ctl_func(uint8_t key)
         !(g_menu_state.index[1] == 3 && g_menu_state.index[2] == 0)) {
         param_get(PARAM0X04, PARAM_WRITE_PROTECT, &write_protect);
     }
-    g_code_refresh = 0; /*清除code显示，进入菜单显示*/
+    g_errcode_display = 0; /*清除code显示，进入菜单显示*/
     switch (key)
     {
         case 8: // 上键：选择上一项（仅 level 1 & level 2 循环）
@@ -375,16 +375,25 @@ static void show_speed_info(void)
 { 
     static uint8_t sp_last;
     static uint32_t time_last;
+    static uint8_t immi_flag = 1;
 
     if(motor_is_working())
     {
         /*电机运行中*/
         uint8_t sp , value;
         inout_get_current_sp(&sp , &value);
-        if((sp != sp_last) || (g_level_refresh))
+        if((sp != sp_last) || (g_level_refresh) || (immi_flag))
         {
-            uint8_t data[8] = {0x00, 0x00, 0x73, 0x00,0x00, 0x00 ,0x00, 0x00};
-            tm1628a_write_continuous(data , sizeof(data));  
+            immi_flag = 0;
+            uint8_t data[8] = {0x00, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
+            sp = HEX_TO_BCD(sp);
+            value = HEX_TO_BCD(value);
+            data[0] = code_table[sp & 0x0f];
+            data[2] = 0x80;
+            data[4] = code_table[value >> 4];
+            data[6] = code_table[value & 0x0f];
+            tm1628a_write_continuous(data , sizeof(data));
+ 
             sp_last = sp;
             g_level_refresh = 0;
         }          
@@ -392,6 +401,7 @@ static void show_speed_info(void)
     else
     {
         /*电机未运行*/
+        immi_flag = 1;
         uint32_t now = HAL_GetTick();
         if((now - time_last > 800) || (g_level_refresh))
         {
@@ -425,26 +435,28 @@ static void show_led_info(void)
 
 static void show_voltage_info(void)
 { 
-    static uint16_t voltage_last;
+    static uint32_t display_time;
+    uint32_t now = HAL_GetTick();
+    if(now - display_time < 200)
+        return ;
+    display_time = now;
     uint16_t voltage = bsp_get_voltage();
-    if(voltage != voltage_last)
-    {
-        voltage_last = voltage;
-        if(voltage > 999)
-            return ;
-        uint8_t data[8] = {0x79, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
-        data[2] = voltage / 100 ;
-        data[4] = (voltage / 10) % 10;
-        data[6] = voltage % 10;
-        tm1628a_write_continuous(data , sizeof(data)); 
-    }
+    if(voltage > 999)
+        return ;
+
+    uint8_t data[8] = {0x3E, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
+    data[2] = code_table[voltage / 100] ;
+    data[4] = code_table[(voltage / 10) % 10];
+    data[6] = code_table[voltage % 10];
+    tm1628a_write_continuous(data , sizeof(data)); 
+    
 }
 
 /*显示速度和led灯信息*/
 static void show_level0_and_led_info(void)
 {
     show_led_info();
-    if(g_code_refresh == 0) /*不显示erroce时才显示速度等信息*/
+    if(g_errcode_display == 0) /*不显示erroce时才显示速度等信息*/
     {
         if(g_menu_state.level != 0)
             return ;
@@ -453,10 +465,7 @@ static void show_level0_and_led_info(void)
         }else if(g_menu_state.index[0] == 1)
             show_voltage_info();
     }
-        
 }
-
-
 
 static void scan_key(void)
 {
@@ -527,15 +536,16 @@ void hmi_stop_code(int code)
     if(code > 999)
         return ;
     uint8_t data[8] = {0x79, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
-    data[2] = code / 100 ;
-    data[4] = (code / 10) % 10;
-    data[6] = code % 10;
+    data[2] = code_table[code / 100] ;
+    data[4] = code_table[(code / 10) % 10];
+    data[6] = code_table[code % 10];
     tm1628a_write_continuous(data , sizeof(data)); 
-    g_code_refresh = 1; 
+    g_errcode_display = 1; 
 }
 
 void hmi_clear_menu(void)
 {
+    g_errcode_display = 0;
     g_menu_state.level = 0;
     g_menu_state.index[0] = 0;
     g_menu_state.index[1] = 0;

@@ -27,6 +27,8 @@ void bsp_tmr_start(void);
 
 void bsp_tmr_stop(void);
 
+void bsp_tmr_break(void);
+
 void bsp_tmr_update_compare(unsigned short ch1_ccr , unsigned short ch2_ccr , unsigned short ch3_ccr);
 
 #ifdef __cplusplus

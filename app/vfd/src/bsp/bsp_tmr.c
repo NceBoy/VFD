@@ -90,12 +90,12 @@ void bsp_tmr_init(void)
 
     HAL_TIM_MspPostInit(&htim1);
 
-    htim1.Instance->CCR4 = PWM_RESOLUTION - 500;
+    //htim1.Instance->CCR4 = PWM_RESOLUTION - 500;
 }
 
 void bsp_tmr_start(void)
 {
-    VFD_VDC_ENABLE;
+    //VFD_VDC_ENABLE;
 
     bsp_led_ctl(200);
 
@@ -111,7 +111,7 @@ void bsp_tmr_start(void)
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 
     
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+    //HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 }
 
 void bsp_tmr_stop(void)
@@ -127,11 +127,19 @@ void bsp_tmr_stop(void)
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3);   
 
-    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
+    //HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
 
-    VFD_VDC_DISABLE;
+    //VFD_VDC_DISABLE;
 
     bsp_led_ctl(1000);
+}
+
+void bsp_tmr_break(void)
+{
+    
+    htim1.Instance->CCR1 = PWM_RESOLUTION;
+    htim1.Instance->CCR2 = 0; 
+    htim1.Instance->CCR3 = 0;   
 }
 
 void bsp_tmr_update_compare(unsigned short ch1_ccr , unsigned short ch2_ccr , unsigned short ch3_ccr)

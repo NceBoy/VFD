@@ -78,29 +78,29 @@ static vfd_ctrl_t g_vfd_ctrl;
 
 static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 
-    {IO_ID_CTRL_MODE       ,GPIOB, GPIO_PIN_12 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_NULL},//控制模式设置，点动or四键
-    {IO_ID_EXCEED_POLARITY ,GPIOB, GPIO_PIN_13 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_NULL},//超程极性控制
-    {IO_ID_END_POLARITY    ,GPIOB, GPIO_PIN_14 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_NULL},//加工结束极性
-    {IO_ID_LR_POLARITY     ,GPIOB, GPIO_PIN_15 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_NULL},//左右限位极性
+    {IO_ID_CTRL_MODE       ,GPIOB, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_NULL},//控制模式设置，点动or四键
+    {IO_ID_EXCEED_POLARITY ,GPIOB, GPIO_PIN_13 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_NULL},//超程极性控制
+    {IO_ID_END_POLARITY    ,GPIOB, GPIO_PIN_14 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_NULL},//加工结束极性
+    {IO_ID_LR_POLARITY     ,GPIOB, GPIO_PIN_15 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_NULL},//左右限位极性
 
-    {IO_ID_SP0             ,GPIOD, GPIO_PIN_2  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},
-    {IO_ID_SP1             ,GPIOC, GPIO_PIN_12 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},
-    {IO_ID_SP2             ,GPIOC, GPIO_PIN_11 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},
-    {IO_ID_DEBUG           ,GPIOB, GPIO_PIN_7  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//调试，有效电平0
+    {IO_ID_SP0             ,GPIOD, GPIO_PIN_2  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
+    {IO_ID_SP1             ,GPIOC, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
+    {IO_ID_SP2             ,GPIOC, GPIO_PIN_11 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
+    {IO_ID_DEBUG           ,GPIOB, GPIO_PIN_7  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//调试，有效电平0
 
-    {IO_ID_WIRE            ,GPIOC, GPIO_PIN_13 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_HIGH}, //断丝检测，按照常闭极性控制
+    {IO_ID_WIRE            ,GPIOC, GPIO_PIN_13 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_HIGH}, //断丝检测，按照常闭极性控制
 
-    {IO_ID_LIMIT_EXCEED    ,GPIOA, GPIO_PIN_15 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //超程
-    {IO_ID_END             ,GPIOC, GPIO_PIN_10 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //加工结束
-    {IO_ID_LIMIT_LEFT      ,GPIOA, GPIO_PIN_11 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //左限位
-    {IO_ID_LIMIT_RIGHT     ,GPIOA, GPIO_PIN_12 ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //右限位
+    {IO_ID_LIMIT_EXCEED    ,GPIOA, GPIO_PIN_15 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //超程
+    {IO_ID_END             ,GPIOC, GPIO_PIN_10 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //加工结束
+    {IO_ID_LIMIT_LEFT      ,GPIOA, GPIO_PIN_11 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //左限位
+    {IO_ID_LIMIT_RIGHT     ,GPIOA, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //右限位
 
-    {IO_ID_MOTOR_START     ,GPIOB, GPIO_PIN_3  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开丝，有效电平0
-    {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_4  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
-    {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
-    {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
+    {IO_ID_MOTOR_START     ,GPIOB, GPIO_PIN_3  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开丝，有效电平0
+    {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_4  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
+    {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
+    {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
 
-    {IO_ID_IPM_VFO         ,GPIOC, GPIO_PIN_7  ,0 , 50 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
+    {IO_ID_IPM_VFO         ,GPIOC, GPIO_PIN_7  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//IPM模块异常
 };
 
 /*外部IO的错误信息处理*/
@@ -414,7 +414,7 @@ static void io_ctrl_dir(void)
         else
         {
             if(motor_target_current_dir() == 1) /*正在向右运动*/
-                ext_motor_reverse();            
+                ext_motor_reverse();
         }
     }
 }
@@ -587,7 +587,7 @@ static void io_scan_ipm(void)
             g_vfd_ctrl.flag[IO_ID_IPM_VFO] = 1;
             /*IPM故障*/
             if(motor_is_working()){
-                motor_stop_ctl(CODE_END);
+                motor_stop_ctl(CODE_IPM);
             }
         }
     }       
@@ -699,13 +699,19 @@ static uint8_t check_voltage_status(int voltage, int low_threshold, int high_thr
 void scan_voltage(void)
 {
     //根据GB/T 12325-2008，220V单相的允许偏差为标称电压的+7%（上限）和-10%（下限），即198V至235.4V‌
-
+    static uint32_t last_check_time = 0;
+    uint32_t now = HAL_GetTick();
+    if (now - last_check_time < 200) {
+        return ; 
+    }
+    last_check_time = now;
     /*获取电压保护参数和掉电异常参数*/
     uint8_t voltage_protect = 0;
     param_get(PARAM0X02, PARAM_VOLTAGE_ADJUST, &voltage_protect); /*更新电压调节参数*/
     uint8_t power_off_time = 0;
     param_get(PARAM0X03, PARAM_POWER_OFF_TIME, &power_off_time); /*允许掉电的最长时间，单位0.1秒，最大50*/
     power_off_time = power_off_time * 100;  /*转换成毫秒*/
+#if 0
     int voltage = bsp_get_voltage();
     if(is_power_off(voltage,power_off_time) == 1){
         g_vfd_voltage_flag = 3;
@@ -721,6 +727,7 @@ void scan_voltage(void)
         }
         g_vfd_voltage_flag = voltage_status;
     }
+#endif
 
 }
 
@@ -748,7 +755,7 @@ void inout_scan(void)
     /*step 5 . 开关运丝和水泵*/
     io_scan_onoff();
     /*step 6 . 读取模块错误*/
-    io_scan_ipm();
+    //io_scan_ipm();
     /*step 7 . 电压检测*/
     scan_voltage();
     /*step 7 . 错误处理*/

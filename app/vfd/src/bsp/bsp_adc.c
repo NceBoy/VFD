@@ -127,7 +127,7 @@ void ADC1_2_IRQHandler(void)
 #endif
 
 #define ADC_CHANNEL_NUM         1
-#define ADC_AVERAGE_NUM         10
+#define ADC_AVERAGE_NUM         2
 typedef struct 
 {
     uint16_t index;
@@ -180,7 +180,7 @@ void bsp_adc_init(void)
     sConfig.Channel = ADC_CHANNEL_2;
     sConfig.Rank = ADC_REGULAR_RANK_1;
     sConfig.SamplingTime = ADC_SAMPLETIME_247CYCLES_5;
-    sConfig.SingleDiff = ADC_DIFFERENTIAL_ENDED;
+    sConfig.SingleDiff = ADC_SINGLE_ENDED;
     sConfig.OffsetNumber = ADC_OFFSET_NONE;
     sConfig.Offset = 0;
     if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -212,6 +212,6 @@ void bsp_adc_start(void)
 
 int bsp_get_voltage(void)
 {
-    return (int)((float)g_adc_value[0].average / 4095.0 * 3.3 * 160 / 1.414);
+    return (int)((float)g_adc_value[0].average / 4095.0 * 3 * 160 / 1.414);
 }
 

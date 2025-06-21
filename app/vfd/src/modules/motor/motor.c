@@ -56,6 +56,8 @@ static motor_para_t g_motor_param;
 static motor_ctl_t g_motor_real;        /*开高频标志位*/
 static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
 
+static void motor_update_compare(void);
+
 static void motor_param_get(void)
 {
     uint8_t value = 0;
@@ -91,9 +93,12 @@ static void motor_param_get(void)
 
 static float radio_from_freq(float freq)
 {
-    float radio = 0.0f;
+    if(g_motor_real.motor_status == motor_in_break)
+        return RADIO_MAX;
     if(freq > 50.0f)
         return RADIO_MAX;
+    float radio = 0.0f;
+
     if(g_motor_param.radio > 6)
         g_motor_param.radio = 6;
     radio = g_radio_rate[g_motor_param.radio];
@@ -173,13 +178,22 @@ static void motor_reverse_recovery(void)
 
 void motor_break_start(void)
 {
+    if((g_motor_real.motor_status == motor_in_break) ||
+       (g_motor_real.motor_status == motor_in_release))
+        return ;
     g_motor_real.target_freq = g_motor_param.start_freq;
     g_motor_real.motor_status = motor_in_break;
+
+    high_frequery_close();
+    EXT_PUMP_DISABLE;
 }
 
 void motor_break(void)
 {
-    bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
+    //bsp_tmr_update_compare(PWM_RESOLUTION / 2 , PWM_RESOLUTION / 2 , PWM_RESOLUTION / 2);
+    //bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
+    //motor_update_compare();
+    bsp_tmr_break();
     g_motor_real.motor_status = motor_in_release;
     g_motor_real.break_release = 10 * 1000;   //单位:100us，实际时间1秒钟
 }
@@ -259,9 +273,8 @@ void motor_start(unsigned int dir , float target_freq)
     hmi_clear_menu();
 }
 
-/*每次中断调用一次*/
-static void motor_update_spwm(void)
-{   
+static void motor_update_compare(void)
+{
     // 计算三相占空比
     unsigned short phaseA = 0;
     unsigned short phaseB = 0;
@@ -282,9 +295,12 @@ static void motor_update_spwm(void)
         phaseC = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));
         phaseB = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));         
     }
-
-
-    bsp_tmr_update_compare(phaseA , phaseB , phaseC);
+    bsp_tmr_update_compare(phaseA , phaseB , phaseC); 
+}
+/*每次中断调用一次*/
+static void motor_update_spwm(void)
+{   
+    motor_update_compare();
 
     g_motor_real.current_freq = g_motor_real.next_step_freq;
 
