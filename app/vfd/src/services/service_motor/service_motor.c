@@ -63,8 +63,8 @@ static int do_msg_handler(MSG_MGR_T* msg)
 
         } break; 
 
-        case MSG_ID_MOTOR_BREAK : {
-            motor_break_start();
+        case MSG_ID_MOTOR_BRAKE : {
+            motor_brake_start();
 
         } break;
         default:break;
@@ -119,9 +119,9 @@ void ext_motor_reverse(void)
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_REVERSE, NULL, 0);
 }
 
-void ext_motor_break(void)
+void ext_motor_brake(void)
 {
     if(motor_is_working() == 0)
         return ;
-    nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BREAK, NULL, 0);
+    nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BRAKE, NULL, 0);
 }

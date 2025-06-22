@@ -16,6 +16,8 @@
 #define ERROR_DOUBLE_KEY                    0x04            //左右限位同时触发
 #define ERROR_EXCEED_KEY                    0x08            //超程触发
 
+static int g_ipm_vfo_flag = 0;
+
 typedef enum
 {
     IO_ID_CTRL_MODE = 0x00,                     //点动or四键控制
@@ -39,8 +41,6 @@ typedef enum
     IO_ID_MOTOR_STOP = 14,                   //关运丝
     IO_ID_PUMP_START = 15,                   //开水泵
     IO_ID_PUMP_STOP = 16,                    //关水泵
-
-    IO_ID_IPM_VFO = 17,                      //IPM故障
 
     IO_ID_MAX,
 }io_id_t;
@@ -99,8 +99,6 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_4  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
     {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
     {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
-
-    {IO_ID_IPM_VFO         ,GPIOC, GPIO_PIN_7  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//IPM模块异常
 };
 
 /*外部IO的错误信息处理*/
@@ -127,15 +125,15 @@ void motor_start_ctl(void)
         return ;
     }
 
-    if(g_vfd_ctrl.flag[IO_ID_IPM_VFO] != 0)
-    {
-        ext_notify_stop_code(CODE_IPM);
-        return ;
-    }
-
     if(g_vfd_voltage_flag != 0)
     {
         ext_notify_stop_code(g_vfd_voltage_flag + 4);
+        return ;
+    }
+
+    if(g_ipm_vfo_flag != 0)
+    {
+        ext_notify_stop_code(CODE_IPM);
         return ;
     }
 
@@ -188,7 +186,7 @@ void motor_start_ctl(void)
 
 void motor_stop_ctl(stopcode_t code)
 {
-    ext_motor_break();
+    ext_motor_brake();
     ext_notify_stop_code((unsigned char)code);
     EXT_PUMP_DISABLE;
 }
@@ -567,32 +565,6 @@ static void io_scan_onoff(void)
     }
 }
 
-static void io_scan_ipm(void)
-{
-    if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_IPM_VFO].port, g_vfd_io_tab[IO_ID_IPM_VFO].pin) == g_vfd_io_tab[IO_ID_IPM_VFO].active_polarity)
-    {
-        if(g_vfd_io_tab[IO_ID_IPM_VFO].now_ticks < IO_TIMEOUT_MS)
-            g_vfd_io_tab[IO_ID_IPM_VFO].now_ticks += IO_SCAN_INTERVAL;
-    }
-    else
-    {
-        g_vfd_io_tab[IO_ID_IPM_VFO].now_ticks = 0;
-        g_vfd_ctrl.flag[IO_ID_IPM_VFO] = 0;
-    }
-        
-    if(g_vfd_io_tab[IO_ID_IPM_VFO].now_ticks > g_vfd_io_tab[IO_ID_IPM_VFO].debounce_ticks)
-    {
-        if(g_vfd_ctrl.flag[IO_ID_IPM_VFO] == 0)
-        {
-            g_vfd_ctrl.flag[IO_ID_IPM_VFO] = 1;
-            /*IPM故障*/
-            if(motor_is_working()){
-                motor_stop_ctl(CODE_IPM);
-            }
-        }
-    }       
-    
-}
 
 /*手控盒控速时，同步速度*/
 void inout_sp_sync_from_ext(uint8_t sp)
@@ -696,6 +668,8 @@ static uint8_t check_voltage_status(int voltage, int low_threshold, int high_thr
 
     return 0; // 电压在正常范围内或未超时
 }
+
+int g_input_voltage = 0;
 void scan_voltage(void)
 {
     //根据GB/T 12325-2008，220V单相的允许偏差为标称电压的+7%（上限）和-10%（下限），即198V至235.4V‌
@@ -711,8 +685,9 @@ void scan_voltage(void)
     uint8_t power_off_time = 0;
     param_get(PARAM0X03, PARAM_POWER_OFF_TIME, &power_off_time); /*允许掉电的最长时间，单位0.1秒，最大50*/
     power_off_time = power_off_time * 100;  /*转换成毫秒*/
-#if 0
+
     int voltage = bsp_get_voltage();
+    g_input_voltage = voltage;
     if(is_power_off(voltage,power_off_time) == 1){
         g_vfd_voltage_flag = 3;
         if(motor_is_working())
@@ -727,7 +702,6 @@ void scan_voltage(void)
         }
         g_vfd_voltage_flag = voltage_status;
     }
-#endif
 
 }
 
@@ -737,6 +711,8 @@ void inout_init(void)
     bsp_io_init_input();
     /*3个输出信号线*/
     bsp_io_init_output();
+    /*IPM故障，中断检测*/
+    bsp_ipm_vfo_init();
     
     return ;
 }
@@ -754,10 +730,24 @@ void inout_scan(void)
     io_scan_direction();
     /*step 5 . 开关运丝和水泵*/
     io_scan_onoff();
-    /*step 6 . 读取模块错误*/
-    //io_scan_ipm();
-    /*step 7 . 电压检测*/
+
+    /*step 6 . 电压检测*/
     scan_voltage();
     /*step 7 . 错误处理*/
     update_err();
 }
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if(GPIO_Pin == GPIO_PIN_7)
+    {
+        if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_7) == GPIO_PIN_RESET)
+        {
+            g_ipm_vfo_flag = 1;
+            ext_motor_brake();
+        }
+        else
+            g_ipm_vfo_flag = 0;
+    }
+}
+

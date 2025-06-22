@@ -63,14 +63,17 @@ void bsp_tmr_init(void)
     {
         Error_Handler();
     }
+#if 0
+    /* TIM1_CH4 用来做触发采集电流*/
     if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
     {
         Error_Handler();
-    }    
+    } 
+#endif   
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
     sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
     sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-    sBreakDeadTimeConfig.DeadTime = 0xC2;  /*Ttds = 1/170M ==>1.6us*/
+    sBreakDeadTimeConfig.DeadTime = 0xCF;  /*Ttds = 1/170M ==>2.2us*/
 
     sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
     sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
@@ -134,10 +137,11 @@ void bsp_tmr_stop(void)
     bsp_led_ctl(1000);
 }
 
-void bsp_tmr_break(void)
+void bsp_tmr_dc_brake(unsigned int dc_percent)
 {
-    
-    htim1.Instance->CCR1 = PWM_RESOLUTION;
+    if(dc_percent > 100)
+        dc_percent = 100;
+    htim1.Instance->CCR1 = PWM_RESOLUTION * dc_percent / 100;
     htim1.Instance->CCR2 = 0; 
     htim1.Instance->CCR3 = 0;   
 }

@@ -91,7 +91,7 @@ static  void  task_test (ULONG thread_input)
     ext_motor_speed(50); /*电机变频*/
 
     tx_thread_sleep(1000 * 10); /*5s后开始变频*/
-    ext_motor_break(); /*电机刹车*/
+    ext_motor_brake(); /*电机刹车*/
     
 #endif
 	while(1)

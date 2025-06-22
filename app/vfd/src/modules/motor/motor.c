@@ -16,10 +16,10 @@ static TIM_HandleTypeDef htim7; /*开高频延时*/
 typedef enum
 {
     motor_in_idle,          /*空闲*/
-    motor_in_release,       /*刹车释放*/
+    motor_in_dc_brake,      /*直流刹车*/
     motor_in_run,           /*正常运行*/
     motor_in_reverse,       /*反向*/
-    motor_in_break,         /*刹车*/
+    motor_in_brake,         /*刹车*/
 }motor_status_enum;
 /*为了计算精度，统一为float*/
 typedef struct
@@ -27,7 +27,7 @@ typedef struct
     motor_status_enum   motor_status;
     unsigned int        motor_dir;
     unsigned int        freq_arrive;
-    unsigned int        break_release;
+    unsigned int        dc_brake_time;
     unsigned int        high_status;  /*高频状态*/
     float               angle;        /*当前的角度，一直累加的值，用于计算sin值*/
     float               target_should_be;
@@ -93,7 +93,7 @@ static void motor_param_get(void)
 
 static float radio_from_freq(float freq)
 {
-    if(g_motor_real.motor_status == motor_in_break)
+    if(g_motor_real.motor_status == motor_in_brake)
         return RADIO_MAX;
     if(freq > 50.0f)
         return RADIO_MAX;
@@ -176,26 +176,23 @@ static void motor_reverse_recovery(void)
     g_motor_real.motor_status = motor_in_run;
 }
 
-void motor_break_start(void)
+void motor_brake_start(void)
 {
-    if((g_motor_real.motor_status == motor_in_break) ||
-       (g_motor_real.motor_status == motor_in_release))
+    if((g_motor_real.motor_status == motor_in_brake) ||
+       (g_motor_real.motor_status == motor_in_dc_brake))
         return ;
     g_motor_real.target_freq = g_motor_param.start_freq;
-    g_motor_real.motor_status = motor_in_break;
+    g_motor_real.motor_status = motor_in_brake;
 
     high_frequery_close();
     EXT_PUMP_DISABLE;
 }
 
-void motor_break(void)
+void motor_dc_brake(void)
 {
-    //bsp_tmr_update_compare(PWM_RESOLUTION / 2 , PWM_RESOLUTION / 2 , PWM_RESOLUTION / 2);
-    //bsp_tmr_update_compare(PWM_RESOLUTION / 2 , 0 , 0);
-    //motor_update_compare();
-    bsp_tmr_break();
-    g_motor_real.motor_status = motor_in_release;
-    g_motor_real.break_release = 10 * 1000;   //单位:100us，实际时间1秒钟
+    bsp_tmr_dc_brake(20);
+    g_motor_real.motor_status = motor_in_dc_brake;
+    g_motor_real.dc_brake_time = 10 * 1000;   //单位:100us，实际时间1秒钟
 }
 
 
@@ -366,10 +363,10 @@ unsigned int interrupt_times = 0;
         if(g_motor_real.motor_status == motor_in_idle)
             return;
 
-        if(g_motor_real.motor_status == motor_in_release)
+        if(g_motor_real.motor_status == motor_in_dc_brake)
         {
-            if(g_motor_real.break_release != 0)
-                g_motor_real.break_release --;
+            if(g_motor_real.dc_brake_time != 0)
+                g_motor_real.dc_brake_time --;
             else
             {
                 bsp_tmr_stop();
@@ -386,10 +383,10 @@ unsigned int interrupt_times = 0;
         {
             motor_reverse_recovery();
         }
-        else if((g_motor_real.motor_status == motor_in_break) &&
+        else if((g_motor_real.motor_status == motor_in_brake) &&
                 (motor_arrive_freq(g_motor_param.start_freq) == 1))
         {
-            motor_break();
+            motor_dc_brake();
         }
         motor_update_spwm(); 
         high_freq_control();

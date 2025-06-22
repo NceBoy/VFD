@@ -20,6 +20,8 @@ void bsp_io_init_input(void);
 
 void bsp_io_init_output(void);
 
+void bsp_ipm_vfo_init(void);
+
 #ifdef __cplusplus
 }
 #endif

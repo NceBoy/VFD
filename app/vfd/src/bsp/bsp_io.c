@@ -2,7 +2,6 @@
 #include "bsp_io.h"
 
 
-
 /*17个输入信号*/
 void bsp_io_init_input(void)
 {
@@ -58,10 +57,7 @@ void bsp_io_init_input(void)
 
       GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_15;
       HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);  
-      
-      /*IPM异常*/
-    GPIO_InitStruct.Pin = GPIO_PIN_7;
-      HAL_GPIO_Init(GPIOC, &GPIO_InitStruct); 
+       
 }
 
 
@@ -85,4 +81,30 @@ void bsp_io_init_output(void)
     
     
 }
+
+void bsp_ipm_vfo_init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOC_CLK_ENABLE();   
+    
+    /*Configure GPIO pin : PC7 */
+    GPIO_InitStruct.Pin = GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    /* EXTI interrupt init*/
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+}
+
+void EXTI9_5_IRQHandler(void)
+{
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7);
+}
+
+
 

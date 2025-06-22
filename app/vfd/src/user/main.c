@@ -89,7 +89,7 @@ static  void  taskstart (ULONG thread_input)
  
     service_hmi_start();
 
-    tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 500, 500, TX_AUTO_ACTIVATE);
+    tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 100, 300, TX_AUTO_ACTIVATE);
     
     logdbg("system start .\n");
  
