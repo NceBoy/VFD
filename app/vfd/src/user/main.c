@@ -66,7 +66,6 @@ VOID  tx_application_define(VOID *first_unused_memory)
 }
 
 
-
 static  void  taskstart (ULONG thread_input)
 {
 	(void)thread_input;
@@ -92,7 +91,8 @@ static  void  taskstart (ULONG thread_input)
     tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 100, 300, TX_AUTO_ACTIVATE);
     
     logdbg("system start .\n");
- 
+
+        
 	while(1)
 	{
         inout_scan();

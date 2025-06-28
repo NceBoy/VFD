@@ -684,17 +684,18 @@ void scan_voltage(void)
     param_get(PARAM0X02, PARAM_VOLTAGE_ADJUST, &voltage_protect); /*更新电压调节参数*/
     uint8_t power_off_time = 0;
     param_get(PARAM0X03, PARAM_POWER_OFF_TIME, &power_off_time); /*允许掉电的最长时间，单位0.1秒，最大50*/
-    power_off_time = power_off_time * 100;  /*转换成毫秒*/
+    
+    uint16_t timeout = power_off_time * 100;  /*转换成毫秒*/
 
     int voltage = bsp_get_voltage();
     g_input_voltage = voltage;
-    if(is_power_off(voltage,power_off_time) == 1){
+    if(is_power_off(voltage,timeout) == 1){
         g_vfd_voltage_flag = 3;
         if(motor_is_working())
             motor_stop_ctl(CODE_POWER_OFF);
     }
     else{
-        uint8_t voltage_status = check_voltage_status(voltage,220 - voltage_protect , 220 + voltage_protect,power_off_time);
+        uint8_t voltage_status = check_voltage_status(voltage,220 - voltage_protect , 220 + voltage_protect,timeout);
         if(voltage_status != 0)
         {
             if(motor_is_working())

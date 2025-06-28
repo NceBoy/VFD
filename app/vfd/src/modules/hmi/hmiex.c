@@ -14,8 +14,8 @@ static uint8_t code_table[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, \
     0x7f, 0x6f, 0x77, 0x7c, 0x39, 0x5e, 0x79, 0x71}; //# 0-F
 
 typedef struct {
-    uint8_t level;      // 当前菜单层级（0~3）
-    uint8_t index[4];   // 每一层的选中项索引（从0开始）
+    uint8_t level;      // 当前菜单层级（0~1）
+    uint8_t index[5];   // 每一层的选中项索引（从0开始）
 } menu_state_t;
 
 typedef struct 
@@ -33,20 +33,20 @@ static menu_state_t g_menu_state = {0, {0, 0, 0,0}};  // 初始在第一级菜�
 
 static uint8_t g_level_refresh = 0;
 static uint8_t g_errcode_display = 0;
-// 第0级菜单项数
-#define LEVEL0_MENU_ITEMS     2
+
 
 // 第一级菜单项数
-#define LEVEL1_MENU_ITEMS     4
+#define LEVEL1_MENU_ITEMS     5
 
 // 第二级菜单项数（每个一级菜单对应不同数量的二级菜单项）
-const uint8_t level2_menu_items[LEVEL1_MENU_ITEMS] = {11, 8, 7, 2};
+const uint8_t level2_menu_items[LEVEL1_MENU_ITEMS] = {2, 11, 8, 7, 2};
 //#define LEVEL2_MENU_ITEMS       12
 
 // 第三级菜单项数（每个二级菜单下都固定有100个三级菜单项）
 //#define LEVEL3_MENU_ITEMS    100
 // 三级菜单项数查找表（按实际需求填写）
 const uint8_t level3_menu_items[LEVEL1_MENU_ITEMS][12] = {
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}, // 第一级菜单项 0 的每个二级菜单对应的三级菜单项数
     {51, 31, 7, 61, 50, 14, 100, 2, 10, 10, 10, 10},   // 第一级菜单项 1
     {51, 2, 3, 14, 3, 2, 16, 5, 5, 5, 5, 5},               // 第一级菜单项 2
@@ -89,7 +89,7 @@ static void menu_display(void)
     }
 }
 
-#if 0
+
 /**
  * @brief 控制菜单导航
  * 
@@ -102,151 +102,9 @@ static void menu_display(void)
 void menu_ctl_func(uint8_t key)
 {
     uint8_t write_protect = 0;
-    // 如果处于三级菜单，并且不是访问写保护参数本身，则读取写保护标志
-    if (g_menu_state.level == 3 &&
-        !(g_menu_state.index[1] == 3 && g_menu_state.index[2] == 0)) {
-        param_get(PARAM0X04, PARAM_WRITE_PROTECT, &write_protect);
-    }
-    
-    switch (key)
-    {
-#if 1
-        case 8: // 上键：选择上一项
-            if (g_menu_state.level == 3 && write_protect) {
-                break; // 写保护启用，禁止操作
-            }
-            if (g_menu_state.index[g_menu_state.level] > 0) {
-                g_menu_state.index[g_menu_state.level]--;
-            }
-            break;
+    // 如果处于菜单，并且不是访问写保护参数本身，则读取写保护标志
 
-        case 2: // 下键：选择下一项
-            if (g_menu_state.level == 3 && write_protect) {
-                break; // 写保护启用，禁止操作
-            }
-            if (g_menu_state.level == 1) {
-                if (g_menu_state.index[1] < LEVEL1_MENU_ITEMS - 1) {
-                    g_menu_state.index[1]++;
-                }
-            } else if (g_menu_state.level == 2) {
-                uint8_t items = level2_menu_items[g_menu_state.index[1]];
-                if (g_menu_state.index[2] < items - 1) {
-                    g_menu_state.index[2]++;
-                }
-            } else if (g_menu_state.level == 3) {
-                uint8_t items = level3_menu_items[g_menu_state.index[1]][g_menu_state.index[2]];
-                if (g_menu_state.index[3] < items - 1) {
-                    g_menu_state.index[3]++;
-                }
-            }
-            break;
-#else
-        case 8: // 上键：选择上一项（循环）
-            if (g_menu_state.level == 3 && write_protect) {
-                break; // 写保护启用，禁止操作
-            }
-            if (g_menu_state.level >= 1) {
-                uint8_t items = 0;
-                if (g_menu_state.level == 1) {
-                    items = LEVEL1_MENU_ITEMS;
-                }else if (g_menu_state.level == 2) {
-                    items = level2_menu_items[g_menu_state.index[1]];
-                } else if (g_menu_state.level == 3) {
-                    items = level3_menu_items[g_menu_state.index[1]][g_menu_state.index[2]];
-                }
-
-                if (items > 0) {
-                    g_menu_state.index[g_menu_state.level] =
-                        (g_menu_state.index[g_menu_state.level] + items - 1) % items;
-                }
-            }
-            break;
-
-        case 2: // 下键：选择下一项（循环）
-            if (g_menu_state.level == 3 && write_protect) {
-                break; // 写保护启用，禁止操作
-            }
-            if (g_menu_state.level >= 1) {
-                uint8_t items = 0;
-                if (g_menu_state.level == 1) {
-                    items = LEVEL1_MENU_ITEMS;
-                }else if (g_menu_state.level == 2) {
-                    items = level2_menu_items[g_menu_state.index[1]];
-                } else if (g_menu_state.level == 3) {
-                    items = level3_menu_items[g_menu_state.index[1]][g_menu_state.index[2]];
-                }
-
-                if (items > 0) {
-                    g_menu_state.index[g_menu_state.level] =
-                        (g_menu_state.index[g_menu_state.level] + 1) % items;
-                }
-            }
-            break;
-
-
-#endif
-
-        case 16: // 确认键：进入下一级菜单或保存参数
-            if (g_menu_state.level < 3) {
-                g_menu_state.level++;
-                if(g_menu_state.level == 3)
-                {
-                    uint8_t value = 0;
-                    param_get((ModuleParameterType)g_menu_state.index[1], g_menu_state.index[2], &value);
-                    g_menu_state.index[3] = value;
-                }
-            } else {
-                // 已在第三级菜单，按确认键保存参数后返回上一级
-                if((g_menu_state.index[1] == 3) && 
-                    (g_menu_state.index[2] == 1)  &&
-                    (g_menu_state.index[3] == 1))
-                {
-                    /*恢复默认参数*/
-                    param_default();
-                }
-                else{
-                    /*设置参数*/
-                    param_set((ModuleParameterType)g_menu_state.index[1], g_menu_state.index[2], g_menu_state.index[3]);
-                }
-
-                param_save();
-                g_menu_state.level--;
-            }
-            break;
-
-        case 1: // 后退键：返回上一级菜单
-            if (g_menu_state.level > 0) {
-                g_menu_state.index[g_menu_state.level] = 0;
-                g_menu_state.level--;
-            }
-            else if(g_menu_state.level == 0)
-                g_menu_state.level++;
-            break;
-
-        default:
-            // 其他按键不处理
-            break;
-    }
-    menu_display();
-}
-#endif
-
-#if 1
-/**
- * @brief 控制菜单导航
- * 
- * @param key 按键值：
- *            1: 后退键
- *            8: 上键
- *            2: 下键
- *           16: 确认键
- */
-void menu_ctl_func(uint8_t key)
-{
-    uint8_t write_protect = 0;
-    // 如果处于三级菜单，并且不是访问写保护参数本身，则读取写保护标志
-    if (g_menu_state.level == 3 &&
-        !(g_menu_state.index[1] == 3 && g_menu_state.index[2] == 0)) {
+    if (!(g_menu_state.level == 4 && g_menu_state.index[4] == 0)) {
         param_get(PARAM0X04, PARAM_WRITE_PROTECT, &write_protect);
     }
     g_errcode_display = 0; /*清除code显示，进入菜单显示*/
@@ -345,7 +203,7 @@ void menu_ctl_func(uint8_t key)
     }
     menu_display();
 }
-#endif
+
 static void show_speed_blink(void)
 {
     static uint8_t blink_flag = 1;
