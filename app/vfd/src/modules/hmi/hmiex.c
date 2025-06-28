@@ -9,6 +9,11 @@
 #define LONG_PRESS_TIME_MS  200   // Time to trigger continuous press
 #define HEX_TO_BCD(val)   ((((val) / 10) << 4) + ((val) % 10))
 
+#define MENU_KEY        1
+#define UP_KEY          8
+#define DOWN_KEY        2
+#define ENTER_KEY       16
+
 
 static uint8_t code_table[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, \
     0x7f, 0x6f, 0x77, 0x7c, 0x39, 0x5e, 0x79, 0x71}; //# 0-F
@@ -107,7 +112,7 @@ void menu_ctl_func(uint8_t key)
     g_errcode_display = 0; /*清除code显示，进入菜单显示*/
     switch (key)
     {
-        case 1: // 菜单键：在主菜单之间循环
+        case MENU_KEY: // 菜单键：在主菜单之间循环
             if (g_menu_state.level == 1) {
                 // 返回上一级菜单（level 1 -> level 0）
                 g_menu_state.level = 0;
@@ -118,16 +123,16 @@ void menu_ctl_func(uint8_t key)
             }
             break;
 
-        case 8: // 上键
-        case 2: // 下键
+        case UP_KEY: // 上键
+        case DOWN_KEY: // 下键
             if (g_menu_state.level == 0) {
                 // level == 0：在 sub_menu_items 中循环选择子菜单项
                 uint8_t max_sub = sub_menu_items[g_menu_state.main_index];
                 if (max_sub > 0) {
-                    if (key == 8) { // 上键
+                    if (key == UP_KEY) { // 上键
                         g_menu_state.sub_index[g_menu_state.main_index] =
                             (g_menu_state.sub_index[g_menu_state.main_index] + max_sub - 1) % max_sub;
-                    } else if (key == 2) { // 下键
+                    } else if (key == DOWN_KEY) { // 下键
                         g_menu_state.sub_index[g_menu_state.main_index] =
                             (g_menu_state.sub_index[g_menu_state.main_index] + 1) % max_sub;
                     }
@@ -139,16 +144,16 @@ void menu_ctl_func(uint8_t key)
                 uint8_t max_value = value_menu_items[g_menu_state.main_index][current_sub_index];
 
                 if (max_value > 0) {
-                    if (key == 8 && g_menu_state.value_index > 0) {
+                    if (key == UP_KEY && g_menu_state.value_index > 0) {
                         g_menu_state.value_index--;
-                    } else if (key == 2 && g_menu_state.value_index < max_value - 1) {
+                    } else if (key == DOWN_KEY && g_menu_state.value_index < max_value - 1) {
                         g_menu_state.value_index++;
                     }
                 }
             }
             break;
 
-        case 16: // 确认键：进入下一级菜单或保存参数
+        case ENTER_KEY: // 确认键：进入下一级菜单或保存参数
             if (g_menu_state.level == 0) {
                 if(g_menu_state.main_index == 0)
                     return ;
