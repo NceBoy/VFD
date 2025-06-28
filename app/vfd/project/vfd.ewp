@@ -2522,9 +2522,15 @@
             <name>hmi</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\hmi\hmi.c</name>
+                <excluded>
+                    <configuration>Debug</configuration>
+                </excluded>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\hmi\hmi.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\hmi\hmiex.c</name>
             </file>
         </group>
         <group>

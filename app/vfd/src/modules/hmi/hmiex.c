@@ -14,8 +14,10 @@ static uint8_t code_table[] = {0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, \
     0x7f, 0x6f, 0x77, 0x7c, 0x39, 0x5e, 0x79, 0x71}; //# 0-F
 
 typedef struct {
+    uint8_t main_index; // 主菜单索引 (0~4)
+    uint8_t sub_index[5];   // 每个主菜单下的子菜单索引
+    uint8_t value_index;          // 三级菜单索引
     uint8_t level;      // 当前菜单层级（0~1）
-    uint8_t index[5];   // 每一层的选中项索引（从0开始）
 } menu_state_t;
 
 typedef struct 
@@ -29,23 +31,21 @@ typedef struct
 
 static key_t g_key = {0, 0, 0, 0, 0};
 
-static menu_state_t g_menu_state = {0, {0, 0, 0,0}};  // 初始在第一级菜单第0项
+static menu_state_t g_menu_state = {0};  // 初始在第一级菜单第0项
 
 static uint8_t g_level_refresh = 0;
 static uint8_t g_errcode_display = 0;
 
 
 // 第一级菜单项数
-#define LEVEL1_MENU_ITEMS     5
+#define MAIN_MAX     5
 
 // 第二级菜单项数（每个一级菜单对应不同数量的二级菜单项）
-const uint8_t level2_menu_items[LEVEL1_MENU_ITEMS] = {2, 11, 8, 7, 2};
-//#define LEVEL2_MENU_ITEMS       12
+const uint8_t sub_menu_items[MAIN_MAX] = {2, 11, 8, 7, 2};
 
 // 第三级菜单项数（每个二级菜单下都固定有100个三级菜单项）
-//#define LEVEL3_MENU_ITEMS    100
 // 三级菜单项数查找表（按实际需求填写）
-const uint8_t level3_menu_items[LEVEL1_MENU_ITEMS][12] = {
+const uint8_t value_menu_items[MAIN_MAX][12] = {
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}, // 第一级菜单项 0 的每个二级菜单对应的三级菜单项数
     {51, 31, 7, 61, 50, 14, 100, 2, 10, 10, 10, 10},   // 第一级菜单项 1
@@ -55,26 +55,22 @@ const uint8_t level3_menu_items[LEVEL1_MENU_ITEMS][12] = {
 
 static void menu_display(void)
 {
+    if((g_menu_state.level == 0) && (g_menu_state.main_index == 0))
+        return ;
     switch(g_menu_state.level)
     {
         case 0:{/*第0级菜单*/
-         
-        }break;
-        case 1:{/*第一级菜单*/
+            uint8_t index = g_menu_state.main_index - 1;
             uint8_t data[8] = {0x00, 0x00, 0x73, 0x00,0x00, 0x00,0x00, 0x00};
-            data[0] = code_table[g_menu_state.index[1]];
-            tm1628a_write_continuous(data , sizeof(data));            
+            data[0] = code_table[index];
+            data[4] = code_table[g_menu_state.sub_index[index] >> 4];
+            data[6] = code_table[g_menu_state.sub_index[index] & 0x0f];
+            tm1628a_write_continuous(data , sizeof(data)); 
         }break;
-        case 2:{/*第二级菜单*/
-            uint8_t data[8] = {0x00, 0x00, 0x73, 0x00 , 0x00, 0x00,0x00, 0x00};
-            data[0] = code_table[g_menu_state.index[1]];
-            data[4] = code_table[g_menu_state.index[2]];
-            tm1628a_write_continuous(data , sizeof(data));            
-        }break;
-        case 3:{/*第三级菜单*/
+        case 1:{/*第1级菜单*/
             uint8_t data[8] = {0x5e, 0x00, 0x00, 0x00 , 0x00, 0x00,0x00, 0x00};
-            if(g_menu_state.index[3] < 100){
-                uint8_t value = HEX_TO_BCD(g_menu_state.index[3]);
+            if(g_menu_state.value_index < 100){
+                uint8_t value = HEX_TO_BCD(g_menu_state.value_index);
                 data[2] = code_table[value >> 4];
                 data[4] = code_table[value & 0x0f];                
             }
@@ -102,101 +98,84 @@ static void menu_display(void)
 void menu_ctl_func(uint8_t key)
 {
     uint8_t write_protect = 0;
-    // 如果处于菜单，并且不是访问写保护参数本身，则读取写保护标志
 
-    if (!(g_menu_state.level == 4 && g_menu_state.index[4] == 0)) {
+    // 仅在 level == 1 且不是访问“写保护参数”自身时才获取写保护状态
+    if (g_menu_state.level == 1 &&
+        !(g_menu_state.main_index == 4 && g_menu_state.sub_index[4] == 0)) {
         param_get(PARAM0X04, PARAM_WRITE_PROTECT, &write_protect);
     }
     g_errcode_display = 0; /*清除code显示，进入菜单显示*/
     switch (key)
     {
-        case 8: // 上键：选择上一项（仅 level 1 & level 2 循环）
-            if (g_menu_state.level == 3 && write_protect) {
-                break; // 写保护启用，禁止操作
-            }
-            if (g_menu_state.level != 3) {
-                uint8_t items = 0;
-                if (g_menu_state.level == 0) {
-                    items = LEVEL0_MENU_ITEMS;
-                } else if (g_menu_state.level == 1) {
-                    items = LEVEL1_MENU_ITEMS;
-                } else if (g_menu_state.level == 2) {
-                    items = level2_menu_items[g_menu_state.index[1]];
-                }
-
-                if (items > 0) {
-                    g_menu_state.index[g_menu_state.level] =
-                        (g_menu_state.index[g_menu_state.level] + items - 1) % items;
-                }
-            } else if (g_menu_state.level == 3) {
-                if (g_menu_state.index[3] > 0) {
-                    g_menu_state.index[3]--;
-                }
+        case 1: // 菜单键：在主菜单之间循环
+            if (g_menu_state.level == 1) {
+                // 返回上一级菜单（level 1 -> level 0）
+                g_menu_state.level = 0;
+            } else if (g_menu_state.level == 0) {
+                // 在主菜单之间向上循环
+                g_menu_state.sub_index[g_menu_state.main_index] = 0;
+                g_menu_state.main_index = (g_menu_state.main_index + MAIN_MAX - 1) % MAIN_MAX;
             }
             break;
 
-        case 2: // 下键：选择下一项（仅 level 1 & level 2 循环）
-            if (g_menu_state.level == 3 && write_protect) {
-                break; // 写保护启用，禁止操作
+        case 8: // 上键
+        case 2: // 下键
+            if (g_menu_state.level == 0) {
+                // level == 0：在 sub_menu_items 中循环选择子菜单项
+                uint8_t max_sub = sub_menu_items[g_menu_state.main_index];
+                if (max_sub > 0) {
+                    if (key == 8) { // 上键
+                        g_menu_state.sub_index[g_menu_state.main_index] =
+                            (g_menu_state.sub_index[g_menu_state.main_index] + max_sub - 1) % max_sub;
+                    } else if (key == 2) { // 下键
+                        g_menu_state.sub_index[g_menu_state.main_index] =
+                            (g_menu_state.sub_index[g_menu_state.main_index] + 1) % max_sub;
+                    }
+                }
             }
-            if (g_menu_state.level != 3) {
-                uint8_t items = 0;
-                if (g_menu_state.level == 0){
-                    items = LEVEL0_MENU_ITEMS;
-                }else if (g_menu_state.level == 1) {
-                    items = LEVEL1_MENU_ITEMS;
-                } else if (g_menu_state.level == 2) {
-                    items = level2_menu_items[g_menu_state.index[1]];
-                }
+            else if (g_menu_state.level == 1 && !write_protect) {
+                // level == 1 且无写保护：在 value_menu_items 中循环选择参数值
+                uint8_t current_sub_index = g_menu_state.sub_index[g_menu_state.main_index];
+                uint8_t max_value = value_menu_items[g_menu_state.main_index][current_sub_index];
 
-                if (items > 0) {
-                    g_menu_state.index[g_menu_state.level] =
-                        (g_menu_state.index[g_menu_state.level] + 1) % items;
-                }
-            } else if (g_menu_state.level == 3) {
-                uint8_t items = level3_menu_items[g_menu_state.index[1]][g_menu_state.index[2]];
-                if (g_menu_state.index[3] < items - 1) {
-                    g_menu_state.index[3]++;
+                if (max_value > 0) {
+                    if (key == 8 && g_menu_state.value_index > 0) {
+                        g_menu_state.value_index--;
+                    } else if (key == 2 && g_menu_state.value_index < max_value - 1) {
+                        g_menu_state.value_index++;
+                    }
                 }
             }
             break;
 
         case 16: // 确认键：进入下一级菜单或保存参数
-            if (g_menu_state.level < 3) {
+            if (g_menu_state.level == 0) {
+                if(g_menu_state.main_index == 0)
+                    return ;
                 g_menu_state.level++;
-                if(g_menu_state.level == 3){
-                    uint8_t value = 0;
-                    param_get((ModuleParameterType)g_menu_state.index[1], g_menu_state.index[2], &value);
-                    g_menu_state.index[3] = value;
-                }
+                uint8_t index = g_menu_state.main_index - 1;
+                uint8_t value = 0;
+                param_get((ModuleParameterType)index, g_menu_state.sub_index[index], &value);
+                g_menu_state.value_index = value;
+                
             } else {
-                // 已在第三级菜单，按确认键保存参数后返回上一级
-                if((g_menu_state.index[1] == 3) && 
-                    (g_menu_state.index[2] == 1)  &&
-                    (g_menu_state.index[3] == 1)){
+                // 已在第一级菜单，按确认键保存参数后返回上一级
+                if((g_menu_state.main_index == 4) && 
+                    (g_menu_state.sub_index[4] == 1)  &&
+                    (g_menu_state.value_index == 1)){
                     /*恢复默认参数*/
                     param_default();
                 }
                 else{
                     /*设置参数*/
-                    param_set((ModuleParameterType)g_menu_state.index[1], g_menu_state.index[2], g_menu_state.index[3]);
+                    uint8_t index = g_menu_state.main_index - 1;
+                    param_set((ModuleParameterType)index, g_menu_state.sub_index[index], g_menu_state.value_index);
                 }
 
                 param_save();
-                g_menu_state.level--;
+                g_menu_state.level = 0;
             }
             break;
-
-        case 1: // 后退键：返回上一级菜单
-            if (g_menu_state.level > 0) {
-                g_menu_state.index[g_menu_state.level] = 0;
-                g_menu_state.level--;
-                if(g_menu_state.level == 0) g_level_refresh = 1;
-            }
-            else if(g_menu_state.level == 0)
-                g_menu_state.level++;
-            break;
-
         default:
             // 其他按键不处理
             break;
@@ -317,9 +296,11 @@ static void show_level0_and_led_info(void)
     {
         if(g_menu_state.level != 0)
             return ;
-        if(g_menu_state.index[0] == 0){
+        if(g_menu_state.main_index != 0)
+            return ;
+        if(g_menu_state.sub_index[0] == 0){
             show_speed_info();
-        }else if(g_menu_state.index[0] == 1)
+        }else if(g_menu_state.sub_index[0] == 1)
             show_voltage_info();
     }
 }
@@ -404,8 +385,10 @@ void hmi_clear_menu(void)
 {
     g_errcode_display = 0;
     g_menu_state.level = 0;
-    g_menu_state.index[0] = 0;
-    g_menu_state.index[1] = 0;
-    g_menu_state.index[2] = 0;
-    g_menu_state.index[3] = 0;
+    g_menu_state.main_index = 0;
+    g_menu_state.sub_index[0] = 0;
+    g_menu_state.sub_index[1] = 0;
+    g_menu_state.sub_index[2] = 0;
+    g_menu_state.sub_index[3] = 0;
+    g_menu_state.sub_index[4] = 0;
 }
