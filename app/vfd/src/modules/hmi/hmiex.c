@@ -117,9 +117,9 @@ void menu_ctl_func(uint8_t key)
                 // 返回上一级菜单（level 1 -> level 0）
                 g_menu_state.level = 0;
             } else if (g_menu_state.level == 0) {
-                // 在主菜单之间向上循环
+                // 在主菜单之间向下循环
                 g_menu_state.sub_index[g_menu_state.main_index] = 0;
-                g_menu_state.main_index = (g_menu_state.main_index + MAIN_MAX - 1) % MAIN_MAX;
+                g_menu_state.main_index = (g_menu_state.main_index + 1) % MAIN_MAX;
             }
             break;
 
