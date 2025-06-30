@@ -40,8 +40,6 @@ typedef struct
 {
     float start_freq;           /*启动频率*/
     float open_freq;            /*开高频最低频率*/
-    float acce_step_freq;            /*加速时一步的频率，此参数时计算出来的，不是读取的参数*/
-    float dece_step_freq;            /*减速时一步的频率，此参数时计算出来的，不是读取的参数*/
     unsigned int open_freq_delay;    /*开高频延时*/
     unsigned int vari_freq_close;   /*变频关高频标志位*/
     
@@ -87,13 +85,11 @@ static void motor_param_get(void)
     /*加速时间，单位0.1秒*/
     param_get(PARAM0X02, PARAM_ACCE_TIME, &value);
     g_motor_param.acceleration_time_us = value* 100 * 1000;
+    
     /*减速时间，单位0.1秒*/
     param_get(PARAM0X02, PARAM_DECE_TIME, &value);
     g_motor_param.deceleration_time_us = value* 100 * 1000;
 
-    /*计算加速时一步的频率和减速时一步的频率,T型加减速用到，如果不是T型，忽略该参数*/
-    g_motor_param.acce_step_freq = ((50.0f - g_motor_param.start_freq) / g_motor_param.acceleration_time_us) * TMR_INT_PERIOD_US;
-    g_motor_param.dece_step_freq = ((50.0f - g_motor_param.start_freq) / g_motor_param.deceleration_time_us) * TMR_INT_PERIOD_US;
 }
 
 static float radio_from_freq(float freq)
@@ -214,111 +210,8 @@ static unsigned int float_equal_in_step(float a , float b, float step)
     return 0;
 }
 
-/*(T型加减速,下一步频率计算)*/
-static float motor_calcu_next_step_freq(float current_freq,float target_freq)
-{
-    if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
-        g_motor_real.freq_arrive = 1;
-        return target_freq;
-    }
-    g_motor_real.freq_arrive = 0;
-    if(target_freq > current_freq){/*加速*/
-        if(float_equal_in_step(current_freq , target_freq, g_motor_param.acce_step_freq))
-            return target_freq;
-        else return current_freq + g_motor_param.acce_step_freq;
-    } 
-    else{/*减速*/
-        if(float_equal_in_step(current_freq , target_freq, g_motor_param.dece_step_freq))
-            return target_freq;
-        else return current_freq - g_motor_param.dece_step_freq;
-    } 
-}
-
-#if 0
-/*(T型加减速,下一步频率计算)*/
-static float motor_calcu_next_step_freq(
-    float startup_freq , 
-    unsigned int acceleration_time_us ,
-    unsigned int deceleration_time_us ,
-    unsigned int one_step_time_us,
-    float current_freq,
-    float target_freq)
-{
-    float next_step_freq = 0.0f;
-    float step_hz_1us = 0.0f;   /*1us迈过的频率值*/
-
-    if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
-        g_motor_real.freq_arrive = 1;      
-        return target_freq;
-    }
-    g_motor_real.freq_arrive = 0;
-    if(target_freq > current_freq) /*加速*/
-        step_hz_1us = (50.0f - startup_freq ) / (float)acceleration_time_us;
-    else /*减速*/
-        step_hz_1us = (50.0f - startup_freq ) / (float)deceleration_time_us;
-
-    float one_step_hz = step_hz_1us * one_step_time_us;  /*一步迈过的频率值*/
-    if(float_equal_in_step(current_freq , target_freq, one_step_hz))
-        return target_freq;
-    if(target_freq > current_freq)
-        next_step_freq = current_freq + one_step_hz ;
-    else
-        next_step_freq = current_freq - one_step_hz;
-    return next_step_freq;
-}
 
 
-/*三次多项式插值法（Cubic Interpolation） 来生成S型曲线*/
-static float motor_calcu_next_step_freq_s_curve(float current_freq,float target_freq)
-{
-    static float start_freq = 0.0f;
-    static float delta_freq = 0.0f;
-    static unsigned int total_steps = 0;
-    static unsigned int step_count = 0;
-    /* 如果频率已经到位，直接返回当前频率 */
-    if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
-        g_motor_real.freq_arrive = 1;
-        step_count = 0;
-        delta_freq = 0;
-        total_steps = 0;        
-        return target_freq;
-    }
-    g_motor_real.freq_arrive = 0;
-    /* 只在开始新动作时初始化 */
-    if (step_count == 0 || total_steps == 0) {
-
-        start_freq = current_freq;
-        delta_freq = target_freq - current_freq;
-
-        /* 计算动态的加速/减速时间 */
-        float ratio = current_freq / 50.0f;  // 当前频率比例
-        if (delta_freq > 0) {
-            // 加速
-            total_steps = (unsigned int)((ratio * acceleration_time_us) / one_step_time_us);
-        } else {
-            // 减速
-            total_steps = (unsigned int)((ratio * deceleration_time_us) / one_step_time_us);
-        }
-
-        if (total_steps == 0) total_steps = 1; // 防止除以零
-
-    }
-
-    if (step_count >= total_steps) {
-        step_count = 0; // 完成后重置
-        return target_freq;
-    }
-
-    /*   S 曲线插值：3t² - 2t³  */
-    float t = (float)step_count / (float)(total_steps - 1); // [0,1]
-    float sigmoid = 3.0f * t * t - 2.0f * t * t * t; // S 型曲线
-
-    float next_freq = start_freq + delta_freq * sigmoid;
-    step_count++;
-
-    return next_freq;
-}
-#endif
 
 static unsigned int motor_arrive_freq(float freq)
 {
@@ -376,6 +269,127 @@ static void motor_update_compare(void)
     bsp_tmr_update_compare(phaseA , phaseB , phaseC); 
 }
 
+/*(T型加减速,下一步频率计算)*/
+static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_freq)
+{
+    /*计算加速时一步的频率和减速时一步的频率,T型加减速用到，如果不是T型，忽略该参数*/
+    static float last_target_freq = 0.0f;
+    static float acce_step_freq = 0.0f;
+    static float dece_step_freq = 0.0f;
+    if(float_equal_in_step(last_target_freq , target_freq , 0.01f) == 0)
+    {
+        /*计算参数*/
+        last_target_freq = target_freq;
+        acce_step_freq = ((50.0f - g_motor_param.start_freq) / g_motor_param.acceleration_time_us) * TMR_INT_PERIOD_US;
+        dece_step_freq = ((50.0f - g_motor_param.start_freq) / g_motor_param.deceleration_time_us) * TMR_INT_PERIOD_US;
+    }
+
+    if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
+        g_motor_real.freq_arrive = 1;
+        return target_freq;
+    }
+    g_motor_real.freq_arrive = 0;
+    if(target_freq > current_freq){/*加速*/
+        if(float_equal_in_step(current_freq , target_freq, acce_step_freq))
+            return target_freq;
+        else return current_freq + acce_step_freq;
+    } 
+    else{/*减速*/
+        if(float_equal_in_step(current_freq , target_freq, dece_step_freq))
+            return target_freq;
+        else return current_freq - dece_step_freq;
+    } 
+}
+
+#if 0
+/*(T型加减速,下一步频率计算)*/
+static float motor_calcu_next_step_freq(
+    float startup_freq , 
+    unsigned int acceleration_time_us ,
+    unsigned int deceleration_time_us ,
+    unsigned int one_step_time_us,
+    float current_freq,
+    float target_freq)
+{
+    float next_step_freq = 0.0f;
+    float step_hz_1us = 0.0f;   /*1us迈过的频率值*/
+
+    if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
+        g_motor_real.freq_arrive = 1;      
+        return target_freq;
+    }
+    g_motor_real.freq_arrive = 0;
+    if(target_freq > current_freq) /*加速*/
+        step_hz_1us = (50.0f - startup_freq ) / (float)acceleration_time_us;
+    else /*减速*/
+        step_hz_1us = (50.0f - startup_freq ) / (float)deceleration_time_us;
+
+    float one_step_hz = step_hz_1us * one_step_time_us;  /*一步迈过的频率值*/
+    if(float_equal_in_step(current_freq , target_freq, one_step_hz))
+        return target_freq;
+    if(target_freq > current_freq)
+        next_step_freq = current_freq + one_step_hz ;
+    else
+        next_step_freq = current_freq - one_step_hz;
+    return next_step_freq;
+}
+#endif
+
+/*三次多项式插值法（Cubic Interpolation） 来生成S型曲线*/
+static float motor_calcu_next_step_freq_s_curve(float current_freq,float target_freq)
+{
+    static float start_freq = 0.0f;
+    static float delta_freq = 0.0f;
+    static unsigned int total_steps = 0;
+    static unsigned int step_count = 0;
+
+    static float last_target_freq = 0.0f;
+    if(float_equal_in_step(last_target_freq , target_freq , 0.01f) == 0)
+    {
+        /*重新计算参数*/
+        last_target_freq = target_freq;
+
+        start_freq = current_freq;
+        delta_freq = target_freq - current_freq;
+
+        /* 计算动态的加速/减速时间 */
+        static float ratio = 0.0f;
+        if (target_freq > current_freq) {
+            // 加速
+            ratio = (target_freq - current_freq) / (50.0f - g_motor_param.start_freq);  // 当前频率比例
+            total_steps = (unsigned int)((ratio * g_motor_param.acceleration_time_us) / TMR_INT_PERIOD_US);
+        } else {
+            // 减速
+            ratio = (current_freq - target_freq) / (50.0f - g_motor_param.start_freq);  // 当前频率比例
+            total_steps = (unsigned int)((ratio * g_motor_param.deceleration_time_us) / TMR_INT_PERIOD_US);
+        }
+
+        if (total_steps == 0) total_steps = 1; // 防止除以零
+        step_count = 0;
+    }
+
+    /* 如果频率已经到位，直接返回当前频率 */
+    if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
+        g_motor_real.freq_arrive = 1;
+        return target_freq;
+    }
+    g_motor_real.freq_arrive = 0;
+    if (step_count >= total_steps) {
+        g_motor_real.freq_arrive = 1;
+        return target_freq;
+    }
+
+    /*   S 曲线插值：3t² - 2t³  */
+    float t = (float)step_count / (float)(total_steps - 1); // [0,1]
+    float sigmoid = 3.0f * t * t - 2.0f * t * t * t; // S 型曲线
+
+    float next_freq = start_freq + delta_freq * sigmoid;
+    step_count++;
+
+    return next_freq;
+}
+
+
 #if 0
 /*每次中断调用一次*/
 static void motor_update_spwm(void)
@@ -407,6 +421,7 @@ static void motor_update_spwm(void)
 }
 #endif
 
+
 static void motor_update_spwm(void)
 {   
     motor_update_compare();
@@ -419,7 +434,8 @@ static void motor_update_spwm(void)
     if (g_motor_real.angle >= PI_2) g_motor_real.angle -= PI_2;
 
     /*计算下一步的频率*/
-    g_motor_real.next_step_freq = motor_calcu_next_step_freq(g_motor_real.current_freq,g_motor_real.target_freq);
+    g_motor_real.next_step_freq = motor_calcu_next_step_freq_s_curve(g_motor_real.current_freq,g_motor_real.target_freq);
+    LPUART1->TDR = 2 * (uint8_t)g_motor_real.next_step_freq;
 }
 
 static void high_freq_control(void)

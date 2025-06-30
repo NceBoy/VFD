@@ -80,7 +80,7 @@ static  void  taskstart (ULONG thread_input)
 
 	nx_msg_init();
 
-    //service_test_start();
+    service_test_start();
     
     service_data_start();
 
@@ -90,12 +90,12 @@ static  void  taskstart (ULONG thread_input)
 
     tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 100, 300, TX_AUTO_ACTIVATE);
     
-    logdbg("system start .\n");
+    //logdbg("system start .\n");
 
         
 	while(1)
 	{
-        inout_scan();
+        //inout_scan();
         uart3_recv_to_data();
         bsp_led_run();
         tx_thread_sleep(5);
