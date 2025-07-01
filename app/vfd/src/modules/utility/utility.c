@@ -1,6 +1,6 @@
 #include "utility.h"
 
-uint8_t xor_checksum(uint8_t* data, int length)
+uint8_t custom_checksum(uint8_t* data, int length)
 {
     unsigned char checksum = 0;
     for (int i = 0; i < length; i++) {

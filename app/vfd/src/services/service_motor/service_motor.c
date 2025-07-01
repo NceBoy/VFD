@@ -52,8 +52,7 @@ static int do_msg_handler(MSG_MGR_T* msg)
 
         case MSG_ID_MOTOR_VF      : {
             assert(msg->len == 4);
-            unsigned int freq = 0;
-            memcpy(&freq,msg->buf,msg->len);
+            int freq = *(int*)msg->buf;
             motor_target_info_update((float) freq);
 
         } break; 
@@ -106,7 +105,7 @@ void ext_motor_start(unsigned int dir , unsigned int target)
 
 void ext_motor_speed(unsigned int speed)
 {
-    if(motor_is_working() == 0)
+    if(motor_is_running() == 0)
         return ;
     unsigned int freq = speed;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_VF, &freq, 4);
@@ -114,14 +113,14 @@ void ext_motor_speed(unsigned int speed)
 
 void ext_motor_reverse(void)
 {
-    if(motor_is_working() == 0)
+    if(motor_is_running() == 0)
         return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_REVERSE, NULL, 0);
 }
 
 void ext_motor_brake(void)
 {
-    if(motor_is_working() == 0)
+    if(motor_is_running() == 0)
         return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BRAKE, NULL, 0);
 }

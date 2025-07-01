@@ -46,14 +46,14 @@ void param_default(void)
  {
     EEPROM_Init();
     EEPROM_Read(0, g_vfdParam, sizeof(g_vfdParam));
-    uint8_t crc_param = xor_checksum((uint8_t*)g_vfdParam, sizeof(g_vfdParam) - 1);
+    uint8_t crc_param = custom_checksum((uint8_t*)g_vfdParam, sizeof(g_vfdParam) - 1);
     if(g_vfdParam[MAX_MODULE_TYPES - 1][MAX_PARAM_ENTRIES - 1] != crc_param)
         param_default();
  }
 
  void param_save(void)
  {
-    uint8_t crc_param = xor_checksum((uint8_t*)g_vfdParam, sizeof(g_vfdParam) - 1);
+    uint8_t crc_param = custom_checksum((uint8_t*)g_vfdParam, sizeof(g_vfdParam) - 1);
     g_vfdParam[MAX_MODULE_TYPES - 1][MAX_PARAM_ENTRIES - 1] = crc_param;
     EEPROM_Write(0, g_vfdParam, sizeof(g_vfdParam));
  }

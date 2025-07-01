@@ -691,14 +691,14 @@ void scan_voltage(void)
     g_input_voltage = voltage;
     if(is_power_off(voltage,timeout) == 1){
         g_vfd_voltage_flag = 3;
-        if(motor_is_working())
+        if(motor_is_running())
             motor_stop_ctl(CODE_POWER_OFF);
     }
     else{
         uint8_t voltage_status = check_voltage_status(voltage,220 - voltage_protect , 220 + voltage_protect,timeout);
         if(voltage_status != 0)
         {
-            if(motor_is_working())
+            if(motor_is_running())
                 motor_stop_ctl((stopcode_t)(voltage_status + 4));            
         }
         g_vfd_voltage_flag = voltage_status;
@@ -718,6 +718,7 @@ void inout_init(void)
     return ;
 }
 
+
 void inout_scan(void)
 {
     /*step 1 . 极性*/
@@ -736,6 +737,7 @@ void inout_scan(void)
     scan_voltage();
     /*step 7 . 错误处理*/
     update_err();
+
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -745,7 +747,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_7) == GPIO_PIN_RESET)
         {
             g_ipm_vfo_flag = 1;
-            ext_motor_brake();
+            motor_stop_ctl(CODE_IPM_VFO);
         }
         else
             g_ipm_vfo_flag = 0;

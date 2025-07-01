@@ -148,6 +148,14 @@ int motor_is_working(void)
     return (g_motor_real.motor_status == motor_in_idle) ?  0 : 1;
 }
 
+int motor_is_running(void)
+{
+    if((g_motor_real.motor_status == motor_in_run) || 
+        (g_motor_real.motor_status == motor_in_reverse))
+        return 1;
+    else return 0;
+}
+
 int motor_target_current_get(void)
 {
     return (int)g_motor_real.target_should_be;

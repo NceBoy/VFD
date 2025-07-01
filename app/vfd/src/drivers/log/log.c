@@ -8,7 +8,7 @@
 volatile unsigned char log_level = LOG_LEVEL_DBG \
                                     | LOG_LEVEL_INF \
                                     | LOG_LEVEL_WAR \
-                                    | LOG_TYPE_ERR;
+                                    | LOG_LEVEL_ERR;
 
 struct {
     int (*uart_init)(void);

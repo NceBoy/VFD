@@ -20,6 +20,7 @@ typedef enum
 
     MSG_ID_KEY_SCAN,
     MSG_ID_STOP_CODE,
+    MSG_ID_IPM_FAULT,
 }MSG_ID;
 
 typedef TX_QUEUE  *msg_addr;
