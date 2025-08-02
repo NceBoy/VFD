@@ -1,5 +1,6 @@
 #include "main.h"
 #include "bsp_adc.h"
+#include "bsp_io.h"
 #include "log.h"
 
 
@@ -189,6 +190,7 @@ void bsp_adc_init(void)
     }
 }
 
+
 void bsp_adc_start(void)
 {
     static uint8_t first_sample = 1;
@@ -213,6 +215,17 @@ void bsp_adc_start(void)
         }
     }
     HAL_ADC_Stop(&hadc1);
+    
+    
+
+#if 0    
+    int vol = (int)((float)g_adc_value[0].average / 4095.0 * 3 * 160 / 1.414);
+    
+    if(vol > 270) /*母线电压过高*/
+        BREAK_VDC_ENABLE;
+    else
+        BREAK_VDC_DISABLE;  
+#endif
 }
 
 

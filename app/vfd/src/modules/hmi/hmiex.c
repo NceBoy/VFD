@@ -65,9 +65,9 @@ static void menu_display(void)
     switch(g_menu_state.level)
     {
         case 0:{/*第0级菜单*/
-            uint8_t index = g_menu_state.main_index - 1;
+            uint8_t index = g_menu_state.main_index;
             uint8_t data[8] = {0x00, 0x00, 0x73, 0x00,0x00, 0x00,0x00, 0x00};
-            data[0] = code_table[index];
+            data[0] = code_table[index - 1];
             data[4] = code_table[g_menu_state.sub_index[index] >> 4];
             data[6] = code_table[g_menu_state.sub_index[index] & 0x0f];
             tm1628a_write_continuous(data , sizeof(data)); 
@@ -158,9 +158,9 @@ void menu_ctl_func(uint8_t key)
                 if(g_menu_state.main_index == 0)
                     return ;
                 g_menu_state.level++;
-                uint8_t index = g_menu_state.main_index - 1;
                 uint8_t value = 0;
-                param_get((ModuleParameterType)index, g_menu_state.sub_index[index], &value);
+                param_get((ModuleParameterType)(g_menu_state.main_index - 1), \
+                    g_menu_state.sub_index[g_menu_state.main_index], &value);
                 g_menu_state.value_index = value;
                 
             } else {
@@ -173,8 +173,8 @@ void menu_ctl_func(uint8_t key)
                 }
                 else{
                     /*设置参数*/
-                    uint8_t index = g_menu_state.main_index - 1;
-                    param_set((ModuleParameterType)index, g_menu_state.sub_index[index], g_menu_state.value_index);
+                    param_set((ModuleParameterType)(g_menu_state.main_index - 1), \
+                        g_menu_state.sub_index[g_menu_state.main_index], g_menu_state.value_index);
                 }
 
                 param_save();

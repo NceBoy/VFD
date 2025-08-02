@@ -31,7 +31,7 @@ void param_default(void)
 
     g_vfdParam[PARAM0X03][PARAM_POWER_OFF_TIME] = 1;// 允许掉电最长时间，单位0.1秒
     g_vfdParam[PARAM0X03][PARAM_WORK_END_SIGNAL] = 0;// 加工结束信号
-    g_vfdParam[PARAM0X03][PARAM_STOP_MODE] = 1;// 加工停机结束方式0:立即停止 1:靠右停 2:靠左停
+    g_vfdParam[PARAM0X03][PARAM_STOP_MODE] = 0;// 加工停机结束方式0:立即停止 1:靠右停 2:靠左停
     g_vfdParam[PARAM0X03][PARAM_START_FREQ] = 5;// 启动、换向、刹车起始频率
     g_vfdParam[PARAM0X03][PARAM_START_DIRECTION] = 1;// 丝筒启动方向
     g_vfdParam[PARAM0X03][PARAM_WIRE_BREAK_SIGNAL] = 0;// 断丝检测信号    

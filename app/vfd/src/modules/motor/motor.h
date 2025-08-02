@@ -16,7 +16,7 @@ void motor_brake_start(void);                               /*停机*/
 int motor_target_current_get(void);
 int motor_target_current_dir(void);
 int motor_is_working(void);
-
+int motor_is_running(void);
 
 void motor_init(void);
 

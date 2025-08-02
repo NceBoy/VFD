@@ -133,7 +133,7 @@ void motor_start_ctl(void)
 
     if(g_ipm_vfo_flag != 0)
     {
-        ext_notify_stop_code(CODE_IPM);
+        ext_notify_stop_code(CODE_IPM_VFO);
         return ;
     }
 
@@ -734,7 +734,7 @@ void inout_scan(void)
     io_scan_onoff();
 
     /*step 6 . 电压检测*/
-    scan_voltage();
+    //scan_voltage();
     /*step 7 . 错误处理*/
     update_err();
 
@@ -747,7 +747,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_7) == GPIO_PIN_RESET)
         {
             g_ipm_vfo_flag = 1;
-            motor_stop_ctl(CODE_IPM_VFO);
+            //motor_stop_ctl(CODE_IPM_VFO);
         }
         else
             g_ipm_vfo_flag = 0;
