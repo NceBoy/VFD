@@ -23,7 +23,6 @@ int bsp_log_init(void)
 
   HAL_UARTEx_DisableFifoMode(&hlpuart1);
 
-
     return 0;
 }
 

@@ -6,7 +6,8 @@
 #include "nx_msg.h"
 #include "protocol.h"
 #include "data.h"
-#include "uart.h"
+#include "ble.h"
+#include "bsp_uart.h"
 
 /*线程参数*/
 
@@ -21,9 +22,7 @@ static  void        task_data          (ULONG thread_input);
 static TX_QUEUE g_data_queue = {0};
 static UINT g_data_queue_addr[QUEUE_DATA_MAX_NUM] = {0};
 
-/*创建一个定时器，用作UART超时判断*/
-static VOID timeout_cb(ULONG);
-static TX_TIMER g_uart_timeout_tmr = {0};
+
 /*ack 应答全局缓冲区*/
 static uint8_t g_ack_buf[1024];
 
@@ -43,26 +42,42 @@ void service_data_start(void)
                      TX_AUTO_START);
 }
 
-
-
-
-static int do_handler(MSG_MGR_T* msg)
-{
-    loghex((unsigned char*) msg->buf , msg->len); 
-    
+static int protocol_process(unsigned char* buf , int len)
+{ 
     Packet pkt = {0};
     Packet ack_pkt = {0};
     int ack_len = 0;
 
-    if(deserialize_packet((const uint8_t*) msg->buf, msg->len , &pkt))
+    if(deserialize_packet((const uint8_t*) buf, len , &pkt))
     {
         int ret = data_process(&pkt , &ack_pkt);
         packet_body_free(&pkt);
         if(ret <= 0)
             return -1;
         ack_len = serialize_packet((const Packet*) &ack_pkt, g_ack_buf);
-        if(msg->from == (TX_QUEUE*)1) /*数据从UART发送过来的，应答再发回UART*/
-            uart3_send(g_ack_buf , ack_len);
+        bsp_uart_send(g_ack_buf , ack_len);
+    }
+    return 0;
+}
+
+
+static int do_handler(MSG_MGR_T* msg)
+{
+    loghex((unsigned char*) msg->buf , msg->len); 
+
+    switch(msg->mtype)
+    {
+        case MSG_ID_UART_DATA:
+            protocol_process(msg->buf , msg->len);
+            break;
+        case MSG_ID_BLE_RECONNECT:
+            ble_set_state(0);
+            ble_connect();
+            ble_set_state(1);
+            break;
+        default:
+            loginfo("unknow msg type %d",msg->mtype);
+            break;
     }
     return 0;
 }
@@ -71,9 +86,8 @@ static int do_handler(MSG_MGR_T* msg)
 static  void  task_data (ULONG thread_input)
 {
 	(void)thread_input;
-    protocol_mem_init();
-    uart3_init();
-    tx_timer_create(&g_uart_timeout_tmr,"uart timeout",timeout_cb,0,10,10,TX_AUTO_ACTIVATE); 
+    
+    protocol_mem_init();    
 
 	MSG_MGR_T* recv_info  = NULL;
 	
@@ -89,11 +103,7 @@ static  void  task_data (ULONG thread_input)
 
 }
 
-static VOID timeout_cb(ULONG para)
-{
-    (void)para;
-    uart3_period(10);
-}
+
 
 void ext_send_to_data(int from_id , unsigned char* buf , int len)
 {

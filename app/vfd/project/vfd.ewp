@@ -367,7 +367,6 @@
                     <state>$PROJ_DIR$\..\src\modules\protocol</state>
                     <state>$PROJ_DIR$\..\src\drivers\adc</state>
                     <state>$PROJ_DIR$\..\src\modules\inout</state>
-                    <state>$PROJ_DIR$\..\src\modules\uart</state>
                     <state>$PROJ_DIR$\..\src\services\service_data</state>
                     <state>$PROJ_DIR$\..\src\modules\data</state>
                     <state>$PROJ_DIR$\..\src\drivers\softi2c</state>
@@ -376,6 +375,8 @@
                     <state>$PROJ_DIR$\..\src\drivers\tm1628a</state>
                     <state>$PROJ_DIR$\..\src\services\service_hmi</state>
                     <state>$PROJ_DIR$\..\src\modules\hmi</state>
+                    <state>$PROJ_DIR$\..\src\modules\ble</state>
+                    <state>$PROJ_DIR$\..\src\modules\ringbuffer</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2167,6 +2168,12 @@
         <file>
             <name>$PROJ_DIR$\..\src\bsp\bsp_tmr.h</name>
         </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_uart.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_uart.h</name>
+        </file>
     </group>
     <group>
         <name>cmsis</name>
@@ -2510,6 +2517,15 @@
     <group>
         <name>modules</name>
         <group>
+            <name>ble</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\ble\ble.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\ble\ble.h</name>
+            </file>
+        </group>
+        <group>
             <name>data</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\data\data.c</name>
@@ -2579,12 +2595,12 @@
             </file>
         </group>
         <group>
-            <name>uart</name>
+            <name>ringbuffer</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\uart\uart.c</name>
+                <name>$PROJ_DIR$\..\src\modules\ringbuffer\ringbuffer.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\uart\uart.h</name>
+                <name>$PROJ_DIR$\..\src\modules\ringbuffer\ringbuffer.h</name>
             </file>
         </group>
         <group>
@@ -3249,6 +3265,9 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\src\user\stm32g4xx_it.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\user\tx_user.h</name>
         </file>
     </group>
 </project>

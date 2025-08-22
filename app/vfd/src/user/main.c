@@ -1,12 +1,12 @@
-/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "tx_api.h"
 #include "nx_msg.h"
 #include "log.h"
 #include "bsp_led.h"
 #include "bsp_adc.h"
-#include "uart.h"
 #include "inout.h"
+#include "ble.h"
+#include "data.h"
 #include "tx_api.h"
 #include "tx_initialize.h"
 #include "tx_thread.h"
@@ -82,6 +82,8 @@ static  void  taskstart (ULONG thread_input)
 
 	nx_msg_init();
 
+    ble_init();
+
     //service_test_start();
     
     service_data_start();
@@ -97,8 +99,8 @@ static  void  taskstart (ULONG thread_input)
         
 	while(1)
 	{
+        data_poll();
         inout_scan();
-        uart3_recv_to_data();
         bsp_led_run();
         tx_thread_sleep(5);
 	}

@@ -17,6 +17,7 @@ typedef enum
     MSG_ID_MOTOR_BRAKE,
 
     MSG_ID_UART_DATA,
+    MSG_ID_BLE_RECONNECT,
 
     MSG_ID_KEY_SCAN,
     MSG_ID_STOP_CODE,
