@@ -2151,6 +2151,12 @@
             <name>$PROJ_DIR$\..\src\bsp\bsp_io.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_key.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_key.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\src\bsp\bsp_led.c</name>
         </file>
         <file>

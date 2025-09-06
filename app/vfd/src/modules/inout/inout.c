@@ -18,6 +18,9 @@
 
 static int g_ipm_vfo_flag = 0;
 
+static uint8_t g_pump_ctrl_flag = 0;
+static uint16_t g_pump_ctrl_delay = 0;
+
 typedef enum
 {
     IO_ID_CTRL_MODE = 0x00,                     //点动or四键控制
@@ -125,6 +128,7 @@ void motor_start_ctl(void)
         return ;
     }
 
+    /*电压错误，1:欠压,2:过压, 3:掉电*/
     if(g_vfd_voltage_flag != 0)
     {
         ext_notify_stop_code(g_vfd_voltage_flag + 4);
@@ -188,7 +192,6 @@ void motor_stop_ctl(stopcode_t code)
 {
     ext_motor_brake();
     ext_notify_stop_code((unsigned char)code);
-    EXT_PUMP_DISABLE;
 }
 
 static void io_scan_active_polarity(void)
@@ -227,6 +230,22 @@ static void io_scan_active_polarity(void)
 
 }
 
+void inout_mode_sync_from_ext(unsigned char mode)
+{
+    if(mode != 0) /*进入debug模式*/
+    {
+        g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
+    }
+    else /*退出debug模式*/
+    {
+        g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
+        if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
+        {
+            motor_stop_ctl(CODE_WIRE_BREAK);
+        }
+    }
+}
+
 #if 1
 static void io_scan_debug(void)
 {
@@ -259,6 +278,7 @@ static void io_scan_debug(void)
 #endif
 
 
+
 static void ctrl_speed(uint8_t sp)
 {
     if(sp > 10)
@@ -272,20 +292,100 @@ static void io_ctrl_speed(void)
 {
     if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*用手控盒控制过速度*/
     {   /*通知手控盒取消相关显示*/
-
+        g_vfd_ctrl.flag[IO_ID_SP0] = 0;
     }
     ctrl_speed(g_vfd_ctrl.sp);
 }
 
+/*手控盒控速时，同步速度*/
+void inout_sp_sync_from_ext(uint8_t sp)
+{
+    g_vfd_ctrl.sp_manual = sp;
+    g_vfd_ctrl.flag[IO_ID_SP0] = 1;
+    ctrl_speed(g_vfd_ctrl.sp_manual);
+}
 
+void pump_ext_ctl(int period)
+{
+    if(g_pump_ctrl_flag == 0)
+        return ;
+    if(g_pump_ctrl_delay > period)
+        g_pump_ctrl_delay -= period;
+    else
+    {
+        EXT_PUMP_DISABLE;
+    }
+}
+
+uint8_t g_sp0 = 1;
+uint32_t g_sp0_up_ticks = 0;
+uint32_t g_sp0_down_ticks = 0;
+
+uint8_t g_sp1 = 1;
+uint32_t g_sp1_up_ticks = 0;
+uint32_t g_sp1_down_ticks = 0;
+
+uint8_t g_sp2 = 1;
+uint32_t g_sp2_up_ticks = 0;
+uint32_t g_sp2_down_ticks = 0;
+static void io_scan_speed_debound(void)
+{ 
+    if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP0].port, g_vfd_io_tab[IO_ID_SP0].pin) == GPIO_PIN_SET)
+    {
+        g_sp0_down_ticks = 0;
+        if(g_sp0_up_ticks < 200)
+            g_sp0_up_ticks += 5;
+        if(g_sp0_up_ticks >= 20)
+            g_sp0 = 1;
+    }
+    else{
+        g_sp0_up_ticks = 0;
+        if(g_sp0_down_ticks < 200)
+            g_sp0_down_ticks += 5;
+        if(g_sp0_down_ticks >= 20)
+            g_sp0 = 0;
+    }
+
+    if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP1].port, g_vfd_io_tab[IO_ID_SP1].pin) == GPIO_PIN_SET)
+    {
+        g_sp1_down_ticks = 0;
+        if(g_sp1_up_ticks < 200)
+            g_sp1_up_ticks += 5;
+        if(g_sp1_up_ticks >= 20)
+            g_sp1 = 1;
+    }
+    else{
+        g_sp1_up_ticks = 0;
+        if(g_sp1_down_ticks < 200)
+            g_sp1_down_ticks += 5;
+        if(g_sp1_down_ticks >= 20)
+            g_sp1 = 0;
+    }
+
+    if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP2].port, g_vfd_io_tab[IO_ID_SP2].pin) == GPIO_PIN_SET)
+    {
+        g_sp2_down_ticks = 0;
+        if(g_sp2_up_ticks < 200)
+            g_sp2_up_ticks += 5;
+        if(g_sp2_up_ticks >= 20)
+            g_sp2 = 1;
+    }
+    else{
+        g_sp2_up_ticks = 0;
+        if(g_sp2_down_ticks < 200)
+            g_sp2_down_ticks += 5;
+        if(g_sp2_down_ticks >= 20)
+            g_sp2 = 0;
+    }
+}
 
 static void io_scan_speed(void)
 {  
-    uint8_t sp0 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP0].port, g_vfd_io_tab[IO_ID_SP0].pin) == GPIO_PIN_SET) ? 1 : 0;
-    uint8_t sp1 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP1].port, g_vfd_io_tab[IO_ID_SP1].pin) == GPIO_PIN_SET) ? 1 : 0;
-    uint8_t sp2 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP2].port, g_vfd_io_tab[IO_ID_SP2].pin) == GPIO_PIN_SET) ? 1 : 0;
-
-    uint8_t sp = (sp2 << 2) | (sp1 << 1) | sp0 ;
+    //uint8_t sp0 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP0].port, g_vfd_io_tab[IO_ID_SP0].pin) == GPIO_PIN_SET) ? 1 : 0;
+    //uint8_t sp1 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP1].port, g_vfd_io_tab[IO_ID_SP1].pin) == GPIO_PIN_SET) ? 1 : 0;
+    //uint8_t sp2 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP2].port, g_vfd_io_tab[IO_ID_SP2].pin) == GPIO_PIN_SET) ? 1 : 0;
+    io_scan_speed_debound();
+    uint8_t sp = (g_sp2 << 2) | (g_sp1 << 1) | g_sp0 ;
     if(sp == g_vfd_ctrl.sp)
         return ;
 
@@ -337,6 +437,11 @@ static void io_scan_wire(void)
     }
 }
 
+static void pump_ctl_close(void)
+{ 
+    g_pump_ctrl_flag = 1;
+    g_pump_ctrl_delay = 500;
+}
 
 static void io_ctrl_dir(void)
 {
@@ -346,7 +451,8 @@ static void io_ctrl_dir(void)
             return ;
         uint8_t stop = 0;/*0:立即停止 1:靠右停 2:靠左停*/
         param_get(PARAM0X03, PARAM_STOP_MODE, &stop);
-        EXT_PUMP_DISABLE;
+        //EXT_PUMP_DISABLE;
+        pump_ctl_close();
         switch(stop)
         {
             case 1 :{
@@ -566,14 +672,6 @@ static void io_scan_onoff(void)
 }
 
 
-/*手控盒控速时，同步速度*/
-void inout_sp_sync_from_ext(uint8_t sp)
-{
-    g_vfd_ctrl.sp_manual = sp;
-    g_vfd_ctrl.flag[IO_ID_SP0] = 1;
-    ctrl_speed(g_vfd_ctrl.sp_manual);
-}
-
 void inout_get_current_sp(unsigned char* sp , unsigned char* value)
 {
     if(g_vfd_ctrl.flag[IO_ID_SP0])
@@ -586,7 +684,6 @@ void inout_get_current_sp(unsigned char* sp , unsigned char* value)
         *sp = g_vfd_ctrl.sp;
         param_get(PARAM0X01, g_vfd_ctrl.sp, value);
     }
-
 }
 
 /*获取当前断丝状态*/
@@ -622,7 +719,7 @@ unsigned char inout_get_work_end(void)
 static uint8_t is_power_off(int voltage , uint32_t timeout_time)
 {
     static uint32_t power_off_start_time = 0;
-    if(voltage < 100)  /*电压低于100V，则认为掉电*/
+    if(voltage < 150)  /*电压低于150V，则认为掉电*/
     {
         if(power_off_start_time == 0){
             power_off_start_time = HAL_GetTick(); /*记录保护时间*/
@@ -669,10 +766,11 @@ static uint8_t check_voltage_status(int voltage, int low_threshold, int high_thr
     return 0; // 电压在正常范围内或未超时
 }
 
-int g_input_voltage = 0;
+
 void scan_voltage(void)
 {
     //根据GB/T 12325-2008，220V单相的允许偏差为标称电压的+7%（上限）和-10%（下限），即198V至235.4V‌
+    //实际使用为220V±20% = 176V至264V
     static uint32_t last_check_time = 0;
     uint32_t now = HAL_GetTick();
     if (now - last_check_time < 200) {
@@ -680,26 +778,27 @@ void scan_voltage(void)
     }
     last_check_time = now;
     /*获取电压保护参数和掉电异常参数*/
-    uint8_t voltage_protect = 0;
-    param_get(PARAM0X02, PARAM_VOLTAGE_ADJUST, &voltage_protect); /*更新电压调节参数*/
+    //uint8_t voltage_protect = 0;
+    //param_get(PARAM0X02, PARAM_VOLTAGE_ADJUST, &voltage_protect); /*更新电压调节参数*/
     uint8_t power_off_time = 0;
     param_get(PARAM0X03, PARAM_POWER_OFF_TIME, &power_off_time); /*允许掉电的最长时间，单位0.1秒，最大50*/
     
     uint16_t timeout = power_off_time * 100;  /*转换成毫秒*/
 
     int voltage = bsp_get_voltage();
-    g_input_voltage = voltage;
+ 
     if(is_power_off(voltage,timeout) == 1){
         g_vfd_voltage_flag = 3;
         if(motor_is_running())
             motor_stop_ctl(CODE_POWER_OFF);
     }
-    else{
-        uint8_t voltage_status = check_voltage_status(voltage,220 - voltage_protect , 220 + voltage_protect,timeout);
+    else
+    {
+        uint8_t voltage_status = check_voltage_status(voltage,176 , 264,timeout);
         if(voltage_status != 0)
         {
             if(motor_is_running())
-                motor_stop_ctl((stopcode_t)(voltage_status + 4));            
+                motor_stop_ctl((stopcode_t)(voltage_status + 4));
         }
         g_vfd_voltage_flag = voltage_status;
     }
@@ -723,19 +822,19 @@ void inout_scan(void)
 {
     /*step 1 . 极性*/
     io_scan_active_polarity();
-    /*step 2 . 速度及调试模式*/
+    /*step 2 . 调试模式*/
     io_scan_debug();
+    /*step 3 . 速度*/
     io_scan_speed();
-    /*step 3 . 断丝*/
+    /*step 4 . 断丝*/
     io_scan_wire();
-    /*step 4 . 左右限位,超程和加工结束*/
+    /*step 5 . 左右限位,超程和加工结束*/
     io_scan_direction();
-    /*step 5 . 开关运丝和水泵*/
+    /*step 6 . 开关运丝和水泵*/
     io_scan_onoff();
-
-    /*step 6 . 电压检测*/
-    //scan_voltage();
-    /*step 7 . 错误处理*/
+    /*step 7 . 电压检测*/
+    scan_voltage();
+    /*step 8 . 错误处理*/
     update_err();
 
 }

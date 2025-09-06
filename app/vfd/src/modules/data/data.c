@@ -1,26 +1,38 @@
 #include <stdint.h>
 #include <string.h>
+#include <assert.h>
+#include "main.h"
 #include "ble.h"
+#include "log.h"
 #include "nx_msg.h"
 #include "bsp_uart.h"
 #include "service_data.h"
 #include "data.h"
 #include "utility.h"
+#include "param.h"
+#include "inout.h"
+#include "motor.h"
+#include "bsp_io.h"
 
 // UART接收缓冲区
 static uint8_t g_uart_buffer[256];
 static uint16_t g_uart_buffer_length;
-static uint8_t g_connect_ok = 0;
-static void uart_process(char* buf, int len);
+static void comm_uart_process(char* buf, int len);
 
 typedef int (*protocol_cb)(Packet* in , Packet* out);
 
 #define CMD_BUILD(action,main_type,sub_type)        (action << 16 | sub_type << 8 | main_type)
 
 #define CMD_PARAM_SET           CMD_BUILD(ACTION_SET,0xFF,0x00)
-#define CMD_MOTOR_SET           CMD_BUILD(ACTION_SET,0x04,0x01)
-
 #define CMD_PARAM_GET           CMD_BUILD(ACTION_GET,0xFF,0x00)
+
+
+#define CMD_MOTOR_CTL           CMD_BUILD(ACTION_SET,0x04,0x01)
+#define CMD_PUMB_CTL            CMD_BUILD(ACTION_SET,0x04,0x02)
+#define CMD_MODE_CTL            CMD_BUILD(ACTION_SET,0x04,0x03)
+#define CMD_SPEED_CTL           CMD_BUILD(ACTION_SET,0x04,0x04)
+#define CMD_DEVICE_CTL          CMD_BUILD(ACTION_SET,0x04,0x05)
+
 
 typedef struct
 {
@@ -30,13 +42,21 @@ typedef struct
 
 static int vfd_param_set(Packet* in , Packet* out);
 static int vfd_param_get(Packet* in , Packet* out);
-static int vfd_motor_set(Packet* in , Packet* out);
+static int vfd_motor_ctl(Packet* in , Packet* out);
+static int vfd_pump_ctl(Packet* in , Packet* out);
+static int vfd_mode_ctl(Packet* in , Packet* out);
+static int vfd_speed_ctl(Packet* in , Packet* out);
+static int vfd_device_ctl(Packet* in , Packet* out);
 
 
 static const data_item_t data_tab[] = {
     {CMD_PARAM_SET , vfd_param_set},
     {CMD_PARAM_GET , vfd_param_get},
-    {CMD_MOTOR_SET , vfd_motor_set},
+    {CMD_MOTOR_CTL , vfd_motor_ctl},
+    {CMD_PUMB_CTL , vfd_pump_ctl},
+    {CMD_MODE_CTL , vfd_mode_ctl},
+    {CMD_SPEED_CTL , vfd_speed_ctl},
+    {CMD_DEVICE_CTL , vfd_device_ctl},
 };
 
 
@@ -158,17 +178,12 @@ static void comm_data_handler(void)
   
     while(g_uart_buffer_length >= 15)/*消息体为空时，长度为15字节*/
     {
-        if(g_connect_ok == 0)
-        {
-            if(strstr((char*)g_uart_buffer , "CONNECT") != NULL)
-                g_connect_ok = 1;            
-        }
 
         ret = parse_stream(g_uart_buffer, g_uart_buffer_length, &data_ptr, (int*)&data_length, &offset);
         if(ret == 0)
         {
             /* 协议处理 */
-            uart_process(data_ptr, data_length);
+            comm_uart_process(data_ptr, data_length);
         }
         else
         {
@@ -200,22 +215,23 @@ int data_poll(void)
 
     int bytes_received = 0;
 
-    bytes_received = bsp_uart_recv_all(g_uart_buffer + g_uart_buffer_length, 
+    bytes_received = bsp_uart_recv(g_uart_buffer + g_uart_buffer_length, 
                                  sizeof(g_uart_buffer) - g_uart_buffer_length);
     
     g_uart_buffer_length += bytes_received;
     if (g_uart_buffer_length < 15)
         return 0;	
     
+    /*数据中判断connect信号*/
     
     comm_data_handler();	
     
     return 0;
 }
 
-static void uart_process(char* buf, int len)
+static void comm_uart_process(char* buf, int len)
 {
-    ext_send_to_data(NULL, (unsigned char*)buf, len);
+    ext_send_buf_to_data(0, (unsigned char*)buf, len);
 }
 
 
@@ -224,6 +240,7 @@ int data_process(Packet* in , Packet* out)
     if(in->type != TYPE_VFD)
         return -1;
     uint32_t cmd = (in->action << 16) | in->subtype ;
+    logdbg("receive message, cmd = %08x\n",cmd);
     for(int i = 0 ; i < sizeof(data_tab) / sizeof(data_tab[0]) ; i++)
     {
         if((data_tab[i].cmd == cmd) && (data_tab[i].cb != NULL))
@@ -234,16 +251,108 @@ int data_process(Packet* in , Packet* out)
     return -1;
 }
 
-
+/*变频器参数设置*/
 static int vfd_param_set(Packet* in , Packet* out)
 {
+    logdbg("param set, length = %d\n",in->body_length);
+    if(in->body_length != 48)
+        return -1;
+    uint8_t ret = 0;
+    if(motor_is_working())
+        ret = 1;
+    else
+    {
+        param_update_all(in->body);
+        ret = 0;
+    }
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
+        (uint8_t*)&ret, 1);
     return 0;
 }
+
+/*变频器参数获取*/
 static int vfd_param_get(Packet* in , Packet* out)
 {
+    logdbg("param get, length = %d\n",in->body_length);
+    if(in->body_length != 0)
+        return -1;
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
+        (uint8_t*)g_vfdParam, sizeof(g_vfdParam));
     return 0;
 }
-static int vfd_motor_set(Packet* in , Packet* out)
+
+/*电机控制*/
+static int vfd_motor_ctl(Packet* in , Packet* out)
 {
+    logdbg("motor control, length = %d, value = %d\n",in->body_length,in->body[0]);
+    if(in->body_length != 1)
+        return -1;
+    if(in->body[0] == 0){
+        if(motor_is_working() == 0)
+            motor_start_ctl();
+    }
+    else{
+        if(motor_is_working() == 1)
+            motor_stop_ctl(CODE_END);
+
+    }
+    uint8_t ret = 0;
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
+        (uint8_t*)&ret, 1);
+    return 0;
+}
+
+/*水泵控制*/
+static int vfd_pump_ctl(Packet* in , Packet* out)
+{
+    logdbg("pump control, length = %d, value = %d\n",in->body_length,in->body[0]);
+    if(in->body_length != 1)
+        return -1;
+    if(in->body[0] == 0)
+        EXT_PUMP_ENABLE;
+    else
+        EXT_PUMP_DISABLE;
+    uint8_t ret = 0;
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
+        (uint8_t*)&ret, 1);
+    return 0;
+}
+
+/*模式设置*/
+static int vfd_mode_ctl(Packet* in , Packet* out)
+{
+    logdbg("vfd mode control, length = %d, value = %d\n",in->body_length,in->body[0]);
+    if(in->body_length != 1)
+        return -1;
+    inout_mode_sync_from_ext(in->body[0]);
+    uint8_t ret = 0;
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
+        (uint8_t*)&ret, 1);
+    return 0;
+}
+
+/*预设速度运行*/
+static int vfd_speed_ctl(Packet* in , Packet* out)
+{
+    logdbg("motor speed control, length = %d, value = %d\n",in->body_length,in->body[0]);
+    if(in->body_length != 1)
+        return -1;
+    uint8_t speed = in->body[0] + 8;/*数字8为自动速度的偏移量*/
+    inout_sp_sync_from_ext(speed);
+    uint8_t ret = 0;
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
+        (uint8_t*)&ret, 1);
+    return 0;
+}
+
+/*设备控制：复位等逻辑*/
+static int vfd_device_ctl(Packet* in , Packet* out)
+{
+    logdbg("device control, length = %d\n",in->body_length);
+    if(in->body_length != 1)
+        return -1;
+    uint8_t ret = 0;
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
+        (uint8_t*)&ret, 1);
     return 0;
 }

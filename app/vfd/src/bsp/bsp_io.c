@@ -48,8 +48,8 @@ void bsp_io_init_input(void)
       HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
       /*左右限位，超程，加工结束*/
-      /*左    :PA11 
-        右    :PA12
+      /*左      :PA11 
+        右      :PA12
         超程    :PA15
         结束    :PC10 */
       GPIO_InitStruct.Pin = GPIO_PIN_10;
@@ -70,8 +70,8 @@ void bsp_io_init_output(void)
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
     /*  高频输出开关    :PC3
-        水泵开关        :PC4
-        直流电源开关    :PC5 */
+        水泵开关       :PC4
+        变频电源开关    :PC5 */
     GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -79,15 +79,16 @@ void bsp_io_init_output(void)
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);  
     
     /*刹车电阻保护接入 PB9*/
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
-    GPIO_InitStruct.Pin = GPIO_PIN_9;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);  
+    //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
+    //GPIO_InitStruct.Pin = GPIO_PIN_9;
+    //GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    //GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    //GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    //HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);  
     
     
-    HIGH_FREQ_DISABLE;
+    //HIGH_FREQ_DISABLE;需要判断高频极性才能控制
+
     EXT_PUMP_DISABLE;
     VFD_VDC_ENABLE;
     BREAK_VDC_DISABLE;

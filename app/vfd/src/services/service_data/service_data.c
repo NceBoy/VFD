@@ -52,10 +52,11 @@ static int protocol_process(unsigned char* buf , int len)
     {
         int ret = data_process(&pkt , &ack_pkt);
         packet_body_free(&pkt);
-        if(ret <= 0)
-            return -1;
+        if(ret < 0)
+            return ret;
         ack_len = serialize_packet((const Packet*) &ack_pkt, g_ack_buf);
         bsp_uart_send(g_ack_buf , ack_len);
+        //loghex(g_ack_buf,ack_len);
     }
     return 0;
 }
@@ -63,8 +64,6 @@ static int protocol_process(unsigned char* buf , int len)
 
 static int do_handler(MSG_MGR_T* msg)
 {
-    loghex((unsigned char*) msg->buf , msg->len); 
-
     switch(msg->mtype)
     {
         case MSG_ID_UART_DATA:
@@ -105,7 +104,12 @@ static  void  task_data (ULONG thread_input)
 
 
 
-void ext_send_to_data(int from_id , unsigned char* buf , int len)
+void ext_send_buf_to_data(int from_id , unsigned char* buf , int len)
 {
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_DATA, buf, len);
+}
+
+void ext_send_notify_to_data(int from_id)
+{
+    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_BLE_RECONNECT, NULL, 0);
 }

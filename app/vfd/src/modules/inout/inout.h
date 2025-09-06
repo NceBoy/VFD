@@ -28,8 +28,13 @@ void inout_init(void);
 
 void inout_scan(void);
 
+/*外部控制的模式信号同步进来*/
+void inout_mode_sync_from_ext(unsigned char mode);
+
 /*外部控制的调速信号同步进来*/
 void inout_sp_sync_from_ext(unsigned char sp);
+
+void pump_ext_ctl(int period);
 
 /*电机启动控制*/
 void motor_start_ctl(void);

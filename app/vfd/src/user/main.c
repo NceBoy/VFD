@@ -4,9 +4,11 @@
 #include "log.h"
 #include "bsp_led.h"
 #include "bsp_adc.h"
+#include "bsp_key.h"
 #include "inout.h"
 #include "ble.h"
 #include "data.h"
+#include "motor.h"
 #include "tx_api.h"
 #include "tx_initialize.h"
 #include "tx_thread.h"
@@ -72,11 +74,11 @@ static  void  taskstart (ULONG thread_input)
 
     log_init();
 
-    log_level_set(0);
-
     bsp_adc_init();
 
     bsp_led_init();
+
+    bsp_key_init();
 
     inout_init();
 
@@ -94,14 +96,16 @@ static  void  taskstart (ULONG thread_input)
 
     tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 20, 10, TX_AUTO_ACTIVATE);
     
-    //logdbg("system start .\n");
+    logdbg("system start .\n");
 
-        
 	while(1)
 	{
+        bsp_key_detect();
         data_poll();
         inout_scan();
         bsp_led_run();
+        pump_ext_ctl(5);
+        motor_high_freq_ctl(5);
         tx_thread_sleep(5);
 	}
 }

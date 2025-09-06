@@ -98,12 +98,12 @@ int ringbuffer_write(ringbuffer_t *rb, const uint8_t *data, size_t len) {
  */
 int ringbuffer_read(ringbuffer_t *rb, uint8_t *data, size_t len) {
     if (!rb || !data || len == 0) {
-        return -1;
+        return 0;
     }
     
     // 检查是否有足够数据
     if (len > rb->count) {
-        return -1; // 数据不足
+        return 0; // 数据不足
     }
     
     for (size_t i = 0; i < len; i++) {
@@ -112,7 +112,7 @@ int ringbuffer_read(ringbuffer_t *rb, uint8_t *data, size_t len) {
     }
     rb->count -= len;
     
-    return 0;
+    return len;
 }
 
 /**

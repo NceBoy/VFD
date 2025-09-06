@@ -8,7 +8,7 @@
 #include "param.h"
 #include "hmi.h"
 
-static TIM_HandleTypeDef htim7; /*开高频延时*/
+#define  HIGH_OPEN_DELAY_MIN      5       /*开高频最小延时，单位0.1秒*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
 #define RADIO_MAX               (0.95f)
@@ -82,14 +82,14 @@ static void motor_param_get(void)
     /*启动方向:0:之前的方向，1:向左 ， 2:向右 */
     param_get(PARAM0X03, PARAM_START_DIRECTION, &value);
     g_motor_param.start_dir = value;
+
     /*加速时间，单位0.1秒*/
     param_get(PARAM0X02, PARAM_ACCE_TIME, &value);
     g_motor_param.acceleration_time_us = value* 100 * 1000;
     
-    /*减速时间，单位0.1秒*/
+    /*减速时间，单位0.1秒，经实际测试，50HZ换向时，减速时间最小0.4秒，80Hz换向时，减速时间最小0.7秒*/
     param_get(PARAM0X02, PARAM_DECE_TIME, &value);
     g_motor_param.deceleration_time_us = value* 100 * 1000;
-
 }
 
 static float radio_from_freq(float freq)
@@ -109,8 +109,14 @@ static void high_frequery_open(void)
 {
     if(g_motor_real.high_status == 0)
     {
+        unsigned int real_delay = 0;
+        if(g_motor_param.open_freq_delay < HIGH_OPEN_DELAY_MIN)
+            real_delay = HIGH_OPEN_DELAY_MIN;
+        else 
+            real_delay = g_motor_param.open_freq_delay;
+            
         g_motor_real.high_status = 1; 
-        g_highfreq_delay = g_motor_param.open_freq_delay * 1000; //单位:100us
+        g_highfreq_delay = real_delay * 100; //单位:1ms
     }
 }
 
@@ -119,13 +125,59 @@ static void high_frequery_close(void)
     if(g_motor_real.high_status == 1)
     {
         g_motor_real.high_status = 0;
-        HIGH_FREQ_DISABLE;
     }
 }
 
 unsigned char motor_is_open_freq(void)
 {
     return g_motor_real.high_status;
+}
+
+static void high_freq_control(void)
+{
+    if(g_motor_real.current_freq > g_motor_param.open_freq)
+    {
+        if((g_motor_param.vari_freq_close) && (g_motor_real.freq_arrive == 0)) /*变频关高频*/
+        {
+            /*关*/
+            high_frequery_close();
+        }
+        else
+        {
+            /*开*/
+            high_frequery_open();
+        }
+    }
+    else
+    {   /*关*/
+        high_frequery_close();
+    }
+
+}
+
+void motor_high_freq_ctl(int period)
+{
+    uint8_t value = 0; /*0:常闭,1:常开*/
+    param_get(PARAM0X02, PARAM_HIGH_FREQ_POLARITY, &value);
+    high_freq_control();
+    if(g_motor_real.high_status == 1) /*开高频*/
+    {
+        if(g_highfreq_delay > period)
+            g_highfreq_delay -= period;
+        else{ /*开高频*/
+            if(value != 0)
+                HIGH_FREQ_SET;
+            else
+                HIGH_FREQ_RESET;
+        }
+    }
+    else/*关高频*/
+    {
+        if(value != 0)
+            HIGH_FREQ_RESET;
+        else
+            HIGH_FREQ_SET;        
+    }
 }
 
 void motor_target_info_update(float target_freq)
@@ -170,7 +222,6 @@ void motor_reverse_start(void)
 {
     g_motor_real.target_freq = g_motor_param.start_freq;
     g_motor_real.motor_status = motor_in_reverse;
-    BREAK_VDC_ENABLE;
 }
 
 static void motor_reverse_recovery(void)
@@ -182,7 +233,6 @@ static void motor_reverse_recovery(void)
     g_motor_real.target_freq = g_motor_real.target_should_be;
     g_motor_real.motor_status = motor_in_run;
     
-    BREAK_VDC_DISABLE;
 }
 
 void motor_brake_start(void)
@@ -287,15 +337,19 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
     static float last_target_freq = 0.0f;
     static float acce_step_freq = 0.0f;
     static float dece_step_freq = 0.0f;
-    if(float_equal_in_step(last_target_freq , target_freq , 0.01f) == 0)
+    if(float_equal_in_step(last_target_freq , target_freq , 0.01f) == 0)/*重新设置了目标值*/
     {
         /*计算参数*/
+        if(target_freq <  current_freq){ /*如果是减速，则打开刹车电阻*/
+            BREAK_VDC_ENABLE;
+        }
         last_target_freq = target_freq;
         acce_step_freq = ((50.0f - g_motor_param.start_freq) / g_motor_param.acceleration_time_us) * TMR_INT_PERIOD_US;
         dece_step_freq = ((50.0f - g_motor_param.start_freq) / g_motor_param.deceleration_time_us) * TMR_INT_PERIOD_US;
     }
 
     if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
+        BREAK_VDC_DISABLE;      /*关闭刹车电阻*/
         g_motor_real.freq_arrive = 1;
         return target_freq;
     }
@@ -309,10 +363,10 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
         if(float_equal_in_step(current_freq , target_freq, dece_step_freq))
             return target_freq;
         else return current_freq - dece_step_freq;
-    } 
+    }
 }
 
-
+#if 0
 /*三次多项式插值法（Cubic Interpolation） 来生成S型曲线*/
 static float motor_calcu_next_step_freq_s_curve(float current_freq,float target_freq)
 {
@@ -366,7 +420,10 @@ static float motor_calcu_next_step_freq_s_curve(float current_freq,float target_
 
     return next_freq;
 }
+#endif
 
+
+#if 0
 /**
  * 自定义加减速曲线：前3/4时间完成前半段频率，后1/4时间完成后半段频率
  */
@@ -436,11 +493,10 @@ static float motor_calcu_next_step_freq_custom_curve(float current_freq, float t
 
     return next_freq;
 }
+#endif
 
 static void motor_update_spwm(void)
 {   
-    static int count = 0;
-    count++;
     motor_update_compare();
 
     g_motor_real.current_freq = g_motor_real.next_step_freq;
@@ -451,36 +507,8 @@ static void motor_update_spwm(void)
     if (g_motor_real.angle >= PI_2) g_motor_real.angle -= PI_2;
 
     /*计算下一步的频率*/
-    g_motor_real.next_step_freq = motor_calcu_next_step_freq_custom_curve(g_motor_real.current_freq,g_motor_real.target_freq);
-    if(count >= 10)
-    {
-        LPUART1->TDR = 2 * (uint8_t)g_motor_real.next_step_freq;
-        count = 0;
-    }
-    
-    
-}
-
-static void high_freq_control(void)
-{
-    if(g_motor_real.current_freq > g_motor_param.open_freq)
-    {
-        if((g_motor_param.vari_freq_close) &&(g_motor_real.freq_arrive == 0)) /*变频关高频*/
-        {
-            /*关*/
-            high_frequery_close();
-        }
-        else
-        {
-            /*开*/
-            high_frequery_open();
-        }
-    }
-    else
-    {   /*关*/
-        high_frequery_close();
-    }
-
+    g_motor_real.next_step_freq = motor_calcu_next_step_freq_t_curve(g_motor_real.current_freq,g_motor_real.target_freq);
+ 
 }
 
 unsigned int interrupt_times = 0;
@@ -489,15 +517,6 @@ unsigned int interrupt_times = 0;
     if(htim->Instance == TIM1)
     {
         interrupt_times++;
-        if(g_motor_real.high_status) /*开高频延时*/
-        {
-            if(g_highfreq_delay > 0)
-            {
-                g_highfreq_delay--;
-                if(g_highfreq_delay == 0)
-                    HIGH_FREQ_ENABLE;
-            }
-        }
 
         if(g_motor_real.motor_status == motor_in_idle)
             return;
@@ -508,14 +527,14 @@ unsigned int interrupt_times = 0;
                 g_motor_real.dc_brake_time --;
             else
             {
+                /*停机结束*/
                 bsp_tmr_stop();
                 g_motor_real.motor_status = motor_in_idle;
                 high_frequery_close();
                 EXT_PUMP_DISABLE;
                 BREAK_VDC_DISABLE;
             }
-                
-            return ;            
+            return ;
         }
 
         if((g_motor_real.motor_status == motor_in_reverse) &&
@@ -529,6 +548,5 @@ unsigned int interrupt_times = 0;
             motor_dc_brake();
         }
         motor_update_spwm(); 
-        high_freq_control();
     }
  }

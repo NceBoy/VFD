@@ -4,8 +4,6 @@
 #include <stdint.h>
 
 
-
-
 typedef enum {
     PARAM0X01 = 0x00,  //
     PARAM0X02 = 0x01,  // 
@@ -35,9 +33,10 @@ typedef enum {
     PARAM_ORQUE_BOOST = 0x02,  // 低频力矩提升
     PARAM_AUTO_ECONOMY = 0x03,  // 自动省电百分比
     PARAM_VOLTAGE_ADJUST = 0x04,  // 过压调节
-    PARAM_HIGH_FREQ = 0x05 , // 最低开高频率
+    PARAM_HIGH_FREQ = 0x05 , // 最低开高频频率
     PARAM_HIGH_FREQ_DELAY = 0x06,  // 开高频延时
-    PARAM_VARI_FREQ_CLOSE = 0x07  // 变频关高频   
+    PARAM_VARI_FREQ_CLOSE = 0x07,  // 变频关高频  
+    PARAM_HIGH_FREQ_POLARITY = 0x08  // 高频极性0：常闭 1：常开
 } ModuleParameterType_0x02;
 
 ///----------------------------------------------------------------------------//
@@ -46,14 +45,14 @@ typedef enum {
     PARAM_WORK_END_SIGNAL = 0x01,  // 加工结束信号
     PARAM_STOP_MODE = 0x02,  // 加工停机结束方式
     PARAM_START_FREQ = 0x03,  // 启动、换向、刹车起始频率
-    PARAM_START_DIRECTION = 0x04,  // 丝筒启动方向
-    PARAM_WIRE_BREAK_SIGNAL = 0x05,  // 断丝检测信号
-    PARAM_WIRE_BREAK_TIME = 0x06,  // 断丝检测时间
+    PARAM_WIRE_BREAK_SIGNAL = 0x04,  // 断丝检测信号
+    PARAM_WIRE_BREAK_TIME = 0x05,  // 断丝检测时间
+    PARAM_START_DIRECTION = 0x06,  // 丝筒启动方向    
 } ModuleParameterType_0x03;
 
 typedef enum {
-    PARAM_WRITE_PROTECT = 0x00,  // 数据写保护
-    PARAM_RECOVERY = 0x01,  // 恢复出厂设置
+    PARAM_WRITE_PROTECT = 0x00,     // 数据写保护
+    PARAM_RECOVERY = 0x01,          // 恢复出厂设置
 } ModuleParameterType_0x04;
 
 typedef enum {

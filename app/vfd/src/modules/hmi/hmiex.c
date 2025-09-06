@@ -213,11 +213,12 @@ static void show_speed_blink(void)
     }   
 }
 
+static uint8_t immi_flag = 1;
+
 static void show_speed_info(void)
 { 
     static uint8_t sp_last;
     static uint32_t time_last;
-    static uint8_t immi_flag = 1;
 
     if(motor_is_working())
     {
@@ -228,9 +229,9 @@ static void show_speed_info(void)
         {
             immi_flag = 0;
             uint8_t data[8] = {0x00, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
-            sp = HEX_TO_BCD(sp);
+            //sp = HEX_TO_BCD(sp);
             value = HEX_TO_BCD(value);
-            data[0] = code_table[sp & 0x0f];
+            data[0] = code_table[sp];
             data[2] = 0x80;
             data[4] = code_table[value >> 4];
             data[6] = code_table[value & 0x0f];
@@ -305,8 +306,13 @@ static void show_level0_and_led_info(void)
             return ;
         if(g_menu_state.sub_index[0] == 0){
             show_speed_info();
-        }else if(g_menu_state.sub_index[0] == 1)
+        }
+        else if(g_menu_state.sub_index[0] == 1)
+        {
+            immi_flag = 1;
             show_voltage_info();
+        }
+            
     }
 }
 

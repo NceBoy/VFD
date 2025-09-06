@@ -1,11 +1,12 @@
 #include "main.h"
 #include "bsp_uart.h"
+#include "log.h"
 #include "ringbuffer.h"
 
 
 static UART_HandleTypeDef huart3;
 static ringbuffer_t uart3_rb;
-static uint8_t uart3_buffer[256];
+static uint8_t uart3_buffer[1024];
 void bsp_uart_init(void)
 {
     huart3.Instance = USART3;
@@ -59,8 +60,7 @@ int bsp_uart_recv(unsigned char *buf, int len)
         return 0;
     if(count > len)
         count = len;
-    ringbuffer_read(&uart3_rb, buf, count);
-    return count;
+    return ringbuffer_read(&uart3_rb, buf, count);
 }
 
 uint32_t uart_err = 0;
@@ -96,7 +96,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
  * @param max_len: 要读取的最大数据长度
  * @return: 实际读取的数据字节数
  */
-
 int bsp_uart_recv_all(unsigned char *data, int max_len) {
     if (!data || max_len == 0) {
         return 0;
@@ -119,7 +118,7 @@ int bsp_uart_recv_all(unsigned char *data, int max_len) {
         }
         HAL_Delay(10);
     }
-    
+
     return read_len;
 }
 

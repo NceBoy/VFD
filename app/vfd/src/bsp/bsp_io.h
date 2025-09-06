@@ -17,8 +17,8 @@ extern "C" {
 
 #if 0
 //高频控制
-#define HIGH_FREQ_ENABLE        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_SET)
-#define HIGH_FREQ_DISABLE       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET)
+#define HIGH_FREQ_SET           HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_SET)
+#define HIGH_FREQ_RESET         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET)
 
 //刹车电阻控制
 #define BREAK_VDC_ENABLE        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET)
@@ -26,13 +26,13 @@ extern "C" {
     
 #else
 //高频控制
-#define HIGH_FREQ_ENABLE        
-#define HIGH_FREQ_DISABLE       
+#define HIGH_FREQ_SET        
+#define HIGH_FREQ_RESET       
 
 //刹车电阻控制
 #define BREAK_VDC_ENABLE        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_SET)
 #define BREAK_VDC_DISABLE       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET)
-
+ 
 #endif
 void bsp_io_init_input(void);
 
