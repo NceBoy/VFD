@@ -100,13 +100,13 @@ static  void  taskstart (ULONG thread_input)
 
 	while(1)
 	{
-        bsp_key_detect();
+        bsp_key_detect(MAIN_CTL_PERIOD);
         data_poll();
         inout_scan();
         bsp_led_run();
-        pump_ext_ctl(5);
-        motor_high_freq_ctl(5);
-        tx_thread_sleep(5);
+        ext_ctl_pump(MAIN_CTL_PERIOD);
+        ext_high_freq_ctl(MAIN_CTL_PERIOD);
+        tx_thread_sleep(MAIN_CTL_PERIOD);
 	}
 }
 

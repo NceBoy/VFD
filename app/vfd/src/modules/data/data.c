@@ -21,10 +21,12 @@ static void comm_uart_process(char* buf, int len);
 
 typedef int (*protocol_cb)(Packet* in , Packet* out);
 
-#define CMD_BUILD(action,main_type,sub_type)        (action << 16 | sub_type << 8 | main_type)
+#define CMD_BUILD(action,main_type,sub_type)        (action << 16 | main_type << 8 | sub_type)
 
 #define CMD_PARAM_SET           CMD_BUILD(ACTION_SET,0xFF,0x00)
 #define CMD_PARAM_GET           CMD_BUILD(ACTION_GET,0xFF,0x00)
+
+#define CMD_AUTO_REPORT         CMD_BUILD(ACTION_REPORT,0xFE,0x00)
 
 
 #define CMD_MOTOR_CTL           CMD_BUILD(ACTION_SET,0x04,0x01)
@@ -309,9 +311,9 @@ static int vfd_pump_ctl(Packet* in , Packet* out)
     if(in->body_length != 1)
         return -1;
     if(in->body[0] == 0)
-        EXT_PUMP_ENABLE;
+        int_ctl_pump(1 , 0);
     else
-        EXT_PUMP_DISABLE;
+        int_ctl_pump(0 , 0);
     uint8_t ret = 0;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
         (uint8_t*)&ret, 1);

@@ -6,7 +6,6 @@
 extern "C" {
 #endif
 
-#define     IO_SCAN_INTERVAL        5
 #define     IO_TIMEOUT_MS           5000
 
 typedef enum
@@ -34,9 +33,15 @@ void inout_mode_sync_from_ext(unsigned char mode);
 /*外部控制的调速信号同步进来*/
 void inout_sp_sync_from_ext(unsigned char sp);
 
-void pump_ext_ctl(int period);
+/*外部水泵控制，不要调用*/
+void ext_ctl_pump(int period);
 
-/*电机启动控制*/
+/*内部水泵控制，控制水泵时调用该接口*/
+void int_ctl_pump(int value , int delay);
+
+int pump_ctl_get_value(void);
+
+/*电机启动控制*/    
 void motor_start_ctl(void);
 
 /*电机停止控制*/

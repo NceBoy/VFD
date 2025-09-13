@@ -4,6 +4,7 @@
 #include "inout.h"
 #include "service_motor.h"
 #include "service_hmi.h"
+#include "service_data.h"
 #include "param.h"
 #include "motor.h"
 
@@ -18,8 +19,20 @@
 
 static int g_ipm_vfo_flag = 0;
 
-static uint8_t g_pump_ctrl_flag = 0;
-static uint16_t g_pump_ctrl_delay = 0;
+typedef struct 
+{
+    uint16_t ctrl_delay;  
+    uint8_t  real_status;
+    uint8_t  ctrl_value;  
+}pump_ctl_t;
+
+typedef struct
+{
+    uint32_t value;
+    uint32_t up_ticks;
+    uint32_t down_ticks;
+}speed_io_t;
+
 
 typedef enum
 {
@@ -78,6 +91,8 @@ typedef struct
 static uint8_t g_vfd_voltage_flag;
 
 static vfd_ctrl_t g_vfd_ctrl;
+
+static pump_ctl_t   g_pump_ctl;
 
 static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 
@@ -188,10 +203,12 @@ void motor_start_ctl(void)
     }
 }
 
+
 void motor_stop_ctl(stopcode_t code)
 {
     ext_motor_brake();
     ext_notify_stop_code((unsigned char)code);
+    int_ctl_pump(0 , 500);
 }
 
 static void io_scan_active_polarity(void)
@@ -305,77 +322,89 @@ void inout_sp_sync_from_ext(uint8_t sp)
     ctrl_speed(g_vfd_ctrl.sp_manual);
 }
 
-void pump_ext_ctl(int period)
+void ext_ctl_pump(int period)
 {
-    if(g_pump_ctrl_flag == 0)
+    if(g_pump_ctl.real_status == g_pump_ctl.ctrl_value)
         return ;
-    if(g_pump_ctrl_delay > period)
-        g_pump_ctrl_delay -= period;
+    
+    if(g_pump_ctl.ctrl_delay > period)
+        g_pump_ctl.ctrl_delay -= period;
     else
     {
-        EXT_PUMP_DISABLE;
+        g_pump_ctl.ctrl_delay = 0;
+    }
+    if(g_pump_ctl.ctrl_delay == 0)
+    {
+        bsp_io_ctrl_pump(g_pump_ctl.ctrl_value);
+        g_pump_ctl.real_status = g_pump_ctl.ctrl_value;
     }
 }
 
-uint8_t g_sp0 = 1;
-uint32_t g_sp0_up_ticks = 0;
-uint32_t g_sp0_down_ticks = 0;
+void int_ctl_pump(int value , int delay)
+{
+    if(value == g_pump_ctl.ctrl_value)
+        return ;
+    g_pump_ctl.ctrl_value = value;
+    g_pump_ctl.ctrl_delay = delay;
+}
 
-uint8_t g_sp1 = 1;
-uint32_t g_sp1_up_ticks = 0;
-uint32_t g_sp1_down_ticks = 0;
+int pump_ctl_get_value(void)
+{
+    return g_pump_ctl.real_status;
+}
 
-uint8_t g_sp2 = 1;
-uint32_t g_sp2_up_ticks = 0;
-uint32_t g_sp2_down_ticks = 0;
+
+static speed_io_t g_sp0 = {0};
+static speed_io_t g_sp1 = {0};
+static speed_io_t g_sp2 = {0};
 static void io_scan_speed_debound(void)
 { 
     if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP0].port, g_vfd_io_tab[IO_ID_SP0].pin) == GPIO_PIN_SET)
     {
-        g_sp0_down_ticks = 0;
-        if(g_sp0_up_ticks < 200)
-            g_sp0_up_ticks += 5;
-        if(g_sp0_up_ticks >= 20)
-            g_sp0 = 1;
+        g_sp0.down_ticks = 0;
+        if(g_sp0.up_ticks < 200)
+            g_sp0.up_ticks += MAIN_CTL_PERIOD;
+        if(g_sp0.up_ticks >= 20)
+            g_sp0.value = 1;
     }
     else{
-        g_sp0_up_ticks = 0;
-        if(g_sp0_down_ticks < 200)
-            g_sp0_down_ticks += 5;
-        if(g_sp0_down_ticks >= 20)
-            g_sp0 = 0;
+        g_sp0.up_ticks = 0;
+        if(g_sp0.down_ticks < 200)
+            g_sp0.down_ticks += MAIN_CTL_PERIOD;
+        if(g_sp0.down_ticks >= 20)
+            g_sp0.value = 0;
     }
 
     if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP1].port, g_vfd_io_tab[IO_ID_SP1].pin) == GPIO_PIN_SET)
     {
-        g_sp1_down_ticks = 0;
-        if(g_sp1_up_ticks < 200)
-            g_sp1_up_ticks += 5;
-        if(g_sp1_up_ticks >= 20)
-            g_sp1 = 1;
+        g_sp1.down_ticks = 0;
+        if(g_sp1.up_ticks < 200)
+            g_sp1.up_ticks += MAIN_CTL_PERIOD;
+        if(g_sp1.up_ticks >= 20)
+            g_sp1.value = 1;
     }
     else{
-        g_sp1_up_ticks = 0;
-        if(g_sp1_down_ticks < 200)
-            g_sp1_down_ticks += 5;
-        if(g_sp1_down_ticks >= 20)
-            g_sp1 = 0;
+        g_sp1.up_ticks = 0;
+        if(g_sp1.down_ticks < 200)
+            g_sp1.down_ticks += MAIN_CTL_PERIOD;
+        if(g_sp1.down_ticks >= 20)
+            g_sp1.value = 0;
     }
 
     if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP2].port, g_vfd_io_tab[IO_ID_SP2].pin) == GPIO_PIN_SET)
     {
-        g_sp2_down_ticks = 0;
-        if(g_sp2_up_ticks < 200)
-            g_sp2_up_ticks += 5;
-        if(g_sp2_up_ticks >= 20)
-            g_sp2 = 1;
+        g_sp2.down_ticks = 0;
+        if(g_sp2.up_ticks < 200)
+            g_sp2.up_ticks += MAIN_CTL_PERIOD;
+        if(g_sp2.up_ticks >= 20)
+            g_sp2.value = 1;
     }
     else{
-        g_sp2_up_ticks = 0;
-        if(g_sp2_down_ticks < 200)
-            g_sp2_down_ticks += 5;
-        if(g_sp2_down_ticks >= 20)
-            g_sp2 = 0;
+        g_sp2.up_ticks = 0;
+        if(g_sp2.down_ticks < 200)
+            g_sp2.down_ticks += MAIN_CTL_PERIOD;
+        if(g_sp2.down_ticks >= 20)
+            g_sp2.value = 0;
     }
 }
 
@@ -385,7 +414,7 @@ static void io_scan_speed(void)
     //uint8_t sp1 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP1].port, g_vfd_io_tab[IO_ID_SP1].pin) == GPIO_PIN_SET) ? 1 : 0;
     //uint8_t sp2 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP2].port, g_vfd_io_tab[IO_ID_SP2].pin) == GPIO_PIN_SET) ? 1 : 0;
     io_scan_speed_debound();
-    uint8_t sp = (g_sp2 << 2) | (g_sp1 << 1) | g_sp0 ;
+    uint8_t sp = (g_sp2.value << 2) | (g_sp1.value << 1) | g_sp0.value ;
     if(sp == g_vfd_ctrl.sp)
         return ;
 
@@ -417,7 +446,7 @@ static void io_scan_wire(void)
     if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_WIRE].port, g_vfd_io_tab[IO_ID_WIRE].pin) == (GPIO_PinState)g_vfd_io_tab[IO_ID_WIRE].active_polarity)
     {
         if(g_vfd_io_tab[IO_ID_WIRE].now_ticks < IO_TIMEOUT_MS)
-            g_vfd_io_tab[IO_ID_WIRE].now_ticks += IO_SCAN_INTERVAL;
+            g_vfd_io_tab[IO_ID_WIRE].now_ticks += MAIN_CTL_PERIOD;
     }
     else
     {
@@ -437,11 +466,7 @@ static void io_scan_wire(void)
     }
 }
 
-static void pump_ctl_close(void)
-{ 
-    g_pump_ctrl_flag = 1;
-    g_pump_ctrl_delay = 500;
-}
+
 
 static void io_ctrl_dir(void)
 {
@@ -450,9 +475,7 @@ static void io_ctrl_dir(void)
         if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
             return ;
         uint8_t stop = 0;/*0:立即停止 1:靠右停 2:靠左停*/
-        param_get(PARAM0X03, PARAM_STOP_MODE, &stop);
-        //EXT_PUMP_DISABLE;
-        pump_ctl_close();
+        param_get(PARAM0X03, PARAM_STOP_MODE, &stop);        
         switch(stop)
         {
             case 1 :{
@@ -539,7 +562,7 @@ static void io_scan_direction(void)
         if(HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin) == (GPIO_PinState)g_vfd_io_tab[i].active_polarity)
         {
             if(g_vfd_io_tab[i].now_ticks < IO_TIMEOUT_MS)
-                g_vfd_io_tab[i].now_ticks += IO_SCAN_INTERVAL;
+                g_vfd_io_tab[i].now_ticks += MAIN_CTL_PERIOD;
         }
         else
         {
@@ -632,11 +655,11 @@ static void io_ctrl_onoff(void)
             }
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开水*/
             {
-                EXT_PUMP_ENABLE;
+                int_ctl_pump(1 , 0);
             }  
             if(g_vfd_ctrl.flag[IO_ID_PUMP_STOP] != 0) /*关水*/
             {
-                EXT_PUMP_DISABLE;
+                int_ctl_pump(0 , 0);
             } 
         }break;
         default:break;
@@ -650,7 +673,7 @@ static void io_scan_onoff(void)
         if(HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin) == g_vfd_io_tab[i].active_polarity)
         {
             if(g_vfd_io_tab[i].now_ticks < IO_TIMEOUT_MS)
-                g_vfd_io_tab[i].now_ticks += IO_SCAN_INTERVAL;
+                g_vfd_io_tab[i].now_ticks += MAIN_CTL_PERIOD;
         }
         else
         {
@@ -771,6 +794,7 @@ void scan_voltage(void)
 {
     //根据GB/T 12325-2008，220V单相的允许偏差为标称电压的+7%（上限）和-10%（下限），即198V至235.4V‌
     //实际使用为220V±20% = 176V至264V
+    //电压小于150V认为掉电
     static uint32_t last_check_time = 0;
     uint32_t now = HAL_GetTick();
     if (now - last_check_time < 200) {

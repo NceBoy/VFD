@@ -11,6 +11,8 @@ int ble_connect(void);
 
 int ble_get_state(void);
 
+unsigned int ble_get_id(void);
+
 void ble_set_state(int state);
 
 #ifdef __cplusplus

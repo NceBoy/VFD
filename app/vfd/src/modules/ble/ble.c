@@ -134,9 +134,14 @@ int ble_wait(const char *expected_response, uint32_t timeout) {
     return -1;
 }
 
-void ble_id_get(void)
+static void ble_id_create(void)
 {
     ble_id = HAL_GetUIDw0() + HAL_GetUIDw1() + HAL_GetUIDw2();
+}
+
+unsigned int ble_get_id(void)
+{
+    return ble_id;
 }
 
 void ble_reset(void)
@@ -155,7 +160,7 @@ int ble_init(void)
     
     bsp_uart_init();
     /*获取一个蓝牙名称,使用芯片的ID*/
-    ble_id_get();
+    ble_id_create();
     ble_set_state(1);
     
     return 0;

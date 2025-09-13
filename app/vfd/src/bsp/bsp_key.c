@@ -16,13 +16,13 @@ void bsp_key_init(void)
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);    
 }
 
-void bsp_key_detect(void)
+void bsp_key_detect(int tick)
 {
     if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_6) == GPIO_PIN_RESET)
     {
         if(key_down_count < 5000)
         {
-            key_down_count += 5;
+            key_down_count += tick;
             if((key_down_count > 1000) && (key_send_flag == 0))
             {
                 /*按键连续按下1秒钟*/

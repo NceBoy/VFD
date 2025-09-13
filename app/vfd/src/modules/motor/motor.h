@@ -20,7 +20,7 @@ int motor_is_running(void);
 
 void motor_init(void);
 
-void motor_high_freq_ctl(int period);
+void ext_high_freq_ctl(int period);
 
 /*获取当前是否开高频*/
 unsigned char motor_is_open_freq(void);

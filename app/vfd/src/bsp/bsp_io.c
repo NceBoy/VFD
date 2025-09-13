@@ -89,12 +89,42 @@ void bsp_io_init_output(void)
     
     //HIGH_FREQ_DISABLE;需要判断高频极性才能控制
 
-    EXT_PUMP_DISABLE;
+    EXT_PUMP_DISABLE;//默认关闭
     VFD_VDC_ENABLE;
     BREAK_VDC_DISABLE;
     
 }
 
+void bsp_io_ctrl_pump(int value)
+{
+    if(value)
+    {
+        EXT_PUMP_ENABLE;
+    }
+    else
+    {
+        EXT_PUMP_DISABLE;
+    }
+}
+
+/*polarity 0:常闭,1:常开*/
+void bsp_io_ctrl_high_freq(int value, int polarity)
+{
+    if(value)
+    {
+        if(polarity != 0) /*常开*/
+            HIGH_FREQ_SET;
+        else
+            HIGH_FREQ_RESET;
+    }
+    else
+    {
+        if(polarity != 0)
+            HIGH_FREQ_RESET;
+        else
+            HIGH_FREQ_SET;  
+    }
+}
 void bsp_ipm_vfo_init(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};

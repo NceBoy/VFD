@@ -61,13 +61,25 @@ static int protocol_process(unsigned char* buf , int len)
     return 0;
 }
 
+static void uart_report_status(unsigned char* buf , int len)
+{
+    /* 上报状态*/
+    Packet out = {0};
+    create_packet(&out, ACTION_REPORT, TYPE_VFD, 0, ble_get_id(), 0xFE00, buf, len);
+    int ack_len = serialize_packet((const Packet*) &out, g_ack_buf);
+    bsp_uart_send(g_ack_buf , ack_len);
+}
+
 
 static int do_handler(MSG_MGR_T* msg)
 {
     switch(msg->mtype)
     {
-        case MSG_ID_UART_DATA:
+        case MSG_ID_UART_RECV_DATA:
             protocol_process(msg->buf , msg->len);
+            break;
+        case MSG_ID_UART_REPORT_DATA:
+            uart_report_status(msg->buf , msg->len);
             break;
         case MSG_ID_BLE_RECONNECT:
             ble_set_state(0);
@@ -106,7 +118,14 @@ static  void  task_data (ULONG thread_input)
 
 void ext_send_buf_to_data(int from_id , unsigned char* buf , int len)
 {
-    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_DATA, buf, len);
+    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_RECV_DATA, buf, len);
+}
+
+void ext_send_report_to_data(int from_id , 
+    char d1, char d2, char d3, char d4, char d5)
+{
+    unsigned char buf[5] = {d1,d2,d3,d4,d5};
+    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
 }
 
 void ext_send_notify_to_data(int from_id)

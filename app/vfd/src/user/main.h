@@ -27,7 +27,7 @@ extern "C" {
 #define PHASE_SHIFT_120 (PI_2 / 3)
 #endif
 
-
+#define MAIN_CTL_PERIOD   10
 
 
 
