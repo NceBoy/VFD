@@ -36,18 +36,22 @@ typedef enum {
     PARAM_HIGH_FREQ = 0x05 , // 最低开高频频率
     PARAM_HIGH_FREQ_DELAY = 0x06,  // 开高频延时
     PARAM_VARI_FREQ_CLOSE = 0x07,  // 变频关高频  
-    PARAM_HIGH_FREQ_POLARITY = 0x08  // 高频极性0：常闭 1：常开
+    PARAM_HIGH_FREQ_POLARITY = 0x08  // 高频极性0：常开 1：常闭
 } ModuleParameterType_0x02;
 
 ///----------------------------------------------------------------------------//
 typedef enum {
     PARAM_POWER_OFF_TIME = 0x00,  // 允许掉电最长时间
-    PARAM_WORK_END_SIGNAL = 0x01,  // 加工结束信号
+    PARAM_WORK_END_SIGNAL = 0x01,  // 加工结束信号极性
     PARAM_STOP_MODE = 0x02,  // 加工停机结束方式
     PARAM_START_FREQ = 0x03,  // 启动、换向、刹车起始频率
     PARAM_WIRE_BREAK_SIGNAL = 0x04,  // 断丝检测信号
     PARAM_WIRE_BREAK_TIME = 0x05,  // 断丝检测时间
     PARAM_START_DIRECTION = 0x06,  // 丝筒启动方向    
+    PARAM_LEFT_RIGHT_SIGNAL = 0x07, //左右换向极性
+    PARAM_EXCEED_SIGNAL = 0x08,   //超程极性
+    PARAM_JOY_KEY_SIGNAL = 0x09,   // 点动还是4键
+
 } ModuleParameterType_0x03;
 
 typedef enum {

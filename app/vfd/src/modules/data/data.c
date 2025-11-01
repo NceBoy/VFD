@@ -290,13 +290,10 @@ static int vfd_motor_ctl(Packet* in , Packet* out)
     if(in->body_length != 1)
         return -1;
     if(in->body[0] == 0){
-        if(motor_is_working() == 0)
-            motor_start_ctl();
+        motor_start_ctl();
     }
     else{
-        if(motor_is_working() == 1)
-            motor_stop_ctl(CODE_END);
-
+        motor_stop_ctl(CODE_END);
     }
     uint8_t ret = 0;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
@@ -310,10 +307,13 @@ static int vfd_pump_ctl(Packet* in , Packet* out)
     logdbg("pump control, length = %d, value = %d\n",in->body_length,in->body[0]);
     if(in->body_length != 1)
         return -1;
-    if(in->body[0] == 0)
-        int_ctl_pump(1 , 0);
-    else
-        int_ctl_pump(0 , 0);
+    if(in->body[0] == 0){
+        pump_ctl_set_value(1 , 0);
+    }
+    else{
+        pump_ctl_set_value(0 , 0);
+    }
+        
     uint8_t ret = 0;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
         (uint8_t*)&ret, 1);

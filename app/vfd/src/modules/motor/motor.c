@@ -541,7 +541,7 @@ unsigned int interrupt_times = 0;
                 bsp_tmr_stop();
                 g_motor_real.motor_status = motor_in_idle;
                 high_frequery_ctl(0);
-                EXT_PUMP_DISABLE;
+                //EXT_PUMP_DISABLE;
                 BREAK_VDC_DISABLE;
             }
             return ;

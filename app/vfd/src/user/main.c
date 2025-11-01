@@ -47,7 +47,6 @@ int main(void)
     SystemClock_Config();
 
     tx_kernel_enter();
-
     /* Infinite loop */
     while (1);
 }

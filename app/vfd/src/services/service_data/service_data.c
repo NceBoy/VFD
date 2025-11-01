@@ -68,6 +68,8 @@ static void uart_report_status(unsigned char* buf , int len)
     create_packet(&out, ACTION_REPORT, TYPE_VFD, 0, ble_get_id(), 0xFE00, buf, len);
     int ack_len = serialize_packet((const Packet*) &out, g_ack_buf);
     bsp_uart_send(g_ack_buf , ack_len);
+    logdbg("report:");
+    loghex(g_ack_buf,ack_len);
 }
 
 
@@ -121,10 +123,20 @@ void ext_send_buf_to_data(int from_id , unsigned char* buf , int len)
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_RECV_DATA, buf, len);
 }
 
-void ext_send_report_to_data(int from_id , 
-    char d1, char d2, char d3, char d4, char d5)
+/*
+*  上报数据
+*  @param from_id: 源id
+*  @param d1: err
+*  @param d2: 速度
+*  @param d3: 水泵  0-关 1-运行
+*  @param d4: 启停  0-停止 1-运行
+*  @param d5: 方向  0-正转 1-反转
+*  @param d6: 模式  0-正常 1-调试
+*/
+void ext_send_report_to_data(int from_id , unsigned char d1, unsigned char d2, 
+    unsigned char d3, unsigned char d4, unsigned char d5, unsigned char d6)
 {
-    unsigned char buf[5] = {d1,d2,d3,d4,d5};
+    unsigned char buf[6] = {d1,d2,d3,d4,d5,d6};
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
 }
 

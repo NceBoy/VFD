@@ -107,19 +107,19 @@ void bsp_io_ctrl_pump(int value)
     }
 }
 
-/*polarity 0:常闭,1:常开*/
+/*polarity 0:常开,1:常闭*/
 void bsp_io_ctrl_high_freq(int value, int polarity)
 {
     if(value)
     {
-        if(polarity != 0) /*常开*/
+        if(polarity == 0) /*常开*/
             HIGH_FREQ_SET;
         else
             HIGH_FREQ_RESET;
     }
     else
     {
-        if(polarity != 0)
+        if(polarity == 0)
             HIGH_FREQ_RESET;
         else
             HIGH_FREQ_SET;  

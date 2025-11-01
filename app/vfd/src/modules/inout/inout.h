@@ -25,6 +25,7 @@ typedef enum
 /*初始化所有输入输出引脚*/
 void inout_init(void);
 
+/*扫描所有输入输出引脚*/
 void inout_scan(void);
 
 /*外部控制的模式信号同步进来*/
@@ -37,15 +38,20 @@ void inout_sp_sync_from_ext(unsigned char sp);
 void ext_ctl_pump(int period);
 
 /*内部水泵控制，控制水泵时调用该接口*/
-void int_ctl_pump(int value , int delay);
+void pump_ctl_set_value(int value , int delay);
 
 int pump_ctl_get_value(void);
+
+int pump_ctl_toggle_value(void);
 
 /*电机启动控制*/    
 void motor_start_ctl(void);
 
 /*电机停止控制*/
 void motor_stop_ctl(stopcode_t code);
+
+/*获取当前模式*/
+int motor_mode_get(void);
 
 /*获取当前速度*/
 void inout_get_current_sp(unsigned char* sp , unsigned char* value);
