@@ -63,8 +63,8 @@ typedef enum
 
 typedef enum
 {
-    CTRL_MODE_JOG,          /*点动控制*/
-    CTRL_MODE_FOUR_KEY,     /*四建控制*/
+    CTRL_MODE_JOG = 0,          /*点动控制*/
+    CTRL_MODE_FOUR_KEY,         /*四建控制*/
 }ctl_mode_t;
 
 typedef struct
@@ -118,6 +118,7 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
     {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
 };
+
 
 /*外部IO的错误信息处理*/
 static void update_err(void)
@@ -234,7 +235,8 @@ static void io_scan_active_polarity(void)
     /*极性控制只能在电机未启动时设置*/
     if(motor_is_working())
         return ;
-    
+    uint8_t value = 0;
+#if 0    
     /*点动控制还是4键控制*/
     g_vfd_ctrl.ctl = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_CTRL_MODE].port, g_vfd_io_tab[IO_ID_CTRL_MODE].pin) == GPIO_PIN_SET) ? \
                     CTRL_MODE_FOUR_KEY : CTRL_MODE_JOG ;
@@ -258,8 +260,21 @@ static void io_scan_active_polarity(void)
         g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity = ACTIVE_HIGH;
         g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity = ACTIVE_HIGH;        
     }
+#else
+    /*极性检测选择从参数读取而不是外部IO输入*/
+    param_get(PARAM0X03, PARAM_JOY_KEY_SIGNAL, &value); /*点动还是4键控制*/
+    g_vfd_ctrl.ctl = (ctl_mode_t)value;
+
+    param_get(PARAM0X03, PARAM_EXCEED_SIGNAL, &value); /*超程信号极性,0:常开 1:常闭*/
+    g_vfd_io_tab[IO_ID_LIMIT_EXCEED].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH);    
+
+    param_get(PARAM0X03, PARAM_LEFT_RIGHT_SIGNAL, &value); /*左右换向信号极性,0:常开 1:常闭*/
+    g_vfd_io_tab[IO_ID_LR_POLARITY].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH); 
+
+    param_get(PARAM0X03, PARAM_WORK_END_SIGNAL, &value); /*加工结束信号极性,0:常开 1:常闭*/
+    g_vfd_io_tab[IO_ID_END].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH);     
+#endif
     /*断丝检测时间，消抖作用*/
-    uint8_t value = 0;
     param_get(PARAM0X03, PARAM_WIRE_BREAK_TIME, &value); /*更新断丝检测时间*/
     g_vfd_io_tab[IO_ID_WIRE].debounce_ticks = value * 100; /*ms*/
 

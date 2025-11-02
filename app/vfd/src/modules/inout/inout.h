@@ -34,10 +34,10 @@ void inout_mode_sync_from_ext(unsigned char mode);
 /*外部控制的调速信号同步进来*/
 void inout_sp_sync_from_ext(unsigned char sp);
 
-/*外部水泵控制，不要调用*/
+/*外部水泵控制，水泵接口扫描使用*/
 void ext_ctl_pump(int period);
 
-/*内部水泵控制，控制水泵时调用该接口*/
+/*水泵控制，控制水泵时调用该接口*/
 void pump_ctl_set_value(int value , int delay);
 
 int pump_ctl_get_value(void);

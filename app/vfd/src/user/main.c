@@ -103,8 +103,8 @@ static  void  taskstart (ULONG thread_input)
         data_poll();
         inout_scan();
         bsp_led_run();
-        ext_ctl_pump(MAIN_CTL_PERIOD);
-        ext_high_freq_ctl(MAIN_CTL_PERIOD);
+        ext_ctl_pump(MAIN_CTL_PERIOD);   /*水泵控制*/
+        ext_high_freq_ctl(MAIN_CTL_PERIOD); /*高频控制*/
         tx_thread_sleep(MAIN_CTL_PERIOD);
 	}
 }
