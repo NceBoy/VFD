@@ -36,27 +36,22 @@ typedef struct
 
 typedef enum
 {
-    IO_ID_CTRL_MODE = 0x00,                     //点动or四键控制
-    IO_ID_EXCEED_POLARITY = 0x01,              //超程极性
-    IO_ID_END_POLARITY = 0x02,                 //加工结束极性
-    IO_ID_LR_POLARITY = 0x03,                  //左右限位极性
+    IO_ID_SP0           = 0x00,     //速度调节0
+    IO_ID_SP1           = 0x01,     //速度调节1
+    IO_ID_SP2           = 0x02,     //速度调节2
+    IO_ID_DEBUG         = 0x03,     //调试模式
 
-    IO_ID_SP0 = 0x04,                          //速度调节0
-    IO_ID_SP1 = 0x05,                          //速度调节1
-    IO_ID_SP2 = 0x06,                          //速度调节2
-    IO_ID_DEBUG = 0x07,                        //调试模式
+    IO_ID_WIRE          = 0x04,     //断丝
 
-    IO_ID_WIRE = 0x08,                         //断丝
-
-    IO_ID_LIMIT_EXCEED = 0x09,                 //超程限位
-    IO_ID_END = 10,                          //加工结束
-    IO_ID_LIMIT_LEFT = 11,                   //左限位
-    IO_ID_LIMIT_RIGHT = 12,                  //右限位
+    IO_ID_LIMIT_EXCEED  = 0x05,     //超程限位
+    IO_ID_END           = 0x06,     //加工结束
+    IO_ID_LIMIT_LEFT    = 0x07,     //左限位
+    IO_ID_LIMIT_RIGHT   = 0x08,     //右限位
     
-    IO_ID_MOTOR_START = 13,                  //开运丝
-    IO_ID_MOTOR_STOP = 14,                   //关运丝
-    IO_ID_PUMP_START = 15,                   //开水泵
-    IO_ID_PUMP_STOP = 16,                    //关水泵
+    IO_ID_MOTOR_START   = 0x09,     //开运丝
+    IO_ID_MOTOR_STOP    = 0x0A,     //关运丝
+    IO_ID_PUMP_START    = 0x0B,     //开水泵
+    IO_ID_PUMP_STOP     = 0x0C,     //关水泵
 
     IO_ID_MAX,
 }io_id_t;
@@ -96,11 +91,6 @@ static pump_ctl_t   g_pump_ctl;
 
 static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 
-    {IO_ID_CTRL_MODE       ,GPIOB, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_NULL},//控制模式设置，点动or四键
-    {IO_ID_EXCEED_POLARITY ,GPIOB, GPIO_PIN_13 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_NULL},//超程极性控制
-    {IO_ID_END_POLARITY    ,GPIOB, GPIO_PIN_14 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_NULL},//加工结束极性
-    {IO_ID_LR_POLARITY     ,GPIOB, GPIO_PIN_15 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_NULL},//左右限位极性
-
     {IO_ID_SP0             ,GPIOD, GPIO_PIN_2  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
     {IO_ID_SP1             ,GPIOC, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
     {IO_ID_SP2             ,GPIOC, GPIO_PIN_11 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
@@ -113,8 +103,8 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_LIMIT_LEFT      ,GPIOA, GPIO_PIN_11 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //左限位
     {IO_ID_LIMIT_RIGHT     ,GPIOA, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //右限位
 
-    {IO_ID_MOTOR_START     ,GPIOB, GPIO_PIN_3  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开丝，有效电平0
-    {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_4  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
+    {IO_ID_MOTOR_START     ,GPIOB, GPIO_PIN_14  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开丝，有效电平0
+    {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_15  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
     {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
     {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
 };
@@ -236,31 +226,7 @@ static void io_scan_active_polarity(void)
     if(motor_is_working())
         return ;
     uint8_t value = 0;
-#if 0    
-    /*点动控制还是4键控制*/
-    g_vfd_ctrl.ctl = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_CTRL_MODE].port, g_vfd_io_tab[IO_ID_CTRL_MODE].pin) == GPIO_PIN_SET) ? \
-                    CTRL_MODE_FOUR_KEY : CTRL_MODE_JOG ;
 
-    /*超程信号极性*/
-    g_vfd_io_tab[IO_ID_LIMIT_EXCEED].active_polarity = \
-        (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_EXCEED_POLARITY].port, g_vfd_io_tab[IO_ID_EXCEED_POLARITY].pin) == GPIO_PIN_SET) ? \
-        ACTIVE_LOW : ACTIVE_HIGH ;
-
-    /*加工结束信号极性*/
-    g_vfd_io_tab[IO_ID_END].active_polarity = \
-        (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_END_POLARITY].port, g_vfd_io_tab[IO_ID_END_POLARITY].pin) == GPIO_PIN_SET) ? \
-        ACTIVE_LOW : ACTIVE_HIGH ;
-
-    /*左右信号极性*/
-    if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_LR_POLARITY].port, g_vfd_io_tab[IO_ID_LR_POLARITY].pin) == GPIO_PIN_SET){
-        g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity = ACTIVE_LOW;
-        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity = ACTIVE_LOW;
-    }       
-    else{
-        g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity = ACTIVE_HIGH;
-        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity = ACTIVE_HIGH;        
-    }
-#else
     /*极性检测选择从参数读取而不是外部IO输入*/
     param_get(PARAM0X03, PARAM_JOY_KEY_SIGNAL, &value); /*点动还是4键控制*/
     g_vfd_ctrl.ctl = (ctl_mode_t)value;
@@ -269,11 +235,12 @@ static void io_scan_active_polarity(void)
     g_vfd_io_tab[IO_ID_LIMIT_EXCEED].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH);    
 
     param_get(PARAM0X03, PARAM_LEFT_RIGHT_SIGNAL, &value); /*左右换向信号极性,0:常开 1:常闭*/
-    g_vfd_io_tab[IO_ID_LR_POLARITY].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH); 
+    g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH); 
+    g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH);
 
     param_get(PARAM0X03, PARAM_WORK_END_SIGNAL, &value); /*加工结束信号极性,0:常开 1:常闭*/
     g_vfd_io_tab[IO_ID_END].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH);     
-#endif
+
     /*断丝检测时间，消抖作用*/
     param_get(PARAM0X03, PARAM_WIRE_BREAK_TIME, &value); /*更新断丝检测时间*/
     g_vfd_io_tab[IO_ID_WIRE].debounce_ticks = value * 100; /*ms*/
@@ -865,6 +832,10 @@ void scan_voltage(void)
     if (now - last_check_time < 200) {
         return ; 
     }
+
+    if(motor_is_normal_running() == 0) //刹车或者换向时，由于母线电压升高，此时不再检测电压
+        return ;
+
     last_check_time = now;
     /*获取电压保护参数和掉电异常参数*/
     //uint8_t voltage_protect = 0;

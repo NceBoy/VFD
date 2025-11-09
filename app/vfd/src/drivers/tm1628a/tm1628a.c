@@ -1,10 +1,5 @@
 #include "tm1628a.h"
 
-typedef struct 
-{
-    GPIO_TypeDef    *port;
-    uint32_t        pin;
-}gpio_t;
 
 static gpio_t dio = {GPIOA, GPIO_PIN_4};
 static gpio_t clk = {GPIOA, GPIO_PIN_5};

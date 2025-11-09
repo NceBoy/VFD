@@ -65,7 +65,7 @@ static void uart_report_status(unsigned char* buf , int len)
 {
     /* 上报状态*/
     Packet out = {0};
-    create_packet(&out, ACTION_REPORT, TYPE_VFD, 0, ble_get_id(), 0xFE00, buf, len);
+    create_packet(&out, ACTION_REPORT, TYPE_VFD, 0, 0x1234, 0xFE00, buf, len);
     int ack_len = serialize_packet((const Packet*) &out, g_ack_buf);
     bsp_uart_send(g_ack_buf , ack_len);
     logdbg("report:");
@@ -82,11 +82,6 @@ static int do_handler(MSG_MGR_T* msg)
             break;
         case MSG_ID_UART_REPORT_DATA:
             uart_report_status(msg->buf , msg->len);
-            break;
-        case MSG_ID_BLE_RECONNECT:
-            ble_set_state(0);
-            ble_connect();
-            ble_set_state(1);
             break;
         default:
             loginfo("unknow msg type %d",msg->mtype);

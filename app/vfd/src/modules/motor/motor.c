@@ -209,6 +209,11 @@ int motor_is_running(void)
     else return 0;
 }
 
+int motor_is_normal_running(void)
+{
+    return g_motor_real.motor_status == motor_in_run ? 1 : 0;
+}
+
 int motor_target_current_get(void)
 {
     return (int)g_motor_real.target_should_be;
@@ -250,7 +255,7 @@ void motor_brake_start(void)
 
 void motor_dc_brake(void)
 {
-    bsp_tmr_dc_brake(20);
+    //bsp_tmr_dc_brake(20);
     g_motor_real.motor_status = motor_in_dc_brake;
     g_motor_real.dc_brake_time = 10 * 1000;   //单位:100us，实际时间1秒钟
 }

@@ -7,9 +7,10 @@
 #include "tx_api.h"
 #include "log.h"
 
+static gpio_t ble_at  = {GPIOB, GPIO_PIN_12};   /*0:at模式，1:透传模式*/
+static gpio_t ble_slp = {GPIOB, GPIO_PIN_13}; /*0:休眠*/
+
 static uint8_t ble_response[512];
-static uint32_t ble_id = 0;
-static uint8_t ble_state = 0;
 
 static int ble_send_cmd(const char *cmd) 
 { 
@@ -18,27 +19,22 @@ static int ble_send_cmd(const char *cmd)
     return 0;
 }
 
-int ble_get_state(void)
-{
-    return ble_state;
-}
 
-
-void ble_set_state(int state)
-{
-    ble_state = state;
-}
-
-
-void ble_rst_init(void)
+void ble_io_init(void)
 {
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     __HAL_RCC_GPIOB_CLK_ENABLE();
  
-    GPIO_InitStruct.Pin = GPIO_PIN_9;
+    GPIO_InitStruct.Pin = ble_slp.pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);      
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(ble_slp.port, &GPIO_InitStruct);   
+    
+    GPIO_InitStruct.Pin = ble_at.pin;
+    HAL_GPIO_Init(ble_at.port, &GPIO_InitStruct);   
+
+    HAL_GPIO_WritePin(ble_slp.port, ble_slp.pin, GPIO_PIN_SET);  //正常模式
+    HAL_GPIO_WritePin(ble_at.port, ble_at.pin, GPIO_PIN_SET);  //透传模式
 }
 /**
  * 发送BLE AT指令并等待预期响应
@@ -134,38 +130,18 @@ int ble_wait(const char *expected_response, uint32_t timeout) {
     return -1;
 }
 
-static void ble_id_create(void)
-{
-    ble_id = HAL_GetUIDw0() + HAL_GetUIDw1() + HAL_GetUIDw2();
-}
 
-unsigned int ble_get_id(void)
-{
-    return ble_id;
-}
-
-void ble_reset(void)
-{
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_RESET);
-    tx_thread_sleep(100);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET);
-    tx_thread_sleep(500);    
-}
 
 int ble_init(void)
 {
-    ble_rst_init();
-    tx_thread_sleep(100);
-    ble_reset();
+    ble_io_init();
     
     bsp_uart_init();
-    /*获取一个蓝牙名称,使用芯片的ID*/
-    ble_id_create();
-    ble_set_state(1);
-    
+   
     return 0;
 }
 
+#if 0
 int ble_connect(void)
 {
     int retry_times = 0;
@@ -196,3 +172,4 @@ start:
         
     return 0;
 }
+    #endif

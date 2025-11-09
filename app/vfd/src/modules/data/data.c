@@ -212,9 +212,6 @@ static void comm_data_handler(void)
  */
 int data_poll(void)
 {
-    if(ble_get_state() == 0) /*蓝牙重连时，不接收数据*/
-        return 0;
-
     int bytes_received = 0;
 
     bytes_received = bsp_uart_recv(g_uart_buffer + g_uart_buffer_length, 
@@ -223,9 +220,7 @@ int data_poll(void)
     g_uart_buffer_length += bytes_received;
     if (g_uart_buffer_length < 15)
         return 0;	
-    
-    /*数据中判断connect信号*/
-    
+       
     comm_data_handler();	
     
     return 0;

@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include "stm32g4xx_hal.h"
 
 /* Define PI */
 #ifndef M_PI
@@ -29,10 +30,11 @@ extern "C" {
 
 #define MAIN_CTL_PERIOD   10
 
-
-
-
-#include "stm32g4xx_hal.h"
+typedef struct
+{
+    GPIO_TypeDef    *port;
+    uint32_t        pin;
+} gpio_t;
 
 
 void Error_Handler(void);
