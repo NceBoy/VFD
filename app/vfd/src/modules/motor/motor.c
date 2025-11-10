@@ -243,7 +243,7 @@ static void motor_reverse_recovery(void)
 void motor_brake_start(void)
 {
     if((g_motor_real.motor_status == motor_in_brake) ||
-       (g_motor_real.motor_status == motor_in_dc_brake))
+       (g_motor_real.motor_status == motor_in_dc_brake))  /*已经在刹车状态*/
         return ;
     g_motor_real.target_freq = g_motor_param.start_freq;
     g_motor_real.motor_status = motor_in_brake;
@@ -251,11 +251,14 @@ void motor_brake_start(void)
     high_frequery_ctl(0);
     EXT_PUMP_DISABLE;
     BREAK_VDC_ENABLE;
+
+    /*保存当前运行的方向*/
+    param_dir_save(g_motor_real.motor_dir);
 }
 
 void motor_dc_brake(void)
 {
-    //bsp_tmr_dc_brake(20);
+    bsp_tmr_dc_brake(20);
     g_motor_real.motor_status = motor_in_dc_brake;
     g_motor_real.dc_brake_time = 10 * 1000;   //单位:100us，实际时间1秒钟
 }
@@ -287,15 +290,16 @@ static unsigned int motor_arrive_freq(float freq)
 void motor_init(void)
 {
     bsp_tmr_init();
-    if(g_motor_real.motor_status != motor_in_idle)
-        bsp_tmr_start();
+    g_motor_real.motor_dir = param_dir_load();
+    //if(g_motor_real.motor_status != motor_in_idle)
+    //    bsp_tmr_start();
 }
 
 
 void motor_start(unsigned int dir , float target_freq)
 {
     /*step 1 . init tmr*/
-    
+  
     motor_param_get();
     /*step 2 . init motor value*/
     g_motor_real.motor_status = motor_in_run;

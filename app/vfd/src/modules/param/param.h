@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#define PARAM_EEPROM_SIZE  2048
+
+#define PARAM_COMMON_START_ADDR     0
+#define PARAM_MOTOR_START_ADDR      1024
 
 typedef enum {
     PARAM0X01 = 0x00,  //
@@ -68,8 +72,8 @@ typedef enum {
     FAULT_POWER_OFF = 0xE06,  // 掉电故障
 } FaultCode;
 
-#define MAX_MODULE_TYPES 4          // ModuleParameterType数量
-#define MAX_PARAM_ENTRIES 12        // 每个模块参数类型的最大参数数量
+#define MAX_MODULE_TYPES    4          // ModuleParameterType数量
+#define MAX_PARAM_ENTRIES   12        // 每个模块参数类型的最大参数数量
 
 extern uint8_t g_vfdParam[MAX_MODULE_TYPES][MAX_PARAM_ENTRIES];
 
@@ -95,6 +99,7 @@ void param_get(ModuleParameterType type, uint8_t index, uint8_t* value);
 /// \param value 新的参数值。
 void param_set(ModuleParameterType type, uint8_t index, uint8_t value);
 
-
+ uint8_t param_dir_load(void);
+ void param_dir_save(uint8_t dir);
 
 #endif /* __VFD_PARAM_H__ */

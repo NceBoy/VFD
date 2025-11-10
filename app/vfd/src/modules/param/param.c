@@ -52,8 +52,22 @@ void param_default(void)
     EEPROM_Init();
     EEPROM_Read(0, g_vfdParam, sizeof(g_vfdParam));
     uint8_t crc_param = custom_checksum((uint8_t*)g_vfdParam, sizeof(g_vfdParam) - 1);
-    if(g_vfdParam[MAX_MODULE_TYPES - 1][MAX_PARAM_ENTRIES - 1] != crc_param)
+    if(g_vfdParam[MAX_MODULE_TYPES - 1][MAX_PARAM_ENTRIES - 1] != crc_param){
+        logdbg("param_load: crc error");
         param_default();
+    }
+ }
+
+ uint8_t param_dir_load(void)
+ {
+    uint8_t dir = 0;
+    EEPROM_Read(PARAM_MOTOR_START_ADDR, &dir, 1);
+    return dir;
+ }
+
+ void param_dir_save(uint8_t dir)
+ {
+    EEPROM_Write(PARAM_MOTOR_START_ADDR, &dir, 1);
  }
 
  void param_save(void)
