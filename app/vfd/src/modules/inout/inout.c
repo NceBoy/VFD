@@ -833,7 +833,7 @@ void scan_voltage(void)
         return ; 
     }
 
-    if(motor_is_normal_running() == 0) //刹车或者换向时，由于母线电压升高，此时不再检测电压
+    if(motor_speed_is_const() == 0) //变速时，由于母线电压不稳定，此时不再检测电压
         return ;
 
     last_check_time = now;

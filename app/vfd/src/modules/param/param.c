@@ -1,6 +1,7 @@
 #include "param.h"
 #include "EEPROM.h"
-#include "utility.h"
+#include "utils.h"
+#include "log.h"
 #include <string.h>
 
 uint8_t g_vfdParam[MAX_MODULE_TYPES][MAX_PARAM_ENTRIES];
