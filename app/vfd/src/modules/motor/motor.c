@@ -18,8 +18,8 @@ typedef enum
     motor_in_idle,          /*空闲*/
     motor_in_dc_brake,      /*直流刹车*/
     motor_in_run,           /*正常运行*/
-    motor_in_reverse,       /*反向*/
-    motor_in_brake,         /*刹车*/
+    motor_in_reverse,       /*反向减速阶段*/
+    motor_in_brake,         /*刹车减速阶段*/
 }motor_status_enum;
 /*为了计算精度，统一为float*/
 typedef struct
@@ -209,9 +209,10 @@ int motor_is_running(void)
     else return 0;
 }
 
-int motor_is_normal_running(void)
+/*电机的速度已经稳定，不再变速*/
+int motor_speed_is_const(void)  
 {
-    return g_motor_real.motor_status == motor_in_run ? 1 : 0;
+    return g_motor_real.freq_arrive;
 }
 
 int motor_target_current_get(void)
@@ -353,8 +354,8 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
         /*计算参数*/
         real_acce_time = g_motor_param.acceleration_time_us;
         real_dece_time = g_motor_param.deceleration_time_us;
-        if(target_freq <  current_freq){ /*如果是减速，则打开刹车电阻*/
-            BREAK_VDC_ENABLE;
+        if(target_freq <  current_freq){ 
+            BREAK_VDC_ENABLE;       /*如果是减速，则打开刹车电阻*/
             unsigned char freq_change = (int)(current_freq - target_freq);
             if((freq_change > 50) && (real_dece_time < 700000))
                 real_dece_time = 700000; /*频率变化大于50，最小减速时间0.7秒*/

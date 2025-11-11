@@ -17,7 +17,7 @@ int motor_target_current_get(void);
 int motor_target_current_dir(void);
 int motor_is_working(void);
 int motor_is_running(void);
-int motor_is_normal_running(void);
+int motor_speed_is_const(void);
 
 void motor_init(void);
 

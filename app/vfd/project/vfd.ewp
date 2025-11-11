@@ -371,12 +371,12 @@
                     <state>$PROJ_DIR$\..\src\modules\data</state>
                     <state>$PROJ_DIR$\..\src\drivers\softi2c</state>
                     <state>$PROJ_DIR$\..\src\modules\param</state>
-                    <state>$PROJ_DIR$\..\src\modules\utility</state>
                     <state>$PROJ_DIR$\..\src\drivers\tm1628a</state>
                     <state>$PROJ_DIR$\..\src\services\service_hmi</state>
                     <state>$PROJ_DIR$\..\src\modules\hmi</state>
                     <state>$PROJ_DIR$\..\src\modules\ble</state>
                     <state>$PROJ_DIR$\..\src\modules\ringbuffer</state>
+                    <state>$PROJ_DIR$\..\src\modules\utils</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2610,12 +2610,12 @@
             </file>
         </group>
         <group>
-            <name>utility</name>
+            <name>utils</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\utility\utility.c</name>
+                <name>$PROJ_DIR$\..\src\modules\utils\utils.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\utility\utility.h</name>
+                <name>$PROJ_DIR$\..\src\modules\utils\utils.h</name>
             </file>
         </group>
     </group>
