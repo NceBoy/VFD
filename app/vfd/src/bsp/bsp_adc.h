@@ -10,16 +10,9 @@ extern "C" {
 
 void bsp_adc_init(void);
 
-extern uint32_t u_ima ;
-extern uint32_t v_ima ;
-extern uint32_t w_ima ;
-extern uint32_t vdc_v ;
+void bsp_adc_start(void);
 
-
-extern uint32_t adc_u_data ;
-extern uint32_t adc_w_data ;
-extern uint32_t adc_v_data ;
-extern uint32_t adc_data;
+int bsp_get_voltage(void);
 
 #ifdef __cplusplus
 }

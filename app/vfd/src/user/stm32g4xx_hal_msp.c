@@ -80,8 +80,8 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
       HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   
       /* ADC1 interrupt Init */
-      HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
-      HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+      //HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
+      //HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
   
     }
 
@@ -111,7 +111,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
       HAL_GPIO_DeInit(GPIOA, GPIO_PIN_0|GPIO_PIN_1);
   
       /* ADC1 interrupt DeInit */
-      HAL_NVIC_DisableIRQ(ADC1_2_IRQn);
+      //HAL_NVIC_DisableIRQ(ADC1_2_IRQn);
     }
 
 }

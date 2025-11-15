@@ -68,30 +68,30 @@ static  void  task_test (ULONG thread_input)
 #else
 
 #if 1
-    tx_thread_sleep(10000);
+    tx_thread_sleep(3000);
 
     ext_motor_start(0,10);
 
-    tx_thread_sleep(1000 * 10); /*5s后开始变频*/
+    tx_thread_sleep(1000 * 5); /*5s后开始变频*/
     ext_motor_speed(30); /*电机变频*/
     
-    tx_thread_sleep(1000 * 10); /*5s后开始变频*/
+    tx_thread_sleep(1000 * 5); /*5s后开始变频*/
     ext_motor_speed(80); /*电机变频*/
 
-    tx_thread_sleep(1000 * 10); /*5s后开始变频*/
+    tx_thread_sleep(1000 * 5); /*5s后开始变频*/
     ext_motor_speed(50); /*电机变频*/
 
-    tx_thread_sleep(1000 * 10); /*5s后开始变频*/
+    tx_thread_sleep(1000 * 5); /*5s后开始变频*/
     ext_motor_speed(10); /*电机变频*/
 
-    tx_thread_sleep(1000 * 10); /*5s后开始换向*/
+    tx_thread_sleep(1000 * 5); /*5s后开始换向*/
     ext_motor_reverse(); /*电机换向*/
 
     tx_thread_sleep(1000 * 5); /*5s后开始变频*/
     ext_motor_speed(50); /*电机变频*/
 
-    tx_thread_sleep(1000 * 10); /*5s后开始变频*/
-    ext_motor_break(); /*电机刹车*/
+    tx_thread_sleep(1000 * 5); /*5s后开始变频*/
+    ext_motor_brake(); /*电机刹车*/
     
 #endif
 	while(1)

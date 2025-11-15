@@ -367,10 +367,16 @@
                     <state>$PROJ_DIR$\..\src\modules\protocol</state>
                     <state>$PROJ_DIR$\..\src\drivers\adc</state>
                     <state>$PROJ_DIR$\..\src\modules\inout</state>
-                    <state>$PROJ_DIR$\..\src\modules\uart</state>
                     <state>$PROJ_DIR$\..\src\services\service_data</state>
                     <state>$PROJ_DIR$\..\src\modules\data</state>
                     <state>$PROJ_DIR$\..\src\drivers\softi2c</state>
+                    <state>$PROJ_DIR$\..\src\modules\param</state>
+                    <state>$PROJ_DIR$\..\src\drivers\tm1628a</state>
+                    <state>$PROJ_DIR$\..\src\services\service_hmi</state>
+                    <state>$PROJ_DIR$\..\src\modules\hmi</state>
+                    <state>$PROJ_DIR$\..\src\modules\ble</state>
+                    <state>$PROJ_DIR$\..\src\modules\ringbuffer</state>
+                    <state>$PROJ_DIR$\..\src\modules\utils</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2145,6 +2151,12 @@
             <name>$PROJ_DIR$\..\src\bsp\bsp_io.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_key.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_key.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\src\bsp\bsp_led.c</name>
         </file>
         <file>
@@ -2161,6 +2173,12 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\src\bsp\bsp_tmr.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_uart.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\bsp\bsp_uart.h</name>
         </file>
     </group>
     <group>
@@ -2232,6 +2250,15 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\drivers\softi2c\SoftI2C_port.h</name>
+            </file>
+        </group>
+        <group>
+            <name>tm1628a</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\tm1628a\tm1628a.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\tm1628a\tm1628a.h</name>
             </file>
         </group>
     </group>
@@ -2496,12 +2523,36 @@
     <group>
         <name>modules</name>
         <group>
+            <name>ble</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\ble\ble.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\ble\ble.h</name>
+            </file>
+        </group>
+        <group>
             <name>data</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\data\data.c</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\data\data.h</name>
+            </file>
+        </group>
+        <group>
+            <name>hmi</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\hmi\hmi.c</name>
+                <excluded>
+                    <configuration>Debug</configuration>
+                </excluded>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\hmi\hmi.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\hmi\hmiex.c</name>
             </file>
         </group>
         <group>
@@ -2532,6 +2583,15 @@
             </file>
         </group>
         <group>
+            <name>param</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\param\param.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\param\param.h</name>
+            </file>
+        </group>
+        <group>
             <name>protocol</name>
             <file>
                 <name>$PROJ_DIR$\..\src\modules\protocol\protocol.c</name>
@@ -2539,20 +2599,23 @@
             <file>
                 <name>$PROJ_DIR$\..\src\modules\protocol\protocol.h</name>
             </file>
+        </group>
+        <group>
+            <name>ringbuffer</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\protocol\vfd_param.c</name>
+                <name>$PROJ_DIR$\..\src\modules\ringbuffer\ringbuffer.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\protocol\vfd_param.h</name>
+                <name>$PROJ_DIR$\..\src\modules\ringbuffer\ringbuffer.h</name>
             </file>
         </group>
         <group>
-            <name>uart</name>
+            <name>utils</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\uart\uart.c</name>
+                <name>$PROJ_DIR$\..\src\modules\utils\utils.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\uart\uart.h</name>
+                <name>$PROJ_DIR$\..\src\modules\utils\utils.h</name>
             </file>
         </group>
     </group>
@@ -2565,6 +2628,15 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\src\services\service_data\service_data.h</name>
+            </file>
+        </group>
+        <group>
+            <name>service_hmi</name>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_hmi\service_hmi.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\service_hmi\service_hmi.h</name>
             </file>
         </group>
         <group>
@@ -3199,6 +3271,9 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\src\user\stm32g4xx_it.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\src\user\tx_user.h</name>
         </file>
     </group>
 </project>

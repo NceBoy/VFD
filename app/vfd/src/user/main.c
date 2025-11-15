@@ -1,18 +1,22 @@
-/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "tx_api.h"
 #include "nx_msg.h"
 #include "log.h"
 #include "bsp_led.h"
 #include "bsp_adc.h"
-#include "uart.h"
+#include "bsp_key.h"
 #include "inout.h"
+#include "ble.h"
+#include "data.h"
+#include "motor.h"
 #include "tx_api.h"
 #include "tx_initialize.h"
 #include "tx_thread.h"
 #include "service_test.h"
 #include "service_motor.h"
 #include "service_data.h"
+#include "service_hmi.h"
+
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
@@ -22,6 +26,11 @@ static void SystemClock_Config(void);
 static  TX_THREAD   taskstarttcb;
 static  ULONG64     taskstartstk[CFG_TASK_START_STK_SIZE/8];
 static  void        taskstart          (ULONG thread_input);
+
+/*电压采样定时器*/
+TX_TIMER adc_timer;
+static void adc_timer_expire(ULONG id);
+
 
 /**
   * @brief  The application entry point.
@@ -38,7 +47,6 @@ int main(void)
     SystemClock_Config();
 
     tx_kernel_enter();
-
     /* Infinite loop */
     while (1);
 }
@@ -59,18 +67,23 @@ VOID  tx_application_define(VOID *first_unused_memory)
 }
 
 
-
 static  void  taskstart (ULONG thread_input)
 {
   (void)thread_input;
 
     log_init();
 
+    bsp_adc_init();
+
     bsp_led_init();
+
+    bsp_key_init();
 
     inout_init();
 
 	nx_msg_init();
+
+    ble_init();
 
     //service_test_start();
     
@@ -78,18 +91,30 @@ static  void  taskstart (ULONG thread_input)
 
     service_motor_start();
  
- 
+    service_hmi_start();
+
+    tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 20, 10, TX_AUTO_ACTIVATE);
+    
+    logdbg("system start .\n");
+
 	while(1)
 	{
+        bsp_key_detect(MAIN_CTL_PERIOD);
+        data_poll();
         inout_scan();
-        uart3_recv_to_data();
         bsp_led_run();
-        logdbg("%d,%d,%d\n",u_ima,v_ima,w_ima);
-        tx_thread_sleep(5);
+        ext_ctl_pump(MAIN_CTL_PERIOD);   /*水泵控制*/
+        ext_high_freq_ctl(MAIN_CTL_PERIOD); /*高频控制*/
+        motor_save_check(MAIN_CTL_PERIOD); /*电机结束时保存方向*/
+        tx_thread_sleep(MAIN_CTL_PERIOD);
 	}
 }
 
-
+static void adc_timer_expire(ULONG id)
+{
+    (void)id;
+    bsp_adc_start();
+}
 /**
   * @brief System Clock Configuration
   * @retval None

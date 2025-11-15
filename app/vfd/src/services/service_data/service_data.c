@@ -6,7 +6,8 @@
 #include "nx_msg.h"
 #include "protocol.h"
 #include "data.h"
-#include "uart.h"
+#include "ble.h"
+#include "bsp_uart.h"
 
 /*线程参数*/
 
@@ -21,9 +22,7 @@ static  void        task_data          (ULONG thread_input);
 static TX_QUEUE g_data_queue = {0};
 static UINT g_data_queue_addr[QUEUE_DATA_MAX_NUM] = {0};
 
-/*创建一个定时器，用作UART超时判断*/
-static VOID timeout_cb(ULONG);
-static TX_TIMER g_uart_timeout_tmr = {0};
+
 /*ack 应答全局缓冲区*/
 static uint8_t g_ack_buf[1024];
 
@@ -43,26 +42,50 @@ void service_data_start(void)
                      TX_AUTO_START);
 }
 
-
-
-
-static int do_handler(MSG_MGR_T* msg)
-{
-    loghex((unsigned char*) msg->buf , msg->len); 
-    
+static int protocol_process(unsigned char* buf , int len)
+{ 
     Packet pkt = {0};
     Packet ack_pkt = {0};
     int ack_len = 0;
 
-    if(deserialize_packet((const uint8_t*) msg->buf, msg->len , &pkt))
+    if(deserialize_packet((const uint8_t*) buf, len , &pkt))
     {
         int ret = data_process(&pkt , &ack_pkt);
         packet_body_free(&pkt);
-        if(ret <= 0)
-            return -1;
+        if(ret < 0)
+            return ret;
         ack_len = serialize_packet((const Packet*) &ack_pkt, g_ack_buf);
-        if(msg->from == (TX_QUEUE*)1) /*数据从UART发送过来的，应答再发回UART*/
-            uart3_send(g_ack_buf , ack_len);
+        bsp_uart_send(g_ack_buf , ack_len);
+        //loghex(g_ack_buf,ack_len);
+    }
+    return 0;
+}
+
+static void uart_report_status(unsigned char* buf , int len)
+{
+    /* 上报状态*/
+    Packet out = {0};
+    create_packet(&out, ACTION_REPORT, TYPE_VFD, 0, 0x1234, 0xFE00, buf, len);
+    int ack_len = serialize_packet((const Packet*) &out, g_ack_buf);
+    bsp_uart_send(g_ack_buf , ack_len);
+    logdbg("report:");
+    loghex(g_ack_buf,ack_len);
+}
+
+
+static int do_handler(MSG_MGR_T* msg)
+{
+    switch(msg->mtype)
+    {
+        case MSG_ID_UART_RECV_DATA:
+            protocol_process(msg->buf , msg->len);
+            break;
+        case MSG_ID_UART_REPORT_DATA:
+            uart_report_status(msg->buf , msg->len);
+            break;
+        default:
+            loginfo("unknow msg type %d",msg->mtype);
+            break;
     }
     return 0;
 }
@@ -71,9 +94,8 @@ static int do_handler(MSG_MGR_T* msg)
 static  void  task_data (ULONG thread_input)
 {
 	(void)thread_input;
-    protocol_mem_init();
-    uart3_init();
-    tx_timer_create(&g_uart_timeout_tmr,"uart timeout",timeout_cb,0,10,10,TX_AUTO_ACTIVATE); 
+    
+    protocol_mem_init();    
 
 	MSG_MGR_T* recv_info  = NULL;
 	
@@ -89,13 +111,31 @@ static  void  task_data (ULONG thread_input)
 
 }
 
-static VOID timeout_cb(ULONG para)
+
+
+void ext_send_buf_to_data(int from_id , unsigned char* buf , int len)
 {
-    (void)para;
-    uart3_period(10);
+    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_RECV_DATA, buf, len);
 }
 
-void ext_send_to_data(int from_id , unsigned char* buf , int len)
+/*
+*  上报数据
+*  @param from_id: 源id
+*  @param d1: err
+*  @param d2: 速度
+*  @param d3: 水泵  0-关 1-运行
+*  @param d4: 启停  0-停止 1-运行
+*  @param d5: 方向  0-正转 1-反转
+*  @param d6: 模式  0-正常 1-调试
+*/
+void ext_send_report_to_data(int from_id , unsigned char d1, unsigned char d2, 
+    unsigned char d3, unsigned char d4, unsigned char d5, unsigned char d6)
 {
-    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_DATA, buf, len);
+    unsigned char buf[6] = {d1,d2,d3,d4,d5,d6};
+    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
+}
+
+void ext_send_notify_to_data(int from_id)
+{
+    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_BLE_RECONNECT, NULL, 0);
 }

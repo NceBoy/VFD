@@ -6,7 +6,7 @@ static UART_HandleTypeDef hlpuart1;
 int bsp_log_init(void)
 {
   hlpuart1.Instance = LPUART1;
-  hlpuart1.Init.BaudRate = 921600;
+  hlpuart1.Init.BaudRate = 115200;
   hlpuart1.Init.WordLength = UART_WORDLENGTH_8B;
   hlpuart1.Init.StopBits = UART_STOPBITS_1;
   hlpuart1.Init.Parity = UART_PARITY_NONE;
@@ -22,7 +22,6 @@ int bsp_log_init(void)
   HAL_UARTEx_SetRxFifoThreshold(&hlpuart1, UART_RXFIFO_THRESHOLD_1_8);
 
   HAL_UARTEx_DisableFifoMode(&hlpuart1);
-
 
     return 0;
 }

@@ -733,7 +733,7 @@
                 <debug>1</debug>
                 <option>
                     <name>JLinkSpeed</name>
-                    <state>10000</state>
+                    <state>1000</state>
                 </option>
                 <option>
                     <name>CCJLinkDoLogfile</name>
@@ -753,7 +753,7 @@
                 </option>
                 <option>
                     <name>JLinkInitialSpeed</name>
-                    <state>10000</state>
+                    <state>4000</state>
                 </option>
                 <option>
                     <name>CCDoJlinkMultiTarget</name>

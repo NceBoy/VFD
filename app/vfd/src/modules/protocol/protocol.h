@@ -25,11 +25,11 @@ typedef struct {
 // 协议消息动作代码
 typedef enum {
     ACTION_REPORT = 0x01,             // 状态上报
-    ACTION_GET = 0x02,             // 主动查询
-    ACTION_SET = 0x03,               // 主动设置
-    ACTION_REPLY = 0x04,             // 消息回复
-    ACTION_NET = 0x05,              // 组网
-    ACTION_ERROR = 0xFF              // 异常错误
+    ACTION_GET = 0x02,                // 主动查询
+    ACTION_SET = 0x03,                // 主动设置
+    ACTION_REPLY = 0x04,              // 消息回复
+    ACTION_NET = 0x05,                // 组网
+    ACTION_ERROR = 0xFF               // 异常错误
 } ActionCode;
 
 // 协议消息类型代码

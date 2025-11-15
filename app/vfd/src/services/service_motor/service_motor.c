@@ -8,6 +8,7 @@
 #include "cordic.h"
 #include "motor.h"
 #include "inout.h"
+#include "param.h"
 
 /*线程参数*/
 #define  CFG_TASK_MOTOR_PRIO                          1u
@@ -51,8 +52,7 @@ static int do_msg_handler(MSG_MGR_T* msg)
 
         case MSG_ID_MOTOR_VF      : {
             assert(msg->len == 4);
-            unsigned int freq = 0;
-            memcpy(&freq,msg->buf,msg->len);
+            int freq = *(int*)msg->buf;
             motor_target_info_update((float) freq);
 
         } break; 
@@ -62,8 +62,8 @@ static int do_msg_handler(MSG_MGR_T* msg)
 
         } break; 
 
-        case MSG_ID_MOTOR_BREAK : {
-            motor_break_start();
+        case MSG_ID_MOTOR_BRAKE : {
+            motor_brake_start();
 
         } break;
         default:break;
@@ -78,9 +78,7 @@ static  void  task_motor (ULONG thread_input)
 
     MSG_MGR_T *msg = NULL;
 
-    initParameterTable();
-
-    bsp_adc_init();
+    param_load();
 
     cordic_init();
 
@@ -107,7 +105,7 @@ void ext_motor_start(unsigned int dir , unsigned int target)
 
 void ext_motor_speed(unsigned int speed)
 {
-    if(motor_is_working() == 0)
+    if(motor_is_running() == 0)
         return ;
     unsigned int freq = speed;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_VF, &freq, 4);
@@ -115,14 +113,14 @@ void ext_motor_speed(unsigned int speed)
 
 void ext_motor_reverse(void)
 {
-    if(motor_is_working() == 0)
+    if(motor_is_running() == 0)
         return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_REVERSE, NULL, 0);
 }
 
-void ext_motor_break(void)
+void ext_motor_brake(void)
 {
-    if(motor_is_working() == 0)
+    if(motor_is_running() == 0)
         return ;
-    nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BREAK, NULL, 0);
+    nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BRAKE, NULL, 0);
 }
