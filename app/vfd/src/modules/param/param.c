@@ -40,7 +40,7 @@ void param_default(void)
     g_vfdParam[PARAM0X03][PARAM_START_DIRECTION] = 1;// 丝筒启动方向，0:之前的方向，1:向左 ， 2:向右
     g_vfdParam[PARAM0X03][PARAM_LEFT_RIGHT_SIGNAL] = 0;// 左右换向信号极性，0:常开 1:常闭
     g_vfdParam[PARAM0X03][PARAM_EXCEED_SIGNAL] = 0;// 超程信号极性，0:常开 1:常闭
-    g_vfdParam[PARAM0X03][PARAM_JOY_KEY_SIGNAL] = 0;// 点动还是4键(0:点动 1:4键)
+    g_vfdParam[PARAM0X03][PARAM_JOY_KEY_SIGNAL] = 1;// 点动还是4键(0:点动 1:4键)
 
 
     g_vfdParam[PARAM0X04][PARAM_WRITE_PROTECT] = 1;// 数据写保护

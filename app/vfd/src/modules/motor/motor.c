@@ -42,6 +42,11 @@ typedef struct
     unsigned int         ctrl_delay;
 }motor_high_freq_t;
 
+typedef struct 
+{
+    unsigned char need_ctl;
+    unsigned int  ctl_delay;
+}eeprom_ctl_t;
 
 typedef struct 
 {
@@ -62,11 +67,31 @@ static motor_high_freq_t g_high_freq;
 
 static motor_para_t g_motor_param;
 static motor_ctl_t g_motor_real;   
-
+static eeprom_ctl_t g_eeprom_ctl;
 
 static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
 
 static void motor_update_compare(void);
+
+static void motor_eeprom_ctl(void)
+{
+    g_eeprom_ctl.need_ctl = 1;
+    g_eeprom_ctl.ctl_delay = 200; /*200ms后操作*/
+}
+
+void motor_save_check(int period)
+{
+    if(g_eeprom_ctl.need_ctl == 0)
+        return ;
+    if(g_eeprom_ctl.ctl_delay > period)
+        g_eeprom_ctl.ctl_delay -= period;
+    else
+    {
+        g_eeprom_ctl.need_ctl = 0;
+        g_eeprom_ctl.ctl_delay = 0;
+        param_dir_save(g_motor_real.motor_dir);    /*保存当前运行的方向*/
+    }
+}
 
 static void motor_param_get(void)
 {
@@ -95,10 +120,14 @@ static void motor_param_get(void)
 
     /*加速时间，单位0.1秒*/
     param_get(PARAM0X02, PARAM_ACCE_TIME, &value);
+    if(value < 4)
+        value = 4;
     g_motor_param.acceleration_time_us = value* 100 * 1000;
     
     /*减速时间，单位0.1秒，经实际测试，50HZ换向时，减速时间最小0.4秒，80Hz换向时，减速时间最小0.7秒*/
     param_get(PARAM0X02, PARAM_DECE_TIME, &value);
+    if(value < 4)
+        value = 4;    
     g_motor_param.deceleration_time_us = value* 100 * 1000;
 }
 
@@ -124,9 +153,9 @@ static void high_frequery_ctl(int value)
     {
         unsigned int real_delay = 0;
         if(g_motor_param.open_freq_delay < HIGH_OPEN_DELAY_MIN)
-            real_delay = HIGH_OPEN_DELAY_MIN;
+            real_delay = HIGH_OPEN_DELAY_MIN * 100;
         else 
-            real_delay = g_motor_param.open_freq_delay;
+            real_delay = g_motor_param.open_freq_delay * 100; /*单位0.1秒*/
         g_high_freq.ctrl_delay = real_delay;     
     }
     else /*立即关*/
@@ -161,6 +190,7 @@ static void high_freq_control(void)
     }
 }
 
+/*外部延时控制时的调用*/
 void ext_high_freq_ctl(int period)
 {
     uint8_t polarity = 0; /*0:常闭,1:常开*/
@@ -209,10 +239,11 @@ int motor_is_running(void)
     else return 0;
 }
 
-/*电机的速度已经稳定，不再变速*/
+/*电机的速度已经稳定，不再变速,1已经稳定，0:还在变速不稳定*/
 int motor_speed_is_const(void)  
 {
-    return g_motor_real.freq_arrive;
+    //return g_motor_real.freq_arrive;
+    return g_high_freq.real_status == 1 ? 1 : 0;
 }
 
 int motor_target_current_get(void)
@@ -250,11 +281,8 @@ void motor_brake_start(void)
     g_motor_real.motor_status = motor_in_brake;
 
     high_frequery_ctl(0);
-    EXT_PUMP_DISABLE;
+    //EXT_PUMP_DISABLE;
     BREAK_VDC_ENABLE;
-
-    /*保存当前运行的方向*/
-    param_dir_save(g_motor_real.motor_dir);
 }
 
 void motor_dc_brake(void)
@@ -531,6 +559,7 @@ static void motor_update_spwm(void)
  
 }
 
+
 unsigned int interrupt_times = 0;
  void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
  {
@@ -553,6 +582,9 @@ unsigned int interrupt_times = 0;
                 high_frequery_ctl(0);
                 //EXT_PUMP_DISABLE;
                 BREAK_VDC_DISABLE;
+                /*保存当前的运行方向（如果是靠边停，没关系）*/
+                motor_eeprom_ctl();
+
             }
             return ;
         }

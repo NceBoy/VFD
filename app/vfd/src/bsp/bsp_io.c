@@ -93,14 +93,14 @@ void bsp_io_ctrl_pump(int value)
 /*polarity 0:常开,1:常闭*/
 void bsp_io_ctrl_high_freq(int value, int polarity)
 {
-    if(value)
+    if(value) /*开高频*/
     {
         if(polarity == 0) /*常开*/
             HIGH_FREQ_SET;
         else
             HIGH_FREQ_RESET;
     }
-    else
+    else/*关高频*/
     {
         if(polarity == 0)
             HIGH_FREQ_RESET;

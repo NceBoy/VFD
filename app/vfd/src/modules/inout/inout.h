@@ -53,6 +53,9 @@ void motor_stop_ctl(stopcode_t code);
 /*获取当前模式*/
 int motor_mode_get(void);
 
+/*获取当前调试模式*/
+int motor_debug_mode(void);
+
 /*获取当前速度*/
 void inout_get_current_sp(unsigned char* sp , unsigned char* value);
 

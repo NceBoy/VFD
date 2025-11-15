@@ -228,6 +228,8 @@ int data_poll(void)
 
 static void comm_uart_process(char* buf, int len)
 {
+    //if(motor_is_working() && (motor_debug_mode() == 0)) /*电机在运行时，不允许改参数，除非是调试模式*/
+    //    return ;
     ext_send_buf_to_data(0, (unsigned char*)buf, len);
 }
 

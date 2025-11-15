@@ -26,6 +26,7 @@ typedef struct
     uint8_t  ctrl_value;  
 }pump_ctl_t;
 
+
 typedef struct
 {
     uint32_t value;
@@ -262,6 +263,11 @@ void inout_mode_sync_from_ext(unsigned char mode)
         }
     }
     ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+}
+
+int motor_debug_mode(void)
+{
+    return g_vfd_ctrl.flag[IO_ID_DEBUG];
 }
 
 #if 1
@@ -821,7 +827,7 @@ static uint8_t check_voltage_status(int voltage, int low_threshold, int high_thr
     return 0; // 电压在正常范围内或未超时
 }
 
-
+int g_real_voltage = 0;
 void scan_voltage(void)
 {
     //根据GB/T 12325-2008，220V单相的允许偏差为标称电压的+7%（上限）和-10%（下限），即198V至235.4V‌
@@ -833,7 +839,7 @@ void scan_voltage(void)
         return ; 
     }
 
-    if(motor_speed_is_const() == 0) //变速时，由于母线电压不稳定，此时不再检测电压
+    if(motor_is_working() && (motor_speed_is_const() == 0)) //变速时，由于母线电压不稳定，此时不再检测电压
         return ;
 
     last_check_time = now;
@@ -845,7 +851,9 @@ void scan_voltage(void)
     
     uint16_t timeout = power_off_time * 100;  /*转换成毫秒*/
 
+    /*过压时电机停止，放电很慢*/
     int voltage = bsp_get_voltage();
+    g_real_voltage = voltage;
  
     if(is_power_off(voltage,timeout) == 1){
         g_vfd_voltage_flag = 3;
