@@ -5,6 +5,7 @@
 #include "bsp_led.h"
 #include "bsp_adc.h"
 #include "bsp_key.h"
+#include "bsp_iwdg.h"
 #include "inout.h"
 #include "ble.h"
 #include "data.h"
@@ -79,6 +80,8 @@ static  void  taskstart (ULONG thread_input)
 
     bsp_key_init();
 
+    bsp_iwdg_init();
+
     inout_init();
 
 	nx_msg_init();
@@ -99,6 +102,7 @@ static  void  taskstart (ULONG thread_input)
 
 	while(1)
 	{
+        bsp_iwdg_feed();
         bsp_key_detect(MAIN_CTL_PERIOD);
         data_poll();
         inout_scan();
