@@ -39,7 +39,7 @@ static key_t g_key = {0, 0, 0, 0, 0};
 static menu_state_t g_menu_state = {0};  // 初始在第一级菜单第0项
 
 static uint8_t g_level_refresh = 0;
-static uint8_t g_errcode_display = 0;
+static int g_errcode_display = 0;
 
 
 // 第一级菜单项数
@@ -312,7 +312,6 @@ static void show_level0_and_led_info(void)
             immi_flag = 1;
             show_voltage_info();
         }
-            
     }
 }
 
@@ -389,7 +388,8 @@ void hmi_stop_code(int code)
     data[4] = code_table[(code / 10) % 10];
     data[6] = code_table[code % 10];
     tm1628a_write_continuous(data , sizeof(data)); 
-    g_errcode_display = 1; 
+    
+    g_errcode_display = code; 
 }
 
 void hmi_clear_menu(void)

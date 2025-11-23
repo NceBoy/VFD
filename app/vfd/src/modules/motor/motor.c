@@ -8,7 +8,8 @@
 #include "param.h"
 #include "hmi.h"
 
-#define  HIGH_OPEN_DELAY_MIN      5       /*开高频最小延时，单位0.1秒*/
+#define  HIGH_OPEN_DELAY_MIN      3       /*开高频最小延时，单位0.1秒*/
+#define  HIGH_OPEN_DELAY_MAX      30       /*开高频最小延时，单位0.1秒*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
 #define RADIO_MAX               (0.95f)
@@ -154,9 +155,11 @@ static void high_frequery_ctl(int value)
         unsigned int real_delay = 0;
         if(g_motor_param.open_freq_delay < HIGH_OPEN_DELAY_MIN)
             real_delay = HIGH_OPEN_DELAY_MIN * 100;
+        else if(g_motor_param.open_freq_delay > HIGH_OPEN_DELAY_MAX)
+            real_delay = HIGH_OPEN_DELAY_MAX * 100;
         else 
             real_delay = g_motor_param.open_freq_delay * 100; /*单位0.1秒*/
-        g_high_freq.ctrl_delay = real_delay;     
+        g_high_freq.ctrl_delay = real_delay;
     }
     else /*立即关*/
     { 

@@ -270,38 +270,36 @@ int motor_debug_mode(void)
     return g_vfd_ctrl.flag[IO_ID_DEBUG];
 }
 
-#if 1
+
 static void io_scan_debug(void)
 {
     /*是否进入或者推出debug模式，debug模式一般是用来上丝*/
     static uint8_t debug_last = 1;
     uint8_t debug_now = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_DEBUG].port, g_vfd_io_tab[IO_ID_DEBUG].pin) == GPIO_PIN_SET) ? 1 : 0;
-    if(debug_now == debug_last)
-        return ;
-    debug_last = debug_now;
     if(debug_now == 0)
     {
-        g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
-        //g_vfd_ctrl.flag[IO_ID_WIRE] = 0;   /*清除断丝错误显示*/
-    }   
-    else    /*退出debug模式*/
-    {
-        g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
-        if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
+        if((debug_last == 1) || (g_vfd_ctrl.flag[IO_ID_DEBUG] == 0))  /*首次进入debug模式*/
         {
-            motor_stop_ctl(CODE_WIRE_BREAK);
-            pump_ctl_set_value(0 , 500);
+            ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,1);  
+        }
+        debug_last = debug_now;
+        g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
+    }
+    else
+    {
+        if(debug_last == 0)
+        {
+            debug_last = debug_now;
+            ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+            g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
+            if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
+            {
+                motor_stop_ctl(CODE_WIRE_BREAK);
+                pump_ctl_set_value(0 , 500);
+            }
         }
     }
-    ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
 }
-#else
-static void io_scan_debug(void)
-{
-    /*是否进入或者推出debug模式，debug模式一般是用来上丝*/
-    g_vfd_ctrl.flag[IO_ID_DEBUG] = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_DEBUG].port, g_vfd_io_tab[IO_ID_DEBUG].pin) == GPIO_PIN_SET) ? 0 : 1;
-}
-#endif
 
 
 
@@ -429,7 +427,7 @@ static void io_scan_speed_debound(void)
 }
 
 static void io_scan_speed(void)
-{  
+{
     //uint8_t sp0 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP0].port, g_vfd_io_tab[IO_ID_SP0].pin) == GPIO_PIN_SET) ? 1 : 0;
     //uint8_t sp1 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP1].port, g_vfd_io_tab[IO_ID_SP1].pin) == GPIO_PIN_SET) ? 1 : 0;
     //uint8_t sp2 = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_SP2].port, g_vfd_io_tab[IO_ID_SP2].pin) == GPIO_PIN_SET) ? 1 : 0;
@@ -437,6 +435,9 @@ static void io_scan_speed(void)
     uint8_t sp = (g_sp2.value << 2) | (g_sp1.value << 1) | g_sp0.value ;
     if(sp == g_vfd_ctrl.sp)
         return ;
+    uint8_t speed = 0;
+    param_get(PARAM0X01, sp, &speed);
+    ext_send_report_to_data(0,0xFF,speed,0xFF,0xFF,0xFF,motor_mode_get());
 
     g_vfd_ctrl.sp = sp;
     if(g_vfd_ctrl.end != 0)
@@ -448,8 +449,15 @@ static void io_scan_speed(void)
     
 }
 
+static void io_ctrl_wire_recovery(void)
+{
+    ext_send_report_to_data(0,0,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+    return ;
+}
+
 static void io_ctrl_wire(void)
 {
+    ext_send_report_to_data(0,CODE_WIRE_BREAK,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
     if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
         return ;
     if(motor_is_working())
@@ -471,8 +479,15 @@ static void io_scan_wire(void)
     }
     else
     {
-        g_vfd_ctrl.flag[IO_ID_WIRE] = 0;
+        //g_vfd_ctrl.flag[IO_ID_WIRE] = 0;
         g_vfd_io_tab[IO_ID_WIRE].now_ticks = 0;
+
+        if(g_vfd_ctrl.flag[IO_ID_WIRE] == 1)
+        {
+            g_vfd_ctrl.flag[IO_ID_WIRE] = 0;
+            /*断丝恢复*/
+            io_ctrl_wire_recovery();
+        }
     }
 
     if(g_vfd_io_tab[IO_ID_WIRE].now_ticks > g_vfd_io_tab[IO_ID_WIRE].debounce_ticks)
@@ -547,7 +562,7 @@ static void io_ctrl_dir(void)
 
     if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0)  /*左限位*/
     {
-        if(g_vfd_ctrl.end != 0)
+        if(g_vfd_ctrl.end != 0)  /*加工结束靠左停*/
         {
             motor_stop_ctl(CODE_END);
             pump_ctl_set_value(0 , 500);
@@ -565,7 +580,7 @@ static void io_ctrl_dir(void)
 
     if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0) /*右限位*/
     {
-        if(g_vfd_ctrl.end != 0)
+        if(g_vfd_ctrl.end != 0)     /*加工结束靠右停*/
         {
             motor_stop_ctl(CODE_END);
             pump_ctl_set_value(0 , 500);
