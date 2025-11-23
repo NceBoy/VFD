@@ -126,11 +126,6 @@ static void update_err(void)
 
 }
 
-int motor_mode_get(void)
-{
-    return g_vfd_ctrl.flag[IO_ID_DEBUG];
-}
-
 
 void motor_start_ctl(void)
 {
@@ -140,7 +135,7 @@ void motor_start_ctl(void)
     if((g_vfd_ctrl.flag[IO_ID_WIRE] != 0) &&(g_vfd_ctrl.flag[IO_ID_DEBUG] != 1))
     {
         ext_notify_stop_code(CODE_WIRE_BREAK);
-        ext_send_report_to_data(0,CODE_WIRE_BREAK,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+        ext_send_report_to_data(0,CODE_WIRE_BREAK,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
         return ;
     }
 
@@ -148,14 +143,14 @@ void motor_start_ctl(void)
     if(g_vfd_voltage_flag != 0)
     {
         ext_notify_stop_code(g_vfd_voltage_flag + 4);
-        ext_send_report_to_data(0,g_vfd_voltage_flag + 4,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+        ext_send_report_to_data(0,g_vfd_voltage_flag + 4,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
         return ;
     }
 
     if(g_ipm_vfo_flag != 0)
     {
         ext_notify_stop_code(CODE_IPM_VFO);
-        ext_send_report_to_data(0,CODE_IPM_VFO,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+        ext_send_report_to_data(0,CODE_IPM_VFO,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
         return ;
     }
 
@@ -191,21 +186,21 @@ void motor_start_ctl(void)
             else if(dir == 2) dir = 1;      /*反向*/
             else dir  = 0;
             ext_motor_start(dir , speed);
-            ext_send_report_to_data(0,0xFF,speed,0xFF,0,dir,motor_mode_get());
+            ext_send_report_to_data(0,0xFF,speed,0xFF,0,dir,motor_debug_mode());
         }break;
         case 0x01 : {
             g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] = 1;
             ext_motor_start(0,speed);
-            ext_send_report_to_data(0,0xFF,speed,0xFF,0,0,motor_mode_get());
+            ext_send_report_to_data(0,0xFF,speed,0xFF,0,0,motor_debug_mode());
         }break;
         case 0x10 : {
             g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] = 1;
             ext_motor_start(1,speed);
-            ext_send_report_to_data(0,0xFF,speed,0xFF,0,1,motor_mode_get());
+            ext_send_report_to_data(0,0xFF,speed,0xFF,0,1,motor_debug_mode());
         }break;
         default:{
             ext_notify_stop_code(CODE_LIMIT_DOUBLE);
-            ext_send_report_to_data(0,CODE_LIMIT_DOUBLE,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+            ext_send_report_to_data(0,CODE_LIMIT_DOUBLE,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
         }break;
     }
 }
@@ -218,7 +213,7 @@ void motor_stop_ctl(stopcode_t code)
     
     ext_motor_brake();
     ext_notify_stop_code((unsigned char)code);
-    ext_send_report_to_data(0,code,0xFF,0xFF,1,0xFF,motor_mode_get());
+    ext_send_report_to_data(0,code,0xFF,0xFF,1,0xFF,motor_debug_mode());
 }
 
 static void io_scan_active_polarity(void)
@@ -226,6 +221,7 @@ static void io_scan_active_polarity(void)
     /*极性控制只能在电机未启动时设置*/
     if(motor_is_working())
         return ;
+
     uint8_t value = 0;
 
     /*极性检测选择从参数读取而不是外部IO输入*/
@@ -257,12 +253,13 @@ void inout_mode_sync_from_ext(unsigned char mode)
     else /*退出debug模式*/
     {
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
+        g_vfd_ctrl.flag[IO_ID_SP0] = 0; /*正常模式下，全部使用IO速度，不使用手抄盒速度*/
         if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
         {
             motor_stop_ctl(CODE_WIRE_BREAK);
         }
     }
-    ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+    ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
 }
 
 int motor_debug_mode(void)
@@ -290,8 +287,9 @@ static void io_scan_debug(void)
         if(debug_last == 0)
         {
             debug_last = debug_now;
-            ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+            ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
             g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
+            g_vfd_ctrl.flag[IO_ID_SP0] = 0; /*正常模式下，全部使用IO速度，不适用手抄盒速度*/
             if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
             {
                 motor_stop_ctl(CODE_WIRE_BREAK);
@@ -310,23 +308,17 @@ static void ctrl_speed(uint8_t sp)
     uint8_t speed = 0;
     param_get(PARAM0X01, sp, &speed);
     ext_motor_speed(speed);  
-    ext_send_report_to_data(0,0xFF,speed,0xFF,0xFF,0xFF,motor_mode_get());
+    ext_send_report_to_data(0,0xFF,speed,0xFF,0xFF,0xFF,motor_debug_mode());
 }
 
-static void io_ctrl_speed(void)
-{
-    if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*用手控盒控制过速度*/
-    {   /*通知手控盒取消相关显示*/
-        g_vfd_ctrl.flag[IO_ID_SP0] = 0;
-    }
-    ctrl_speed(g_vfd_ctrl.sp);
-}
 
 /*手控盒控速时，同步速度*/
 void inout_sp_sync_from_ext(uint8_t sp)
 {
+    if(motor_debug_mode() == 0) /*处于正常工作模式，不响应手控盒控制*/
+        return ;
     g_vfd_ctrl.sp_manual = sp;
-    g_vfd_ctrl.flag[IO_ID_SP0] = 1;
+    g_vfd_ctrl.flag[IO_ID_SP0] = 1;  //外部控制速度标志位
     ctrl_speed(g_vfd_ctrl.sp_manual);
 }
 
@@ -345,7 +337,7 @@ void ext_ctl_pump(int period)
     {
         bsp_io_ctrl_pump(g_pump_ctl.ctrl_value);
         int value = g_pump_ctl.ctrl_value ? 0 : 1;
-        ext_send_report_to_data(0,0,0xFF,value,0xFF,0xFF,motor_mode_get());
+        ext_send_report_to_data(0,0,0xFF,value,0xFF,0xFF,motor_debug_mode());
         g_pump_ctl.real_status = g_pump_ctl.ctrl_value;
     }
 }
@@ -435,29 +427,35 @@ static void io_scan_speed(void)
     uint8_t sp = (g_sp2.value << 2) | (g_sp1.value << 1) | g_sp0.value ;
     if(sp == g_vfd_ctrl.sp)
         return ;
+
     uint8_t speed = 0;
     param_get(PARAM0X01, sp, &speed);
-    ext_send_report_to_data(0,0xFF,speed,0xFF,0xFF,0xFF,motor_mode_get());
+    ext_send_report_to_data(0,0xFF,speed,0xFF,0xFF,0xFF,motor_debug_mode());
 
     g_vfd_ctrl.sp = sp;
     if(g_vfd_ctrl.end != 0)
         return ;
+
+    if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*用手控盒控制过速度*/
+    {   /*通知手控盒取消相关显示*/
+        g_vfd_ctrl.flag[IO_ID_SP0] = 0;
+    }
     if(motor_is_working())
     {
-        io_ctrl_speed();
+        ctrl_speed(g_vfd_ctrl.sp);
     }
     
 }
 
 static void io_ctrl_wire_recovery(void)
 {
-    ext_send_report_to_data(0,0,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+    ext_send_report_to_data(0,0,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
     return ;
 }
 
 static void io_ctrl_wire(void)
 {
-    ext_send_report_to_data(0,CODE_WIRE_BREAK,0xFF,0xFF,0xFF,0xFF,motor_mode_get());
+    ext_send_report_to_data(0,CODE_WIRE_BREAK,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
     if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
         return ;
     if(motor_is_working())
@@ -526,7 +524,7 @@ static void io_ctrl_dir(void)
                     g_vfd_ctrl.end = 1;
                     if(motor_target_current_dir() == 0){
                         ext_motor_reverse();
-                        ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,1,motor_mode_get());
+                        ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,1,motor_debug_mode());
                     }
                 }
             }break;
@@ -542,7 +540,7 @@ static void io_ctrl_dir(void)
                     g_vfd_ctrl.end = 1;
                     if(motor_target_current_dir() != 0){
                         ext_motor_reverse();
-                        ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0,motor_mode_get());
+                        ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0,motor_debug_mode());
                     }
                 }
             }break;
@@ -572,7 +570,7 @@ static void io_ctrl_dir(void)
         {
             if(motor_target_current_dir() == 0){/*正在向左运动*/
                 ext_motor_reverse();
-                ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,1,motor_mode_get());
+                ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,1,motor_debug_mode());
             } 
                 
         }
@@ -590,7 +588,7 @@ static void io_ctrl_dir(void)
         {
             if(motor_target_current_dir() == 1){/*正在向右运动*/
                 ext_motor_reverse();
-                ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0,motor_mode_get());
+                ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0,motor_debug_mode());
             } 
         }
     }
@@ -690,7 +688,7 @@ static void io_ctrl_onoff(void)
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开关水*/
             {
                 int value = pump_ctl_toggle_value();
-                ext_send_report_to_data(0,0,0xFF,value,0xFF,0xFF,motor_mode_get());
+                ext_send_report_to_data(0,0,0xFF,value,0xFF,0xFF,motor_debug_mode());
             }            
         }break;
         case CTRL_MODE_FOUR_KEY :{

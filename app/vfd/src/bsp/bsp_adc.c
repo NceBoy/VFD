@@ -198,6 +198,7 @@ void bsp_adc_start(void)
     {
         HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
         first_sample = 0;
+        return;
     }
     uint32_t sum = 0;
     for(int i = 0 ; i < ADC_CHANNEL_NUM ; i++)

@@ -40,6 +40,7 @@ static menu_state_t g_menu_state = {0};  // 初始在第一级菜单第0项
 
 static uint8_t g_level_refresh = 0;
 static int g_errcode_display = 0;
+static uint32_t g_errcode_display_time = 0;
 
 
 // 第一级菜单项数
@@ -239,7 +240,7 @@ static void show_speed_info(void)
  
             sp_last = sp;
             g_level_refresh = 0;
-        }          
+        }
     }
     else
     {
@@ -294,26 +295,7 @@ static void show_voltage_info(void)
     
 }
 
-/*显示速度和led灯信息*/
-static void show_level0_and_led_info(void)
-{
-    show_led_info();
-    if(g_errcode_display == 0) /*不显示erroce时才显示速度等信息*/
-    {
-        if(g_menu_state.level != 0)
-            return ;
-        if(g_menu_state.main_index != 0)
-            return ;
-        if(g_menu_state.sub_index[0] == 0){
-            show_speed_info();
-        }
-        else if(g_menu_state.sub_index[0] == 1)
-        {
-            immi_flag = 1;
-            show_voltage_info();
-        }
-    }
-}
+
 
 static void scan_key(void)
 {
@@ -366,6 +348,33 @@ static void scan_key(void)
     }
 }
 
+/*显示速度和led灯信息*/
+static void show_level0_and_led_info(void)
+{
+    show_led_info();
+    if(g_errcode_display == 1) /*errcode只显示5s*/
+    {
+        if(HAL_GetTick() - g_errcode_display_time > 5000)
+            g_errcode_display = 0;
+        return ;
+    }
+    if(g_errcode_display == 0) /*不显示erroce时才显示速度等信息*/
+    {
+        if(g_menu_state.level != 0)
+            return ;
+        if(g_menu_state.main_index != 0)
+            return ;
+        if(g_menu_state.sub_index[0] == 0){
+            show_speed_info();
+        }
+        else if(g_menu_state.sub_index[0] == 1)
+        {
+            immi_flag = 1;
+            show_voltage_info();
+        }
+    }
+}
+
 void hmi_init(void)
 {
     tm1628a_init();
@@ -389,7 +398,8 @@ void hmi_stop_code(int code)
     data[6] = code_table[code % 10];
     tm1628a_write_continuous(data , sizeof(data)); 
     
-    g_errcode_display = code; 
+    g_errcode_display = 1;
+    g_errcode_display_time = HAL_GetTick();
 }
 
 void hmi_clear_menu(void)
