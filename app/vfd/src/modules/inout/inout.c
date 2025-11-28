@@ -186,7 +186,7 @@ void motor_start_ctl(void)
     switch(limit)
     {
         case 0x00 : {
-            uint8_t dir = 0;
+            uint8_t dir = 0;/*启动方向:0:之前的方向，1:向左 ， 2:向右 */
             param_get(PARAM0X03, PARAM_START_DIRECTION, &dir);
             if(dir == 0) dir = motor_target_current_dir(); /*之前的方向*/
             else if(dir == 1) dir = 0;      /*正向*/
@@ -246,6 +246,15 @@ static void io_scan_active_polarity(void)
 
 }
 
+static void ctrl_speed(uint8_t sp)
+{
+    if(sp > 10)
+        return ;
+    uint8_t speed = 0;
+    param_get(PARAM0X01, sp, &speed);
+    ext_motor_speed(speed);  
+}
+
 void inout_mode_sync_from_ext(unsigned char mode)
 {
     if(mode != 0) /*进入debug模式*/
@@ -255,10 +264,19 @@ void inout_mode_sync_from_ext(unsigned char mode)
     else /*退出debug模式*/
     {
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
-        g_vfd_ctrl.flag[IO_ID_SP0] = 0; /*正常模式下，全部使用IO速度，不使用手抄盒速度*/
-        if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
+        uint8_t speed_src = g_vfd_ctrl.flag[IO_ID_SP0]; /*速度值来源*/
+        g_vfd_ctrl.flag[IO_ID_SP0] = 0;
+        if(motor_is_working())
         {
-            motor_stop_ctl(CODE_WIRE_BREAK);
+            if(g_vfd_ctrl.flag[IO_ID_WIRE] != 0) /*退出debug模式，断丝刹车*/
+            {
+                motor_stop_ctl(CODE_WIRE_BREAK);
+                pump_ctl_set_value(0 , 500);
+            }
+            else if(speed_src != 0) /*退出debug模式，恢复IO速度*/
+            {
+                ctrl_speed(g_vfd_ctrl.sp);
+            }
         }
     }
     uint8_t now_mode = g_vfd_ctrl.flag[IO_ID_DEBUG] ? 0 : 1;
@@ -293,26 +311,24 @@ static void io_scan_debug(void)
             debug_last = debug_now;
             g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
             ext_send_report_status(0,STATUS_MODE_CHANGE,1);
-            g_vfd_ctrl.flag[IO_ID_SP0] = 0; /*正常模式下，全部使用IO速度，不适用手抄盒速度*/
-            if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
+            uint8_t speed_src = g_vfd_ctrl.flag[IO_ID_SP0]; /*速度值来源*/
+            g_vfd_ctrl.flag[IO_ID_SP0] = 0;
+            if(motor_is_working())
             {
-                motor_stop_ctl(CODE_WIRE_BREAK);
-                pump_ctl_set_value(0 , 500);
+                if(g_vfd_ctrl.flag[IO_ID_WIRE] != 0) /*退出debug模式，断丝刹车*/
+                {
+                    motor_stop_ctl(CODE_WIRE_BREAK);
+                    pump_ctl_set_value(0 , 500);
+                }
+                else if(speed_src != 0) /*退出debug模式，恢复IO速度*/
+                {
+                    ctrl_speed(g_vfd_ctrl.sp);
+                }
             }
         }
     }
 }
 
-
-
-static void ctrl_speed(uint8_t sp)
-{
-    if(sp > 10)
-        return ;
-    uint8_t speed = 0;
-    param_get(PARAM0X01, sp, &speed);
-    ext_motor_speed(speed);  
-}
 
 
 /*手控盒控速时，同步速度*/

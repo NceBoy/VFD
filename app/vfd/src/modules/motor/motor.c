@@ -1,4 +1,5 @@
 #include "main.h"
+#include "service_data.h"
 #include "bsp_tmr.h"
 #include "bsp_io.h"
 #include "motor.h"
@@ -311,8 +312,6 @@ static unsigned int float_equal_in_step(float a , float b, float step)
     }
     return 0;
 }
-
-
 
 
 static unsigned int motor_arrive_freq(float freq)
