@@ -118,24 +118,25 @@ void ext_send_buf_to_data(int from_id , unsigned char* buf , int len)
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_RECV_DATA, buf, len);
 }
 
-/*
-*  上报数据
-*  @param from_id: 源id
-*  @param d1: err
-*  @param d2: 速度
-*  @param d3: 水泵  0-关 1-运行
-*  @param d4: 启停  0-停止 1-运行
-*  @param d5: 方向  0-正转 1-反转
-*  @param d6: 模式  0-正常 1-调试
-*/
-void ext_send_report_to_data(int from_id , unsigned char d1, unsigned char d2, 
-    unsigned char d3, unsigned char d4, unsigned char d5, unsigned char d6)
+
+void ext_send_report_err(int from_id , unsigned short err)
 {
-    unsigned char buf[6] = {d1,d2,d3,d4,d5,d6};
+    unsigned char buf[5] = {0};
+    buf[0] = err & 0xFF;
+    buf[1] = err >> 8 & 0xFF;
+    buf[2] = 0x00;
+    buf[3] = 0x00;
+    buf[4] = 0x00;
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
 }
 
-void ext_send_notify_to_data(int from_id)
+void ext_send_report_status(int from_id , unsigned short status , unsigned char value)
 {
-    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_BLE_RECONNECT, NULL, 0);
+    unsigned char buf[5] = {0};
+    buf[0] = 0;
+    buf[1] = 0;
+    buf[2] = status & 0xFF;
+    buf[3] = status >> 8 & 0xFF;
+    buf[4] = value;
+    nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
 }

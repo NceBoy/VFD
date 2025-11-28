@@ -4,8 +4,8 @@
 #include "motor.h"
 #include "log.h"
 #include "cordic.h"
-#include "motor.h"
 #include "param.h"
+#include "inout.h"
 #include "hmi.h"
 
 #define  HIGH_OPEN_DELAY_MIN      3       /*开高频最小延时，单位0.1秒*/
@@ -210,6 +210,7 @@ void ext_high_freq_ctl(int period)
     if(g_high_freq.ctrl_delay == 0)
     {
         bsp_io_ctrl_high_freq(g_high_freq.ctrl_value , polarity);
+        ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,g_high_freq.ctrl_value);
         g_high_freq.real_status = g_high_freq.ctrl_value;
     }
 }

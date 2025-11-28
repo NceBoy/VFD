@@ -26,7 +26,7 @@ void bsp_key_detect(int tick)
             if((key_down_count > 1000) && (key_send_flag == 0))
             {
                 /*按键连续按下1秒钟*/
-                ext_send_notify_to_data(0);
+                //ext_send_notify_to_data(0);
                 key_send_flag = 1;
             }
         }

@@ -12,8 +12,9 @@ void ext_send_buf_to_data(int from_id, unsigned char* buf, int len);
 
 void ext_send_notify_to_data(int from_id);
 
-void ext_send_report_to_data(int from_id , unsigned char d1, unsigned char d2, 
-    unsigned char d3, unsigned char d4, unsigned char d5, unsigned char d6);
+void ext_send_report_err(int from_id , unsigned short err);
+
+void ext_send_report_status(int from_id , unsigned short status , unsigned char value);
   
 #ifdef __cplusplus
 }

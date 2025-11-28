@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "service_motor.h"
+#include "service_data.h"
 #include "bsp_adc.h"
 #include "nx_msg.h"
 #include "tx_api.h"
@@ -101,6 +102,7 @@ void ext_motor_start(unsigned int dir , unsigned int target)
         return ;
     unsigned int data[2] = {dir,target};
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_START, data, sizeof(data));
+    ext_send_report_status(0,STATUS_START_CHANGE,1);
 }
 
 void ext_motor_speed(unsigned int speed)
@@ -109,6 +111,8 @@ void ext_motor_speed(unsigned int speed)
         return ;
     unsigned int freq = speed;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_VF, &freq, 4);
+    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
+    
 }
 
 void ext_motor_reverse(void)
@@ -116,6 +120,8 @@ void ext_motor_reverse(void)
     if(motor_is_running() == 0)
         return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_REVERSE, NULL, 0);
+    uint8_t dir = motor_target_current_dir() ? 0 : 1;
+    ext_send_report_status(0,STATUS_DIRECTION_CHANGE,dir);
 }
 
 void ext_motor_brake(void)
@@ -123,4 +129,5 @@ void ext_motor_brake(void)
     if(motor_is_running() == 0)
         return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BRAKE, NULL, 0);
+    ext_send_report_status(0,STATUS_START_CHANGE,0);
 }

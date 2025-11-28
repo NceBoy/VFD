@@ -12,10 +12,15 @@
 #define ACTIVE_LOW              (0)
 #define ACTIVE_HIGH             (1)
 
-#define ERROR_LEFT_KEY                      0x01            //左限位长时间触发
-#define ERROR_RIGHT_KEY                     0x02            //右限位长时间触发
-#define ERROR_DOUBLE_KEY                    0x04            //左右限位同时触发
-#define ERROR_EXCEED_KEY                    0x08            //超程触发
+#define ERROR_WIRE                          (1 << 0)        //断丝触发
+#define ERROR_LEFT_KEY                      (1 << 1)        //左限位长时间触发
+#define ERROR_RIGHT_KEY                     (1 << 2)        //右限位长时间触发
+#define ERROR_DOUBLE_KEY                    (1 << 3)        //左右限位同时触发
+#define ERROR_EXCEED_KEY                    (1 << 4)        //超程触发
+#define ERROR_OVER_VOLTAGE                  (1 << 5)        //过压触发
+#define ERROR_UNDER_VOLTAGE                 (1 << 6)        //掉电触发   
+#define ERROR_IPM                           (1 << 7)        //IPM模块故障
+
 
 static int g_ipm_vfo_flag = 0;
 
@@ -77,11 +82,11 @@ typedef struct
 typedef struct 
 {
     ctl_mode_t      ctl;
+    uint16_t        err;
     uint8_t         flag[IO_ID_MAX];
     uint8_t         end;                /*工作结束信号触发*/
     uint8_t         sp;
     uint8_t         sp_manual;
-    uint8_t         err;
 }vfd_ctrl_t;
 
 static uint8_t g_vfd_voltage_flag;
@@ -123,7 +128,12 @@ static void update_err(void)
     /*左右限位同时触发的错误，此处不再处理*/
 
     /*IPM模块的错误，此处不再处理*/
-
+    static uint16_t err_last = 0;
+    if(g_vfd_ctrl.err != err_last)
+    {
+        err_last = g_vfd_ctrl.err;
+        ext_send_report_err(0 , g_vfd_ctrl.err);
+    }
 }
 
 
@@ -135,7 +145,6 @@ void motor_start_ctl(void)
     if((g_vfd_ctrl.flag[IO_ID_WIRE] != 0) &&(g_vfd_ctrl.flag[IO_ID_DEBUG] != 1))
     {
         ext_notify_stop_code(CODE_WIRE_BREAK);
-        ext_send_report_to_data(0,CODE_WIRE_BREAK,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
         return ;
     }
 
@@ -143,14 +152,12 @@ void motor_start_ctl(void)
     if(g_vfd_voltage_flag != 0)
     {
         ext_notify_stop_code(g_vfd_voltage_flag + 4);
-        ext_send_report_to_data(0,g_vfd_voltage_flag + 4,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
         return ;
     }
 
     if(g_ipm_vfo_flag != 0)
     {
         ext_notify_stop_code(CODE_IPM_VFO);
-        ext_send_report_to_data(0,CODE_IPM_VFO,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
         return ;
     }
 
@@ -186,21 +193,17 @@ void motor_start_ctl(void)
             else if(dir == 2) dir = 1;      /*反向*/
             else dir  = 0;
             ext_motor_start(dir , speed);
-            ext_send_report_to_data(0,0xFF,speed,0xFF,0,dir,motor_debug_mode());
         }break;
         case 0x01 : {
             g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] = 1;
             ext_motor_start(0,speed);
-            ext_send_report_to_data(0,0xFF,speed,0xFF,0,0,motor_debug_mode());
         }break;
         case 0x10 : {
             g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] = 1;
             ext_motor_start(1,speed);
-            ext_send_report_to_data(0,0xFF,speed,0xFF,0,1,motor_debug_mode());
         }break;
         default:{
             ext_notify_stop_code(CODE_LIMIT_DOUBLE);
-            ext_send_report_to_data(0,CODE_LIMIT_DOUBLE,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
         }break;
     }
 }
@@ -213,7 +216,6 @@ void motor_stop_ctl(stopcode_t code)
     
     ext_motor_brake();
     ext_notify_stop_code((unsigned char)code);
-    ext_send_report_to_data(0,code,0xFF,0xFF,1,0xFF,motor_debug_mode());
 }
 
 static void io_scan_active_polarity(void)
@@ -259,7 +261,8 @@ void inout_mode_sync_from_ext(unsigned char mode)
             motor_stop_ctl(CODE_WIRE_BREAK);
         }
     }
-    ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
+    uint8_t now_mode = g_vfd_ctrl.flag[IO_ID_DEBUG] ? 0 : 1;
+    ext_send_report_status(0,STATUS_MODE_CHANGE,now_mode);
 }
 
 int motor_debug_mode(void)
@@ -277,18 +280,19 @@ static void io_scan_debug(void)
     {
         if((debug_last == 1) || (g_vfd_ctrl.flag[IO_ID_DEBUG] == 0))  /*首次进入debug模式*/
         {
-            ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,1);  
+            ext_send_report_status(0,STATUS_MODE_CHANGE,0);
         }
         debug_last = debug_now;
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
+        
     }
     else
     {
         if(debug_last == 0)
         {
             debug_last = debug_now;
-            ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
             g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
+            ext_send_report_status(0,STATUS_MODE_CHANGE,1);
             g_vfd_ctrl.flag[IO_ID_SP0] = 0; /*正常模式下，全部使用IO速度，不适用手抄盒速度*/
             if(g_vfd_ctrl.flag[IO_ID_WIRE] && motor_is_working())
             {
@@ -308,7 +312,6 @@ static void ctrl_speed(uint8_t sp)
     uint8_t speed = 0;
     param_get(PARAM0X01, sp, &speed);
     ext_motor_speed(speed);  
-    ext_send_report_to_data(0,0xFF,speed,0xFF,0xFF,0xFF,motor_debug_mode());
 }
 
 
@@ -322,6 +325,7 @@ void inout_sp_sync_from_ext(uint8_t sp)
     ctrl_speed(g_vfd_ctrl.sp_manual);
 }
 
+/*主循环控制*/
 void ext_ctl_pump(int period)
 {
     if(g_pump_ctl.real_status == g_pump_ctl.ctrl_value)
@@ -336,8 +340,7 @@ void ext_ctl_pump(int period)
     if(g_pump_ctl.ctrl_delay == 0)
     {
         bsp_io_ctrl_pump(g_pump_ctl.ctrl_value);
-        int value = g_pump_ctl.ctrl_value ? 0 : 1;
-        ext_send_report_to_data(0,0,0xFF,value,0xFF,0xFF,motor_debug_mode());
+        ext_send_report_status(0,STATUS_PUMP_CHANGE,g_pump_ctl.ctrl_value);
         g_pump_ctl.real_status = g_pump_ctl.ctrl_value;
     }
 }
@@ -428,10 +431,6 @@ static void io_scan_speed(void)
     if(sp == g_vfd_ctrl.sp)
         return ;
 
-    uint8_t speed = 0;
-    param_get(PARAM0X01, sp, &speed);
-    ext_send_report_to_data(0,0xFF,speed,0xFF,0xFF,0xFF,motor_debug_mode());
-
     g_vfd_ctrl.sp = sp;
     if(g_vfd_ctrl.end != 0)
         return ;
@@ -447,15 +446,10 @@ static void io_scan_speed(void)
     
 }
 
-static void io_ctrl_wire_recovery(void)
-{
-    ext_send_report_to_data(0,0,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
-    return ;
-}
 
 static void io_ctrl_wire(void)
 {
-    ext_send_report_to_data(0,CODE_WIRE_BREAK,0xFF,0xFF,0xFF,0xFF,motor_debug_mode());
+
     if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
         return ;
     if(motor_is_working())
@@ -484,7 +478,7 @@ static void io_scan_wire(void)
         {
             g_vfd_ctrl.flag[IO_ID_WIRE] = 0;
             /*断丝恢复*/
-            io_ctrl_wire_recovery();
+            g_vfd_ctrl.err &= ~ERROR_WIRE;
         }
     }
 
@@ -493,7 +487,7 @@ static void io_scan_wire(void)
         if(g_vfd_ctrl.flag[IO_ID_WIRE] == 0)
         {
             g_vfd_ctrl.flag[IO_ID_WIRE] = 1;
-
+            g_vfd_ctrl.err |= ERROR_WIRE;
             /*断丝*/
             io_ctrl_wire();
         }
@@ -524,7 +518,6 @@ static void io_ctrl_dir(void)
                     g_vfd_ctrl.end = 1;
                     if(motor_target_current_dir() == 0){
                         ext_motor_reverse();
-                        ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,1,motor_debug_mode());
                     }
                 }
             }break;
@@ -540,7 +533,6 @@ static void io_ctrl_dir(void)
                     g_vfd_ctrl.end = 1;
                     if(motor_target_current_dir() != 0){
                         ext_motor_reverse();
-                        ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0,motor_debug_mode());
                     }
                 }
             }break;
@@ -570,7 +562,6 @@ static void io_ctrl_dir(void)
         {
             if(motor_target_current_dir() == 0){/*正在向左运动*/
                 ext_motor_reverse();
-                ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,1,motor_debug_mode());
             } 
                 
         }
@@ -588,7 +579,6 @@ static void io_ctrl_dir(void)
         {
             if(motor_target_current_dir() == 1){/*正在向右运动*/
                 ext_motor_reverse();
-                ext_send_report_to_data(0,0xFF,0xFF,0xFF,0xFF,0,motor_debug_mode());
             } 
         }
     }
@@ -638,6 +628,8 @@ static void io_scan_direction(void)
             pump_ctl_set_value(0 , 0);
         }
     }
+    else
+        g_vfd_ctrl.err &= ~ERROR_LEFT_KEY;
         
         
     //右限位长时间触发，异常
@@ -650,6 +642,8 @@ static void io_scan_direction(void)
             pump_ctl_set_value(0 , 0);
         }
     } 
+    else
+        g_vfd_ctrl.err &= ~ERROR_RIGHT_KEY;
         
 
     /*左右限位同时触发*/
@@ -662,6 +656,8 @@ static void io_scan_direction(void)
             pump_ctl_set_value(0 , 0);
         }
     }
+    else
+        g_vfd_ctrl.err &= ~ERROR_DOUBLE_KEY;
         
     if(g_vfd_ctrl.flag[IO_ID_LIMIT_EXCEED] == 1)
         g_vfd_ctrl.err |= ERROR_EXCEED_KEY;
@@ -687,8 +683,7 @@ static void io_ctrl_onoff(void)
             }
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开关水*/
             {
-                int value = pump_ctl_toggle_value();
-                ext_send_report_to_data(0,0,0xFF,value,0xFF,0xFF,motor_debug_mode());
+                pump_ctl_toggle_value();
             }            
         }break;
         case CTRL_MODE_FOUR_KEY :{
@@ -874,14 +869,20 @@ void scan_voltage(void)
             pump_ctl_set_value(0 , 500);
             motor_stop_ctl(CODE_POWER_OFF);
         }
+        g_vfd_ctrl.err |= ERROR_UNDER_VOLTAGE;
     }else{
+        g_vfd_ctrl.err &= ~ERROR_UNDER_VOLTAGE;
         uint8_t voltage_status = check_voltage_status(voltage,176 , 264,timeout);
         if(voltage_status != 0){
+            g_vfd_ctrl.err |= ERROR_OVER_VOLTAGE;
             if(motor_is_running()){
                 pump_ctl_set_value(0 , 500);
                 motor_stop_ctl((stopcode_t)(voltage_status + 4));
             }
         }
+        else
+            g_vfd_ctrl.err &= ~ERROR_OVER_VOLTAGE;
+
         g_vfd_voltage_flag = voltage_status;
     }
 }
