@@ -145,13 +145,14 @@ static float radio_from_freq(float freq)
     return ((1 - radio) / 50.0f * freq + radio) * RADIO_MAX;
 }
 
-
+/*高频控制:1 开  2关*/
 static void high_frequery_ctl(int value)
 {
-    if(g_high_freq.ctrl_value == value)
+    if((g_high_freq.real_status == value) || (g_high_freq.ctrl_value == value))
         return ;
+
     g_high_freq.ctrl_value = value;
-    if(value) /*延时开*/
+    if(value == 1) /*延时开*/
     {
         unsigned int real_delay = 0;
         if(g_motor_param.open_freq_delay < HIGH_OPEN_DELAY_MIN)
@@ -180,7 +181,7 @@ static void high_freq_control(void)
         if((g_motor_param.vari_freq_close) && (g_motor_real.freq_arrive == 0)) /*变频关高频*/
         {
             /*关*/
-            high_frequery_ctl(0);
+            high_frequery_ctl(2);
         }
         else
         {
@@ -190,9 +191,10 @@ static void high_freq_control(void)
     }
     else
     {   /*关*/
-        high_frequery_ctl(0);
+        high_frequery_ctl(2);
     }
 }
+
 
 /*外部延时控制时的调用*/
 void ext_high_freq_ctl(int period)
@@ -210,9 +212,18 @@ void ext_high_freq_ctl(int period)
 
     if(g_high_freq.ctrl_delay == 0)
     {
-        bsp_io_ctrl_high_freq(g_high_freq.ctrl_value , polarity);
-        ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,g_high_freq.ctrl_value);
+        if(g_high_freq.ctrl_value == 0)
+            return ;
+        else if(g_high_freq.ctrl_value == 2){
+            bsp_io_ctrl_high_freq(0 , polarity);  //关高频
+            ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,0);
+        }
+        else if(g_high_freq.ctrl_value == 1){
+            bsp_io_ctrl_high_freq(1 , polarity);  //开高频        
+            ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,1);
+        }
         g_high_freq.real_status = g_high_freq.ctrl_value;
+        g_high_freq.ctrl_value = 0;
     }
 }
 
@@ -285,7 +296,7 @@ void motor_brake_start(void)
     g_motor_real.target_freq = g_motor_param.start_freq;
     g_motor_real.motor_status = motor_in_brake;
 
-    high_frequery_ctl(0);
+    high_frequery_ctl(2);
     //EXT_PUMP_DISABLE;
     BREAK_VDC_ENABLE;
 }
@@ -582,7 +593,7 @@ unsigned int interrupt_times = 0;
                 /*停机结束*/
                 bsp_tmr_stop();
                 g_motor_real.motor_status = motor_in_idle;
-                high_frequery_ctl(0);
+                high_frequery_ctl(2);
                 //EXT_PUMP_DISABLE;
                 BREAK_VDC_DISABLE;
                 /*保存当前的运行方向（如果是靠边停，没关系）*/

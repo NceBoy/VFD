@@ -6,15 +6,15 @@
 extern "C" {
 #endif
 
-#define STATUS_SPEED_CHANGE     (1 << 0)
-#define STATUS_PUMP_CHANGE      (1 << 1)
-#define STATUS_START_CHANGE     (1 << 2)
-#define STATUS_DIRECTION_CHANGE (1 << 3)
-#define STATUS_MODE_CHANGE      (1 << 4)
-#define STATUS_HIGH_FREQ_CHANGE (1 << 5)
+#define STATUS_SPEED_CHANGE     (1 << 0)    //0x0001
+#define STATUS_PUMP_CHANGE      (1 << 1)    //0x0002
+#define STATUS_START_CHANGE     (1 << 2)    //0x0004
+#define STATUS_DIRECTION_CHANGE (1 << 3)    //0x0008
+#define STATUS_MODE_CHANGE      (1 << 4)    //0x0010
+#define STATUS_HIGH_FREQ_CHANGE (1 << 5)    //0x0020
 
 
-#define     IO_TIMEOUT_MS           5000
+#define     IO_TIMEOUT_MS           6000
 
 typedef enum
 {

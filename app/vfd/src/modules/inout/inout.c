@@ -266,6 +266,11 @@ void inout_mode_sync_from_ext(unsigned char mode)
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
         uint8_t speed_src = g_vfd_ctrl.flag[IO_ID_SP0]; /*速度值来源*/
         g_vfd_ctrl.flag[IO_ID_SP0] = 0;
+
+        uint8_t speed = 0;
+        param_get(PARAM0X01, g_vfd_ctrl.sp, &speed);
+        ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
+
         if(motor_is_working())
         {
             if(g_vfd_ctrl.flag[IO_ID_WIRE] != 0) /*退出debug模式，断丝刹车*/
@@ -313,6 +318,11 @@ static void io_scan_debug(void)
             ext_send_report_status(0,STATUS_MODE_CHANGE,1);
             uint8_t speed_src = g_vfd_ctrl.flag[IO_ID_SP0]; /*速度值来源*/
             g_vfd_ctrl.flag[IO_ID_SP0] = 0;
+
+            uint8_t speed = 0;
+            param_get(PARAM0X01, g_vfd_ctrl.sp, &speed);
+            ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
+
             if(motor_is_working())
             {
                 if(g_vfd_ctrl.flag[IO_ID_WIRE] != 0) /*退出debug模式，断丝刹车*/
@@ -336,9 +346,16 @@ void inout_sp_sync_from_ext(uint8_t sp)
 {
     if(motor_debug_mode() == 0) /*处于正常工作模式，不响应手控盒控制*/
         return ;
+
+    uint8_t speed = 0;
+    param_get(PARAM0X01, sp, &speed);
+    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
+            
     g_vfd_ctrl.sp_manual = sp;
     g_vfd_ctrl.flag[IO_ID_SP0] = 1;  //外部控制速度标志位
     ctrl_speed(g_vfd_ctrl.sp_manual);
+
+
 }
 
 /*主循环控制*/
@@ -448,6 +465,11 @@ static void io_scan_speed(void)
         return ;
 
     g_vfd_ctrl.sp = sp;
+
+    uint8_t speed = 0;
+    param_get(PARAM0X01, sp, &speed);
+    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
+
     if(g_vfd_ctrl.end != 0)
         return ;
 
@@ -511,97 +533,96 @@ static void io_scan_wire(void)
 }
 
 
-
-static void io_ctrl_dir(void)
+static void io_ctrl_dir(int signal)
 {
-    if(g_vfd_ctrl.flag[IO_ID_END] != 0 ) /*加工结束*/
-    {
-        if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
-            return ;
-        uint8_t stop = 0;/*0:立即停止 1:靠右停 2:靠左停*/
-        param_get(PARAM0X03, PARAM_STOP_MODE, &stop);        
-        switch(stop)
-        {
-            case 1 :{
-                if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0){
-                    g_vfd_ctrl.end = 0;
+    switch(signal){
+        case IO_ID_LIMIT_EXCEED:{  /*超程触发*/
+            motor_stop_ctl(CODE_EXCEED);
+            pump_ctl_set_value(0 , 500);
+        }break;
+
+        case IO_ID_END:{  /*加工结束*/
+            if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
+                return ;
+            uint8_t stop = 0;/*0:立即停止 1:靠右停 2:靠左停*/
+            param_get(PARAM0X03, PARAM_STOP_MODE, &stop);        
+            switch(stop)
+            {
+                case 1 :{
+                    if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0){
+                        g_vfd_ctrl.end = 0;
+                        motor_stop_ctl(CODE_END);
+                        pump_ctl_set_value(0 , 500);
+                    }
+                    else
+                    {
+                        //ctrl_speed(0);
+                        g_vfd_ctrl.end = 1;
+                        if(motor_target_current_dir() == 0){
+                            ext_motor_reverse();
+                        }
+                    }
+                }break;
+                case 2:{
+                    if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0){
+                        g_vfd_ctrl.end = 0;
+                        motor_stop_ctl(CODE_END);
+                        pump_ctl_set_value(0 , 500);
+                    }
+                    else
+                    {
+                        //ctrl_speed(0);
+                        g_vfd_ctrl.end = 1;
+                        if(motor_target_current_dir() != 0){
+                            ext_motor_reverse();
+                        }
+                    }
+                }break;
+                default: {
                     motor_stop_ctl(CODE_END);
                     pump_ctl_set_value(0 , 500);
-                }
-                else
-                {
-                    //ctrl_speed(0);
-                    g_vfd_ctrl.end = 1;
-                    if(motor_target_current_dir() == 0){
-                        ext_motor_reverse();
-                    }
-                }
-            }break;
-            case 2:{
-                if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0){
-                    g_vfd_ctrl.end = 0;
-                    motor_stop_ctl(CODE_END);
-                    pump_ctl_set_value(0 , 500);
-                }
-                else
-                {
-                    //ctrl_speed(0);
-                    g_vfd_ctrl.end = 1;
-                    if(motor_target_current_dir() != 0){
-                        ext_motor_reverse();
-                    }
-                }
-            }break;
-            default: {
+                } break;
+                
+            }
+        }break;
+
+        case IO_ID_LIMIT_LEFT:{/*左限位*/
+            if(g_vfd_ctrl.end != 0)  /*加工结束靠左停*/
+            {
                 motor_stop_ctl(CODE_END);
                 pump_ctl_set_value(0 , 500);
-            } break;
-        }
-    }
+                g_vfd_ctrl.end = 0;
+            }
+            else 
+            {
+                if(motor_target_current_dir() == 0){/*正在向左运动*/
+                    ext_motor_reverse();
+                } 
+                    
+            }
+        }break;
 
-    if(g_vfd_ctrl.flag[IO_ID_LIMIT_EXCEED] != 0) /*超程*/
-    {
-        motor_stop_ctl(CODE_EXCEED);
-        pump_ctl_set_value(0 , 500);
-        return ;
-    }
-
-    if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0)  /*左限位*/
-    {
-        if(g_vfd_ctrl.end != 0)  /*加工结束靠左停*/
-        {
-            motor_stop_ctl(CODE_END);
-            pump_ctl_set_value(0 , 500);
-            g_vfd_ctrl.end = 0;
-        }
-        else 
-        {
-            if(motor_target_current_dir() == 0){/*正在向左运动*/
-                ext_motor_reverse();
-            } 
-                
-        }
-    }
-
-    if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0) /*右限位*/
-    {
-        if(g_vfd_ctrl.end != 0)     /*加工结束靠右停*/
-        {
-            motor_stop_ctl(CODE_END);
-            pump_ctl_set_value(0 , 500);
-            g_vfd_ctrl.end = 0;
-        }
-        else
-        {
-            if(motor_target_current_dir() == 1){/*正在向右运动*/
-                ext_motor_reverse();
-            } 
-        }
+        case IO_ID_LIMIT_RIGHT:{/*右限位*/
+            if(g_vfd_ctrl.end != 0)     /*加工结束靠右停*/
+            {
+                motor_stop_ctl(CODE_END);
+                pump_ctl_set_value(0 , 500);
+                g_vfd_ctrl.end = 0;
+            }
+            else
+            {
+                if(motor_target_current_dir() == 1){/*正在向右运动*/
+                    ext_motor_reverse();
+                } 
+            }
+        }break;
+        default : break;
     }
 }
 
 static void io_scan_direction(void)
-{  
+{         
+
     if(motor_is_working() != 1)
     {
         g_vfd_io_tab[IO_ID_LIMIT_EXCEED].now_ticks = 0;
@@ -611,6 +632,7 @@ static void io_scan_direction(void)
         return ;
     }
         
+
     for(int i = IO_ID_LIMIT_EXCEED ; i <= IO_ID_LIMIT_RIGHT ; i++)
     {
         if(HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin) == (GPIO_PinState)g_vfd_io_tab[i].active_polarity)
@@ -624,16 +646,20 @@ static void io_scan_direction(void)
             g_vfd_io_tab[i].now_ticks = 0;
         }
 
-        if(g_vfd_io_tab[i].now_ticks > g_vfd_io_tab[i].debounce_ticks)
+        if(g_vfd_io_tab[i].now_ticks >= g_vfd_io_tab[i].debounce_ticks)
         {
             if(g_vfd_ctrl.flag[i] == 0)
             {
                 g_vfd_ctrl.flag[i] = 1;
                 /*通知电机换向或者结束加工*/
-                io_ctrl_dir();
+                if(motor_is_working() == 1)
+                {
+                    io_ctrl_dir(i);
+                }
             }
         }
     }
+
     //左限位长时间触发，异常
     if((g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_LEFT].exceed_ticks))
     {

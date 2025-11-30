@@ -111,8 +111,6 @@ void ext_motor_speed(unsigned int speed)
         return ;
     unsigned int freq = speed;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_VF, &freq, 4);
-    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
-    
 }
 
 void ext_motor_reverse(void)
