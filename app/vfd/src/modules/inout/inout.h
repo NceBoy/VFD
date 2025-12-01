@@ -14,7 +14,7 @@ extern "C" {
 #define STATUS_HIGH_FREQ_CHANGE (1 << 5)    //0x0020
 
 
-#define     IO_TIMEOUT_MS           6000
+#define     IO_TIMEOUT_MS           5000
 
 typedef enum
 {

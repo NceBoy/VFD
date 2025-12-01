@@ -48,9 +48,9 @@ typedef enum
     IO_ID_DEBUG         = 0x03,     //调试模式
 
     IO_ID_WIRE          = 0x04,     //断丝
+    IO_ID_END           = 0x05,     //加工结束
 
-    IO_ID_LIMIT_EXCEED  = 0x05,     //超程限位
-    IO_ID_END           = 0x06,     //加工结束
+    IO_ID_LIMIT_EXCEED  = 0x06,     //超程限位
     IO_ID_LIMIT_LEFT    = 0x07,     //左限位
     IO_ID_LIMIT_RIGHT   = 0x08,     //右限位
     
@@ -73,10 +73,11 @@ typedef struct
     io_id_t         io_id;
     GPIO_TypeDef    *port;
     uint32_t        pin;
-    uint32_t        now_ticks;
-    uint32_t        debounce_ticks;
-    uint32_t        exceed_ticks;
-    uint32_t        active_polarity;
+    uint32_t        trigger_ticks;      /*触发时间*/
+    uint32_t        recovery_ticks;     /*恢复时间*/
+    uint32_t        debounce_ticks;     /*消抖时间*/
+    uint32_t        exceed_ticks;       /*超时时间*/
+    uint32_t        active_polarity;    /*有效极性*/
 }vfd_io_t;
 
 typedef struct 
@@ -95,6 +96,8 @@ static vfd_ctrl_t g_vfd_ctrl;
 
 static pump_ctl_t   g_pump_ctl;
 
+static uint8_t g_end_value;
+
 static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 
     {IO_ID_SP0             ,GPIOD, GPIO_PIN_2  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
@@ -103,9 +106,9 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_DEBUG           ,GPIOB, GPIO_PIN_7  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//调试，有效电平0
 
     {IO_ID_WIRE            ,GPIOC, GPIO_PIN_13 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_HIGH}, //断丝检测，按照常闭极性控制
+    {IO_ID_END             ,GPIOC, GPIO_PIN_10 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //加工结束
 
     {IO_ID_LIMIT_EXCEED    ,GPIOA, GPIO_PIN_15 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //超程
-    {IO_ID_END             ,GPIOC, GPIO_PIN_10 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //加工结束
     {IO_ID_LIMIT_LEFT      ,GPIOA, GPIO_PIN_11 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //左限位
     {IO_ID_LIMIT_RIGHT     ,GPIOA, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //右限位
 
@@ -237,8 +240,9 @@ static void io_scan_active_polarity(void)
     g_vfd_io_tab[IO_ID_LIMIT_LEFT].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH); 
     g_vfd_io_tab[IO_ID_LIMIT_RIGHT].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH);
 
-    param_get(PARAM0X03, PARAM_WORK_END_SIGNAL, &value); /*加工结束信号极性,0:常开 1:常闭*/
-    g_vfd_io_tab[IO_ID_END].active_polarity =  (value == 0 ? ACTIVE_LOW : ACTIVE_HIGH);     
+    param_get(PARAM0X03, PARAM_WORK_END_SIGNAL, &value); /*加工结束信号极性,0:常开 1:常闭 2:自适应极性*/
+    g_vfd_io_tab[IO_ID_END].active_polarity =  (value == 1 ? ACTIVE_HIGH : ACTIVE_LOW);
+    g_end_value =  value ;
 
     /*断丝检测时间，消抖作用*/
     param_get(PARAM0X03, PARAM_WIRE_BREAK_TIME, &value); /*更新断丝检测时间*/
@@ -504,36 +508,132 @@ static void io_scan_wire(void)
 {  
     if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_WIRE].port, g_vfd_io_tab[IO_ID_WIRE].pin) == (GPIO_PinState)g_vfd_io_tab[IO_ID_WIRE].active_polarity)
     {
-        if(g_vfd_io_tab[IO_ID_WIRE].now_ticks < IO_TIMEOUT_MS)
-            g_vfd_io_tab[IO_ID_WIRE].now_ticks += MAIN_CTL_PERIOD;
+        g_vfd_io_tab[IO_ID_WIRE].recovery_ticks = 0;
+        if(g_vfd_io_tab[IO_ID_WIRE].trigger_ticks < IO_TIMEOUT_MS)
+            g_vfd_io_tab[IO_ID_WIRE].trigger_ticks += MAIN_CTL_PERIOD;
+        if(g_vfd_io_tab[IO_ID_WIRE].trigger_ticks > g_vfd_io_tab[IO_ID_WIRE].debounce_ticks)
+        {
+            if(g_vfd_ctrl.flag[IO_ID_WIRE] == 0)
+            {
+                g_vfd_ctrl.flag[IO_ID_WIRE] = 1;
+                g_vfd_ctrl.err |= ERROR_WIRE;
+                /*断丝*/
+                io_ctrl_wire();
+            }
+        }
     }
     else
     {
-        //g_vfd_ctrl.flag[IO_ID_WIRE] = 0;
-        g_vfd_io_tab[IO_ID_WIRE].now_ticks = 0;
-
-        if(g_vfd_ctrl.flag[IO_ID_WIRE] == 1)
+        g_vfd_io_tab[IO_ID_WIRE].trigger_ticks = 0;
+        if(g_vfd_io_tab[IO_ID_WIRE].recovery_ticks < IO_TIMEOUT_MS)
+            g_vfd_io_tab[IO_ID_WIRE].recovery_ticks += MAIN_CTL_PERIOD;
+        if(g_vfd_io_tab[IO_ID_WIRE].recovery_ticks > 2 * g_vfd_io_tab[IO_ID_WIRE].debounce_ticks)
         {
-            g_vfd_ctrl.flag[IO_ID_WIRE] = 0;
-            /*断丝恢复*/
-            g_vfd_ctrl.err &= ~ERROR_WIRE;
-        }
-    }
-
-    if(g_vfd_io_tab[IO_ID_WIRE].now_ticks > g_vfd_io_tab[IO_ID_WIRE].debounce_ticks)
-    {
-        if(g_vfd_ctrl.flag[IO_ID_WIRE] == 0)
-        {
-            g_vfd_ctrl.flag[IO_ID_WIRE] = 1;
-            g_vfd_ctrl.err |= ERROR_WIRE;
-            /*断丝*/
-            io_ctrl_wire();
+            if(g_vfd_ctrl.flag[IO_ID_WIRE] == 1)
+            {
+                g_vfd_ctrl.flag[IO_ID_WIRE] = 0;
+                /*断丝恢复*/
+                g_vfd_ctrl.err &= ~ERROR_WIRE;
+            }
         }
     }
 }
 
+static void io_ctrl_end(void)
+{
+    if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
+        return ;
+    uint8_t stop = 0;/*0:立即停止 1:靠右停 2:靠左停*/
+    param_get(PARAM0X03, PARAM_STOP_MODE, &stop);        
+    switch(stop)
+    {
+        case 1 :{
+            if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0){
+                g_vfd_ctrl.end = 0;
+                motor_stop_ctl(CODE_END);
+                pump_ctl_set_value(0 , 500);
+            }
+            else
+            {
+                g_vfd_ctrl.end = 1;
+                if(motor_target_current_dir() == 0){
+                    ext_motor_reverse();
+                }
+            }
+        }break;
+        case 2:{
+            if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0){
+                g_vfd_ctrl.end = 0;
+                motor_stop_ctl(CODE_END);
+                pump_ctl_set_value(0 , 500);
+            }
+            else
+            {
+                g_vfd_ctrl.end = 1;
+                if(motor_target_current_dir() != 0){
+                    ext_motor_reverse();
+                }
+            }
+        }break;
+        default: {
+            motor_stop_ctl(CODE_END);
+            pump_ctl_set_value(0 , 500);
+        } break;
+        
+    }    
+}
 
-static void io_ctrl_dir(int signal)
+
+static void io_scan_end(void)
+{
+    uint8_t should_ctl = 0;
+    /*自适应时有效极性也为0*/
+    if(HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_END].port, g_vfd_io_tab[IO_ID_END].pin) == (GPIO_PinState)g_vfd_io_tab[IO_ID_END].active_polarity)
+    {
+        g_vfd_io_tab[IO_ID_END].recovery_ticks = 0;
+        if(g_vfd_io_tab[IO_ID_END].trigger_ticks < IO_TIMEOUT_MS)
+            g_vfd_io_tab[IO_ID_END].trigger_ticks += MAIN_CTL_PERIOD;
+        if(g_vfd_io_tab[IO_ID_END].trigger_ticks > g_vfd_io_tab[IO_ID_END].debounce_ticks)
+        {
+            if(g_end_value == 2){ /*自适应极性，任何情况下都触发*/
+                should_ctl = 1;
+            }
+            else if(g_vfd_ctrl.flag[IO_ID_END] == 0)
+            {
+                g_vfd_ctrl.flag[IO_ID_END] = 1;
+                should_ctl = 1;
+            }
+        }
+    }
+    else  
+    {
+
+        g_vfd_io_tab[IO_ID_END].trigger_ticks = 0;
+        if(g_vfd_io_tab[IO_ID_END].recovery_ticks < IO_TIMEOUT_MS)
+            g_vfd_io_tab[IO_ID_END].recovery_ticks += MAIN_CTL_PERIOD;
+        if(g_vfd_io_tab[IO_ID_END].recovery_ticks > g_vfd_io_tab[IO_ID_END].debounce_ticks)
+        {
+            if(g_end_value == 2){ /*自适应极性，任何情况下都触发*/
+                should_ctl = 1;
+            }
+            else if(g_vfd_ctrl.flag[IO_ID_END] == 1)
+            {
+                g_vfd_ctrl.flag[IO_ID_END] = 0;
+            }
+        }
+    }
+
+    if(should_ctl == 0)
+        return ;
+    if((motor_is_running() == 0) || (g_vfd_ctrl.end == 1))
+        return ;
+    /*加工结束*/
+    io_ctrl_end();  
+}
+
+
+
+static void io_ctrl_limit(int signal)
 {
     switch(signal){
         case IO_ID_LIMIT_EXCEED:{  /*超程触发*/
@@ -541,57 +641,12 @@ static void io_ctrl_dir(int signal)
             pump_ctl_set_value(0 , 500);
         }break;
 
-        case IO_ID_END:{  /*加工结束*/
-            if(g_vfd_ctrl.flag[IO_ID_DEBUG] != 0)
-                return ;
-            uint8_t stop = 0;/*0:立即停止 1:靠右停 2:靠左停*/
-            param_get(PARAM0X03, PARAM_STOP_MODE, &stop);        
-            switch(stop)
-            {
-                case 1 :{
-                    if(g_vfd_ctrl.flag[IO_ID_LIMIT_RIGHT] != 0){
-                        g_vfd_ctrl.end = 0;
-                        motor_stop_ctl(CODE_END);
-                        pump_ctl_set_value(0 , 500);
-                    }
-                    else
-                    {
-                        //ctrl_speed(0);
-                        g_vfd_ctrl.end = 1;
-                        if(motor_target_current_dir() == 0){
-                            ext_motor_reverse();
-                        }
-                    }
-                }break;
-                case 2:{
-                    if(g_vfd_ctrl.flag[IO_ID_LIMIT_LEFT] != 0){
-                        g_vfd_ctrl.end = 0;
-                        motor_stop_ctl(CODE_END);
-                        pump_ctl_set_value(0 , 500);
-                    }
-                    else
-                    {
-                        //ctrl_speed(0);
-                        g_vfd_ctrl.end = 1;
-                        if(motor_target_current_dir() != 0){
-                            ext_motor_reverse();
-                        }
-                    }
-                }break;
-                default: {
-                    motor_stop_ctl(CODE_END);
-                    pump_ctl_set_value(0 , 500);
-                } break;
-                
-            }
-        }break;
-
         case IO_ID_LIMIT_LEFT:{/*左限位*/
             if(g_vfd_ctrl.end != 0)  /*加工结束靠左停*/
             {
+                g_vfd_ctrl.end = 0;
                 motor_stop_ctl(CODE_END);
                 pump_ctl_set_value(0 , 500);
-                g_vfd_ctrl.end = 0;
             }
             else 
             {
@@ -605,9 +660,9 @@ static void io_ctrl_dir(int signal)
         case IO_ID_LIMIT_RIGHT:{/*右限位*/
             if(g_vfd_ctrl.end != 0)     /*加工结束靠右停*/
             {
+                g_vfd_ctrl.end = 0;
                 motor_stop_ctl(CODE_END);
                 pump_ctl_set_value(0 , 500);
-                g_vfd_ctrl.end = 0;
             }
             else
             {
@@ -622,46 +677,46 @@ static void io_ctrl_dir(int signal)
 
 static void io_scan_direction(void)
 {         
-
-    if(motor_is_working() != 1)
+    static uint8_t g_last_working = 0;
+    uint8_t working = motor_is_working();
+    if((g_last_working == 0) && (working == 1))
     {
-        g_vfd_io_tab[IO_ID_LIMIT_EXCEED].now_ticks = 0;
-        g_vfd_io_tab[IO_ID_END].now_ticks = 0;
-        g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks = 0;
-        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks = 0;
-        return ;
+        g_vfd_io_tab[IO_ID_LIMIT_EXCEED].trigger_ticks = 0;
+        g_vfd_io_tab[IO_ID_LIMIT_LEFT].trigger_ticks = 0;
+        g_vfd_io_tab[IO_ID_LIMIT_RIGHT].trigger_ticks = 0;
     }
-        
+    g_last_working = working;
 
-    for(int i = IO_ID_LIMIT_EXCEED ; i <= IO_ID_LIMIT_RIGHT ; i++)
+
+    for(int i = IO_ID_LIMIT_EXCEED ; i <= IO_ID_LIMIT_RIGHT ; i++)  /*超程，左限位，右限位*/
     {
         if(HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin) == (GPIO_PinState)g_vfd_io_tab[i].active_polarity)
         {
-            if(g_vfd_io_tab[i].now_ticks < IO_TIMEOUT_MS)
-                g_vfd_io_tab[i].now_ticks += MAIN_CTL_PERIOD;
+            if(g_vfd_io_tab[i].trigger_ticks < IO_TIMEOUT_MS)
+                g_vfd_io_tab[i].trigger_ticks += MAIN_CTL_PERIOD;
         }
         else
         {
             g_vfd_ctrl.flag[i] = 0;
-            g_vfd_io_tab[i].now_ticks = 0;
+            g_vfd_io_tab[i].trigger_ticks = 0;
         }
 
-        if(g_vfd_io_tab[i].now_ticks >= g_vfd_io_tab[i].debounce_ticks)
+        if(g_vfd_io_tab[i].trigger_ticks >= g_vfd_io_tab[i].debounce_ticks)
         {
             if(g_vfd_ctrl.flag[i] == 0)
             {
                 g_vfd_ctrl.flag[i] = 1;
-                /*通知电机换向或者结束加工*/
+                /*通知电机换向或者超程*/
                 if(motor_is_working() == 1)
                 {
-                    io_ctrl_dir(i);
+                    io_ctrl_limit(i);
                 }
             }
         }
     }
 
     //左限位长时间触发，异常
-    if((g_vfd_io_tab[IO_ID_LIMIT_LEFT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_LEFT].exceed_ticks))
+    if((g_vfd_io_tab[IO_ID_LIMIT_LEFT].trigger_ticks >= g_vfd_io_tab[IO_ID_LIMIT_LEFT].exceed_ticks))
     {
         g_vfd_ctrl.err |= ERROR_LEFT_KEY;
         if(motor_is_working())
@@ -675,7 +730,7 @@ static void io_scan_direction(void)
         
         
     //右限位长时间触发，异常
-    if(g_vfd_io_tab[IO_ID_LIMIT_RIGHT].now_ticks >= g_vfd_io_tab[IO_ID_LIMIT_RIGHT].exceed_ticks)
+    if(g_vfd_io_tab[IO_ID_LIMIT_RIGHT].trigger_ticks >= g_vfd_io_tab[IO_ID_LIMIT_RIGHT].exceed_ticks)
     {
         g_vfd_ctrl.err |= ERROR_RIGHT_KEY;
         if(motor_is_working())
@@ -760,17 +815,17 @@ static void io_scan_onoff(void)
     {
         if(HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin) == g_vfd_io_tab[i].active_polarity)
         {
-            if(g_vfd_io_tab[i].now_ticks < IO_TIMEOUT_MS)
-                g_vfd_io_tab[i].now_ticks += MAIN_CTL_PERIOD;
+            if(g_vfd_io_tab[i].trigger_ticks < IO_TIMEOUT_MS)
+                g_vfd_io_tab[i].trigger_ticks += MAIN_CTL_PERIOD;
         }
         else
         {
-            g_vfd_io_tab[i].now_ticks = 0;
+            g_vfd_io_tab[i].trigger_ticks = 0;
             g_vfd_ctrl.flag[i] = 0;
         }
             
 
-        if(g_vfd_io_tab[i].now_ticks > g_vfd_io_tab[i].debounce_ticks)
+        if(g_vfd_io_tab[i].trigger_ticks > g_vfd_io_tab[i].debounce_ticks)
         {
             if(g_vfd_ctrl.flag[i] == 0)
             {
@@ -952,13 +1007,15 @@ void inout_scan(void)
     io_scan_speed();
     /*step 4 . 断丝*/
     io_scan_wire();
-    /*step 5 . 左右限位,超程和加工结束*/
+    /*step 5 . 加工结束*/
+    io_scan_end();
+    /*step 6 . 左右限位,超程*/
     io_scan_direction();
-    /*step 6 . 开关运丝和水泵*/
+    /*step 7 . 开关运丝和水泵*/
     io_scan_onoff();
-    /*step 7 . 电压检测*/
+    /*step 8 . 电压检测*/
     scan_voltage();
-    /*step 8 . 错误处理*/
+    /*step 9 . 错误处理*/
     update_err();
 
 }
