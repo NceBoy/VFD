@@ -18,7 +18,7 @@
 static uint8_t g_uart_buffer[256];
 static uint16_t g_uart_buffer_length;
 static void comm_uart_process(char* buf, int len);
-
+static const char* local_file_name = "data.c";
 typedef int (*protocol_cb)(Packet* in , Packet* out);
 
 #define CMD_BUILD(action,main_type,sub_type)        (action << 16 | main_type << 8 | sub_type)
@@ -291,7 +291,7 @@ static int vfd_motor_ctl(Packet* in , Packet* out)
     }
     else{
         motor_stop_ctl(CODE_END);
-        logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
+        logdbg("motor stop at %s[%d]\n",local_file_name,__LINE__);
     }
     uint8_t ret = 0;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
