@@ -188,6 +188,7 @@ void menu_ctl_func(uint8_t key)
     menu_display();
 }
 
+#if 0
 static void show_speed_blink(void)
 {
     static uint8_t blink_flag = 1;
@@ -212,6 +213,7 @@ static void show_speed_blink(void)
         blink_flag = 1;       
     }   
 }
+#endif
 
 static uint8_t immi_flag = 1;
 

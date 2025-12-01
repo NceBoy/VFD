@@ -7,6 +7,7 @@
 #include "service_data.h"
 #include "param.h"
 #include "motor.h"
+#include "log.h"
 
 #define ACTIVE_NULL             (0xffffffff)
 #define ACTIVE_LOW              (0)
@@ -90,6 +91,12 @@ typedef struct
     uint8_t         sp_manual;
 }vfd_ctrl_t;
 
+typedef struct 
+{
+    uint8_t         high_freq;
+    uint8_t         pump_status;
+}sync_status_t;
+
 static uint8_t g_vfd_voltage_flag;
 
 static vfd_ctrl_t g_vfd_ctrl;
@@ -98,6 +105,8 @@ static pump_ctl_t   g_pump_ctl;
 
 static uint8_t g_end_value;
 static uint8_t g_io_debug_level = 1;
+
+__no_init static sync_status_t g_sync_status;
 
 static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 
@@ -1008,6 +1017,23 @@ void inout_init(void)
     return ;
 }
 
+/*外部IO的错误信息处理*/
+static void io_sync_status(void)
+{  
+    /*同步高频状态*/
+    g_sync_status.high_freq = motor_high_freq_status();
+    /*同步水泵状态*/
+    g_sync_status.pump_status = g_pump_ctl.real_status;
+}
+
+/*复位获取水泵和高频值*/
+void inout_reset_pump_high_freq(unsigned char* pump , unsigned char* high_freq)
+{
+    if(pump)
+        *pump = g_sync_status.pump_status;
+    if(high_freq)
+        *high_freq = g_sync_status.high_freq;
+}
 
 void inout_scan(void)
 {
@@ -1029,7 +1055,8 @@ void inout_scan(void)
     scan_voltage();
     /*step 9 . 错误处理*/
     update_err();
-
+    /*step 10 . 状态同步*/
+    io_sync_status();
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)

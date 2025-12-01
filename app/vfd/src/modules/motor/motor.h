@@ -18,6 +18,7 @@ int motor_target_current_dir(void);
 int motor_is_working(void);
 int motor_is_running(void);
 int motor_speed_is_const(void);
+int motor_high_freq_status(void);
 void motor_save_check(int period);
 
 void motor_init(void);

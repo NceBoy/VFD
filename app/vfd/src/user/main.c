@@ -10,6 +10,7 @@
 #include "ble.h"
 #include "data.h"
 #include "motor.h"
+#include "param.h"
 #include "tx_api.h"
 #include "tx_initialize.h"
 #include "tx_thread.h"
@@ -87,6 +88,8 @@ static  void  taskstart (ULONG thread_input)
 	nx_msg_init();
 
     ble_init();
+
+    param_load();
 
     //service_test_start();
     

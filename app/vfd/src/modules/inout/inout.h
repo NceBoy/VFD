@@ -79,6 +79,9 @@ unsigned char inout_get_errcode(void);
 /*获取当前是否加工结束*/
 unsigned char inout_get_work_end(void);
 
+/*复位获取水泵和高频值*/
+void inout_reset_pump_high_freq(unsigned char* pump , unsigned char* high_freq);
+
 #ifdef __cplusplus
 }
 #endif

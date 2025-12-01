@@ -145,10 +145,10 @@ static float radio_from_freq(float freq)
     return ((1 - radio) / 50.0f * freq + radio) * RADIO_MAX;
 }
 
-/*高频控制:1 开  2关*/
+/*高频控制:1 开  0关*/
 static void high_frequery_ctl(int value)
 {
-    if((g_high_freq.real_status == value) || (g_high_freq.ctrl_value == value))
+    if(g_high_freq.ctrl_value == value)
         return ;
 
     g_high_freq.ctrl_value = value;
@@ -181,7 +181,7 @@ static void high_freq_control(void)
         if((g_motor_param.vari_freq_close) && (g_motor_real.freq_arrive == 0)) /*变频关高频*/
         {
             /*关*/
-            high_frequery_ctl(2);
+            high_frequery_ctl(0);
         }
         else
         {
@@ -191,7 +191,7 @@ static void high_freq_control(void)
     }
     else
     {   /*关*/
-        high_frequery_ctl(2);
+        high_frequery_ctl(0);
     }
 }
 
@@ -199,11 +199,20 @@ static void high_freq_control(void)
 /*外部延时控制时的调用*/
 void ext_high_freq_ctl(int period)
 {
-    uint8_t polarity = 0; /*0:常闭,1:常开*/
-
+    uint8_t should_ctl = 0;
+    static uint8_t polarity_last = 0; /*0:常开 1:常闭*/
+    uint8_t polarity = 0; 
     param_get(PARAM0X02, PARAM_HIGH_FREQ_POLARITY, &polarity);
-    
+    if(polarity != polarity_last){
+        should_ctl = 1;
+        polarity_last = polarity;
+    }
     high_freq_control();
+    if(g_high_freq.ctrl_value != g_high_freq.real_status)
+        should_ctl = 1;
+
+    if(should_ctl == 0)
+        return ;
 
     if(g_high_freq.ctrl_delay > period)
         g_high_freq.ctrl_delay -= period;
@@ -212,18 +221,9 @@ void ext_high_freq_ctl(int period)
 
     if(g_high_freq.ctrl_delay == 0)
     {
-        if(g_high_freq.ctrl_value == 0)
-            return ;
-        else if(g_high_freq.ctrl_value == 2){
-            bsp_io_ctrl_high_freq(0 , polarity);  //关高频
-            ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,0);
-        }
-        else if(g_high_freq.ctrl_value == 1){
-            bsp_io_ctrl_high_freq(1 , polarity);  //开高频        
-            ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,1);
-        }
+        bsp_io_ctrl_high_freq(g_high_freq.ctrl_value , polarity);  //开关高频        
         g_high_freq.real_status = g_high_freq.ctrl_value;
-        g_high_freq.ctrl_value = 0;
+        ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,g_high_freq.real_status);
     }
 }
 
@@ -262,6 +262,11 @@ int motor_speed_is_const(void)
     return g_high_freq.real_status == 1 ? 1 : 0;
 }
 
+int motor_high_freq_status(void)
+{
+    return g_high_freq.real_status;
+}
+
 int motor_target_current_get(void)
 {
     return (int)g_motor_real.target_should_be;
@@ -296,7 +301,7 @@ void motor_brake_start(void)
     g_motor_real.target_freq = g_motor_param.start_freq;
     g_motor_real.motor_status = motor_in_brake;
 
-    high_frequery_ctl(2);
+    high_frequery_ctl(0);
     //EXT_PUMP_DISABLE;
     BREAK_VDC_ENABLE;
 }
@@ -336,6 +341,12 @@ void motor_init(void)
     g_motor_real.motor_dir = param_dir_load();
     if(g_motor_real.motor_status != motor_in_idle)
         bsp_tmr_start();
+    uint8_t pump = 0, high_freq = 0;
+    inout_reset_pump_high_freq(&pump , &high_freq);
+    if(pump != 0)
+        pump_ctl_set_value(1,0);
+    if(high_freq != 0)
+        high_frequery_ctl(1);
 }
 
 
@@ -593,7 +604,7 @@ unsigned int interrupt_times = 0;
                 /*停机结束*/
                 bsp_tmr_stop();
                 g_motor_real.motor_status = motor_in_idle;
-                high_frequery_ctl(2);
+                high_frequery_ctl(0);
                 //EXT_PUMP_DISABLE;
                 BREAK_VDC_DISABLE;
                 /*保存当前的运行方向（如果是靠边停，没关系）*/
