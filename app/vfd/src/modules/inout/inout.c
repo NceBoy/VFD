@@ -595,10 +595,7 @@ static void io_scan_end(void)
             g_vfd_io_tab[IO_ID_END].trigger_ticks += MAIN_CTL_PERIOD;
         if(g_vfd_io_tab[IO_ID_END].trigger_ticks > g_vfd_io_tab[IO_ID_END].debounce_ticks)
         {
-            if(g_end_value == 2){ /*自适应极性，任何情况下都触发*/
-                should_ctl = 1;
-            }
-            else if(g_vfd_ctrl.flag[IO_ID_END] == 0)
+            if(g_vfd_ctrl.flag[IO_ID_END] == 0)
             {
                 g_vfd_ctrl.flag[IO_ID_END] = 1;
                 should_ctl = 1;
@@ -613,12 +610,11 @@ static void io_scan_end(void)
             g_vfd_io_tab[IO_ID_END].recovery_ticks += MAIN_CTL_PERIOD;
         if(g_vfd_io_tab[IO_ID_END].recovery_ticks > g_vfd_io_tab[IO_ID_END].debounce_ticks)
         {
-            if(g_end_value == 2){ /*自适应极性，任何情况下都触发*/
-                should_ctl = 1;
-            }
-            else if(g_vfd_ctrl.flag[IO_ID_END] == 1)
+            if(g_vfd_ctrl.flag[IO_ID_END] == 1)
             {
                 g_vfd_ctrl.flag[IO_ID_END] = 0;
+                if(g_end_value == 2)
+                    should_ctl = 1;
             }
         }
     }
