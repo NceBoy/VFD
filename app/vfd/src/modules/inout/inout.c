@@ -280,6 +280,7 @@ void inout_mode_sync_from_ext(unsigned char mode)
             {
                 motor_stop_ctl(CODE_WIRE_BREAK);
                 pump_ctl_set_value(0 , 500);
+                logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
             }
             else if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
             {
@@ -329,6 +330,7 @@ static void io_scan_debug(void)
                 {
                     motor_stop_ctl(CODE_WIRE_BREAK);
                     pump_ctl_set_value(0 , 500);
+                    logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
                 }
                 else if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
                 {
@@ -498,6 +500,7 @@ static void io_ctrl_wire(void)
     {
         motor_stop_ctl(CODE_WIRE_BREAK);
         pump_ctl_set_value(0 , 500);
+        logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
     }
     
     return ;
@@ -552,6 +555,7 @@ static void io_ctrl_end(void)
                 g_vfd_ctrl.end = 0;
                 motor_stop_ctl(CODE_END);
                 pump_ctl_set_value(0 , 500);
+                logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
             }
             else
             {
@@ -566,6 +570,7 @@ static void io_ctrl_end(void)
                 g_vfd_ctrl.end = 0;
                 motor_stop_ctl(CODE_END);
                 pump_ctl_set_value(0 , 500);
+                logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
             }
             else
             {
@@ -578,6 +583,7 @@ static void io_ctrl_end(void)
         default: {
             motor_stop_ctl(CODE_END);
             pump_ctl_set_value(0 , 500);
+            logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
         } break;
         
     }    
@@ -635,6 +641,7 @@ static void io_ctrl_limit(int signal)
         case IO_ID_LIMIT_EXCEED:{  /*超程触发*/
             motor_stop_ctl(CODE_EXCEED);
             pump_ctl_set_value(0 , 500);
+            logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
         }break;
 
         case IO_ID_LIMIT_LEFT:{/*左限位*/
@@ -643,6 +650,7 @@ static void io_ctrl_limit(int signal)
                 g_vfd_ctrl.end = 0;
                 motor_stop_ctl(CODE_END);
                 pump_ctl_set_value(0 , 500);
+                logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
             }
             else 
             {
@@ -659,6 +667,7 @@ static void io_ctrl_limit(int signal)
                 g_vfd_ctrl.end = 0;
                 motor_stop_ctl(CODE_END);
                 pump_ctl_set_value(0 , 500);
+                logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
             }
             else
             {
@@ -719,6 +728,7 @@ static void io_scan_direction(void)
         {
             motor_stop_ctl(CODE_LIMIT_TIMEOUT);
             pump_ctl_set_value(0 , 0);
+            logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
         }
     }
     else
@@ -733,6 +743,7 @@ static void io_scan_direction(void)
         {
             motor_stop_ctl(CODE_LIMIT_TIMEOUT);
             pump_ctl_set_value(0 , 0);
+            logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
         }
     } 
     else
@@ -747,6 +758,7 @@ static void io_scan_direction(void)
         {
             motor_stop_ctl(CODE_LIMIT_DOUBLE);
             pump_ctl_set_value(0 , 0);
+            logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
         }
     }
     else
@@ -772,6 +784,7 @@ static void io_ctrl_onoff(void)
                 }
                 else{
                     motor_stop_ctl(CODE_END);
+                    logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
                 }
             }
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开关水*/
@@ -790,6 +803,7 @@ static void io_ctrl_onoff(void)
             {
                 if(motor_is_running() == 1){
                     motor_stop_ctl(CODE_END);
+                    logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
                 }
             }
             if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开水*/
@@ -961,6 +975,7 @@ void scan_voltage(void)
         if(motor_is_running()){
             pump_ctl_set_value(0 , 500);
             motor_stop_ctl(CODE_POWER_OFF);
+            logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
         }
         g_vfd_ctrl.err |= ERROR_UNDER_VOLTAGE;
     }else{
@@ -971,6 +986,7 @@ void scan_voltage(void)
             if(motor_is_running()){
                 pump_ctl_set_value(0 , 500);
                 motor_stop_ctl((stopcode_t)(voltage_status + 4));
+                logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
             }
         }
         else

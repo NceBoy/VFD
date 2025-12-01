@@ -291,6 +291,7 @@ static int vfd_motor_ctl(Packet* in , Packet* out)
     }
     else{
         motor_stop_ctl(CODE_END);
+        logdbg("motor stop at %s[%d]\n",__FILE__,__LINE__);
     }
     uint8_t ret = 0;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
