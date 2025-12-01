@@ -28,7 +28,6 @@ static uint8_t g_ack_buf[1024];
 
 void service_data_start(void)
 {
-    
     nx_msg_queue_create(&g_data_queue, "data queue",(VOID *)g_data_queue_addr, sizeof(g_data_queue_addr));
     tx_thread_create(&task_data_tcb,
                      "task data",
@@ -68,8 +67,8 @@ static void uart_report_status(unsigned char* buf , int len)
     create_packet(&out, ACTION_REPORT, TYPE_VFD, 0, 0x1234, 0xFE00, buf, len);
     int ack_len = serialize_packet((const Packet*) &out, g_ack_buf);
     bsp_uart_send(g_ack_buf , ack_len);
-    logdbg("report:");
-    loghex(g_ack_buf,ack_len);
+    //logdbg("report:");
+    //loghex(g_ack_buf,ack_len);
 }
 
 
@@ -108,7 +107,6 @@ static  void  task_data (ULONG thread_input)
 			nx_msg_free(recv_info);
 		}
 	}
-
 }
 
 
@@ -128,6 +126,7 @@ void ext_send_report_err(int from_id , unsigned short err)
     buf[3] = 0x00;
     buf[4] = 0x00;
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
+    logdbg("report err: 0x%04x\n",err);
 }
 
 void ext_send_report_status(int from_id , unsigned short status , unsigned char value)
@@ -139,4 +138,5 @@ void ext_send_report_status(int from_id , unsigned short status , unsigned char 
     buf[3] = status >> 8 & 0xFF;
     buf[4] = value;
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
+    logdbg("report status: 0x%04x = %d\n",status,value);
 }

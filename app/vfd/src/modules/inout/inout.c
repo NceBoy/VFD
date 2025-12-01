@@ -97,6 +97,7 @@ static vfd_ctrl_t g_vfd_ctrl;
 static pump_ctl_t   g_pump_ctl;
 
 static uint8_t g_end_value;
+static uint8_t g_io_debug_level = 1;
 
 static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 
@@ -214,11 +215,12 @@ void motor_start_ctl(void)
 
 void motor_stop_ctl(stopcode_t code)
 {
-    if(motor_is_working() == 0)
+    if(motor_is_running() == 0)
         return ;
     
     ext_motor_brake();
     ext_notify_stop_code((unsigned char)code);
+    logdbg("motor stop code:%d\n", code);
 }
 
 static void io_scan_active_polarity(void)
@@ -261,6 +263,9 @@ static void ctrl_speed(uint8_t sp)
 
 void inout_mode_sync_from_ext(unsigned char mode)
 {
+    if(g_io_debug_level == 0) /*外部引脚状态为低时，不允许使用手控控制模式*/
+        return ;
+
     if(mode != 0) /*进入debug模式*/
     {
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
@@ -268,12 +273,6 @@ void inout_mode_sync_from_ext(unsigned char mode)
     else /*退出debug模式*/
     {
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
-        uint8_t speed_src = g_vfd_ctrl.flag[IO_ID_SP0]; /*速度值来源*/
-        g_vfd_ctrl.flag[IO_ID_SP0] = 0;
-
-        uint8_t speed = 0;
-        param_get(PARAM0X01, g_vfd_ctrl.sp, &speed);
-        ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
 
         if(motor_is_working())
         {
@@ -282,11 +281,15 @@ void inout_mode_sync_from_ext(unsigned char mode)
                 motor_stop_ctl(CODE_WIRE_BREAK);
                 pump_ctl_set_value(0 , 500);
             }
-            else if(speed_src != 0) /*退出debug模式，恢复IO速度*/
+            else if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
             {
                 ctrl_speed(g_vfd_ctrl.sp);
+                uint8_t speed = 0;
+                param_get(PARAM0X01, g_vfd_ctrl.sp, &speed);
+                ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
             }
         }
+        g_vfd_ctrl.flag[IO_ID_SP0] = 0;
     }
     uint8_t now_mode = g_vfd_ctrl.flag[IO_ID_DEBUG] ? 0 : 1;
     ext_send_report_status(0,STATUS_MODE_CHANGE,now_mode);
@@ -301,31 +304,24 @@ int motor_debug_mode(void)
 static void io_scan_debug(void)
 {
     /*是否进入或者推出debug模式，debug模式一般是用来上丝*/
-    static uint8_t debug_last = 1;
+    
     uint8_t debug_now = (HAL_GPIO_ReadPin(g_vfd_io_tab[IO_ID_DEBUG].port, g_vfd_io_tab[IO_ID_DEBUG].pin) == GPIO_PIN_SET) ? 1 : 0;
     if(debug_now == 0)
     {
-        if((debug_last == 1) || (g_vfd_ctrl.flag[IO_ID_DEBUG] == 0))  /*首次进入debug模式*/
+        if((g_io_debug_level == 1) || (g_vfd_ctrl.flag[IO_ID_DEBUG] == 0))  /*首次进入debug模式*/
         {
             ext_send_report_status(0,STATUS_MODE_CHANGE,0);
         }
-        debug_last = debug_now;
+        g_io_debug_level = debug_now;
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
-        
     }
     else
     {
-        if(debug_last == 0)
+        if(g_io_debug_level == 0)
         {
-            debug_last = debug_now;
+            g_io_debug_level = debug_now;
             g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
             ext_send_report_status(0,STATUS_MODE_CHANGE,1);
-            uint8_t speed_src = g_vfd_ctrl.flag[IO_ID_SP0]; /*速度值来源*/
-            g_vfd_ctrl.flag[IO_ID_SP0] = 0;
-
-            uint8_t speed = 0;
-            param_get(PARAM0X01, g_vfd_ctrl.sp, &speed);
-            ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
 
             if(motor_is_working())
             {
@@ -334,11 +330,15 @@ static void io_scan_debug(void)
                     motor_stop_ctl(CODE_WIRE_BREAK);
                     pump_ctl_set_value(0 , 500);
                 }
-                else if(speed_src != 0) /*退出debug模式，恢复IO速度*/
+                else if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
                 {
                     ctrl_speed(g_vfd_ctrl.sp);
+                    uint8_t speed = 0;
+                    param_get(PARAM0X01, g_vfd_ctrl.sp, &speed);
+                    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
                 }
             }
+            g_vfd_ctrl.flag[IO_ID_SP0] = 0;
         }
     }
 }
@@ -767,7 +767,7 @@ static void io_ctrl_onoff(void)
         case CTRL_MODE_JOG :{ /*忽略关丝和关水逻辑*/
             if(g_vfd_ctrl.flag[IO_ID_MOTOR_START] != 0) /*开关丝*/
             {
-                if(motor_is_working() != 1){
+                if(motor_is_working() == 0){
                     motor_start_ctl();
                 }
                 else{
@@ -782,13 +782,13 @@ static void io_ctrl_onoff(void)
         case CTRL_MODE_FOUR_KEY :{
             if(g_vfd_ctrl.flag[IO_ID_MOTOR_START] != 0) /*开丝*/
             {
-                if(motor_is_working() != 1){
+                if(motor_is_working() == 0){
                     motor_start_ctl();
                 }
             }
             if(g_vfd_ctrl.flag[IO_ID_MOTOR_STOP] != 0) /*关丝*/
             {
-                if(motor_is_working() == 1){
+                if(motor_is_running() == 1){
                     motor_stop_ctl(CODE_END);
                 }
             }

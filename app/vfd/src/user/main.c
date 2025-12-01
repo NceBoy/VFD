@@ -194,7 +194,7 @@ void Error_Handler(const char *file, int line)
 {
     /*file通过宏定义__FILE__传入，一般包含路径名称*/
     const char* filename = get_basename(file);  // 截取纯文件名
-    printf("error occur in: %s %d\n", filename, line);
+    logdbg("error occur in: %s %d\n", filename, line);
     __disable_irq();
     while (1)
     {   

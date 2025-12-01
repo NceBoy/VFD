@@ -38,7 +38,6 @@ static key_t g_key = {0, 0, 0, 0, 0};
 
 static menu_state_t g_menu_state = {0};  // 初始在第一级菜单第0项
 
-static uint8_t g_level_refresh = 0;
 static int g_errcode_display = 0;
 static uint32_t g_errcode_display_time = 0;
 
@@ -219,41 +218,25 @@ static uint8_t immi_flag = 1;
 static void show_speed_info(void)
 { 
     static uint8_t sp_last;
-    static uint32_t time_last;
 
-    if(motor_is_working())
+    /*电机运行中*/
+    uint8_t sp , value;
+    inout_get_current_sp(&sp , &value);
+    if((sp != sp_last) || (immi_flag))
     {
-        /*电机运行中*/
-        uint8_t sp , value;
-        inout_get_current_sp(&sp , &value);
-        if((sp != sp_last) || (g_level_refresh) || (immi_flag))
-        {
-            immi_flag = 0;
-            uint8_t data[8] = {0x00, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
-            //sp = HEX_TO_BCD(sp);
-            value = HEX_TO_BCD(value);
-            data[0] = code_table[sp];
-            data[2] = 0x80;
-            data[4] = code_table[value >> 4];
-            data[6] = code_table[value & 0x0f];
-            tm1628a_write_continuous(data , sizeof(data));
- 
-            sp_last = sp;
-            g_level_refresh = 0;
-        }
+        immi_flag = 0;
+        uint8_t data[8] = {0x00, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
+        //sp = HEX_TO_BCD(sp);
+        value = HEX_TO_BCD(value);
+        data[0] = code_table[sp];
+        data[2] = 0x80;
+        data[4] = code_table[value >> 4];
+        data[6] = code_table[value & 0x0f];
+        tm1628a_write_continuous(data , sizeof(data));
+
+        sp_last = sp;
     }
-    else
-    {
-        /*电机未运行*/
-        immi_flag = 1;
-        uint32_t now = HAL_GetTick();
-        if((now - time_last > 500) || (g_level_refresh))
-        {
-            show_speed_blink();
-            time_last = now;
-            g_level_refresh = 0;
-        }
-    }
+    
 }
 
 
@@ -389,7 +372,6 @@ void hmi_scan_key(void)
 
 void hmi_stop_code(int code)
 {
-    logdbg("motor stop code: %d\n" , code);
     if(code > 999)
         return ;
     uint8_t data[8] = {0x79, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
