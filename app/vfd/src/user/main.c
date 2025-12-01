@@ -146,7 +146,7 @@ static void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
@@ -160,7 +160,7 @@ static void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 
   /** Enables the Clock Security System
@@ -169,34 +169,35 @@ static void SystemClock_Config(void)
 }
 
 
+// 截取文件名（去掉路径，仅保留文件名）
+static const char* get_basename(const char* full_path) {
+    if (full_path == NULL) {
+        return "unknown_file";
+    }
+
+    // 查找最后一个 '/'（Linux/Windows 通用路径分隔符）
+    const char* slash = strrchr(full_path, '/');
+    // 若未找到 '/'，查找最后一个 '\'（Windows 路径分隔符）
+    if (slash == NULL) {
+        slash = strrchr(full_path, '\\');
+    }
+
+    // 若找到分隔符，返回分隔符后的字符串（文件名）；否则返回原路径
+    return (slash != NULL) ? (slash + 1) : full_path;
+}
+
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
-void Error_Handler(void)
+void Error_Handler(const char *file, int line)
 {
-
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
-
+    /*file通过宏定义__FILE__传入，一般包含路径名称*/
+    const char* filename = get_basename(file);  // 截取纯文件名
+    printf("error occur in: %s %d\n", filename, line);
+    __disable_irq();
+    while (1)
+    {   
+        HAL_NVIC_SystemReset();
+    }
 }
-
-#ifdef  USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
-}
-#endif /* USE_FULL_ASSERT */

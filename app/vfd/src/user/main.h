@@ -37,7 +37,7 @@ typedef struct
 } gpio_t;
 
 
-void Error_Handler(void);
+void Error_Handler(const char *file, int line);
 
 
 

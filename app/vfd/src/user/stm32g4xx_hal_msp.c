@@ -55,7 +55,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
       PeriphClkInit.Adc12ClockSelection = RCC_ADC12CLKSOURCE_SYSCLK;
       if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
       {
-        Error_Handler();
+        Error_Handler(__FILE__, __LINE__);
       }
   
       /* Peripheral clock enable */
@@ -167,7 +167,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     PeriphClkInit.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
     {
-      Error_Handler();
+      Error_Handler(__FILE__, __LINE__);
     }
 
     /* Peripheral clock enable */
@@ -195,7 +195,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     PeriphClkInit.Usart3ClockSelection = RCC_USART3CLKSOURCE_PCLK1;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
     {
-      Error_Handler();
+      Error_Handler(__FILE__, __LINE__);
     }
 
     /* Peripheral clock enable */

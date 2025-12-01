@@ -165,7 +165,7 @@ void bsp_adc_init(void)
     hadc1.Init.OversamplingMode = DISABLE;
     if (HAL_ADC_Init(&hadc1) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(__FILE__, __LINE__);
     }
 
     /** Configure the ADC multi-mode
@@ -173,7 +173,7 @@ void bsp_adc_init(void)
     multimode.Mode = ADC_MODE_INDEPENDENT;
     if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(__FILE__, __LINE__);
     }
 
     /** Configure Regular Channel
@@ -186,7 +186,7 @@ void bsp_adc_init(void)
     sConfig.Offset = 0;
     if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(__FILE__, __LINE__);
     }
 }
 

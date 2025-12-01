@@ -10,7 +10,7 @@ void bsp_iwdg_init(void)
   hiwdg.Init.Reload = 2000;
   if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 }
 
