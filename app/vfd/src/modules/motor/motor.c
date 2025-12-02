@@ -13,7 +13,7 @@
 #define  HIGH_OPEN_DELAY_MAX      30       /*开高频最小延时，单位0.1秒*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
-#define RADIO_MAX               (0.95f)
+#define RADIO_MAX               (0.98f)
 
 typedef enum
 {
@@ -135,8 +135,8 @@ static void motor_param_get(void)
 
 static float radio_from_freq(float freq)
 {
-    //if(freq > 50.0f)
-    //    return RADIO_MAX;
+    if(freq > 50.0f)
+        return 1.0f;
     float radio = 0.0f;
 
     if(g_motor_param.radio > 6)
@@ -376,7 +376,7 @@ static void motor_update_compare(void)
     unsigned short phaseC = 0;
 
     float radio = radio_from_freq(g_motor_real.current_freq);
-    //if(radio > RADIO_MAX) /*保护IPM模块*/
+    //if(radio > RADIO_MAX) /*避免过调制,保护IPM模块*/
     //    radio = RADIO_MAX;
 
     phaseA = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle)));
