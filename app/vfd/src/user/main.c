@@ -19,6 +19,7 @@
 #include "service_data.h"
 #include "service_hmi.h"
 
+#define THIS_FILE       "main.c"
 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
@@ -149,7 +150,7 @@ static void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);
+    Error_Handler(THIS_FILE, __LINE__);
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
@@ -163,7 +164,7 @@ static void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);
+    Error_Handler(THIS_FILE, __LINE__);
   }
 
   /** Enables the Clock Security System
@@ -172,22 +173,6 @@ static void SystemClock_Config(void)
 }
 
 
-// 截取文件名（去掉路径，仅保留文件名）
-static const char* get_basename(const char* full_path) {
-    if (full_path == NULL) {
-        return "unknown_file";
-    }
-
-    // 查找最后一个 '/'（Linux/Windows 通用路径分隔符）
-    const char* slash = strrchr(full_path, '/');
-    // 若未找到 '/'，查找最后一个 '\'（Windows 路径分隔符）
-    if (slash == NULL) {
-        slash = strrchr(full_path, '\\');
-    }
-
-    // 若找到分隔符，返回分隔符后的字符串（文件名）；否则返回原路径
-    return (slash != NULL) ? (slash + 1) : full_path;
-}
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -195,9 +180,7 @@ static const char* get_basename(const char* full_path) {
   */
 void Error_Handler(const char *file, int line)
 {
-    /*file通过宏定义__FILE__传入，一般包含路径名称*/
-    const char* filename = get_basename(file);  // 截取纯文件名
-    logdbg("error occur in: %s %d\n", filename, line);
+    logdbg("error occur in: %s line %d, reset.\n", file, line);
     __disable_irq();
     while (1)
     {   

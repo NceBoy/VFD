@@ -3,6 +3,7 @@
 #include "bsp_io.h"
 #include "log.h"
 
+#define THIS_FILE "bsp_adc.c"
 
 #if 0
 static ADC_HandleTypeDef hadc1;
@@ -37,7 +38,7 @@ void bsp_adc_init(void)
     hadc1.Init.OversamplingMode = DISABLE;
     if (HAL_ADC_Init(&hadc1) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     /** Configure the ADC multi-mode
@@ -45,7 +46,7 @@ void bsp_adc_init(void)
     multimode.Mode = ADC_MODE_INDEPENDENT;
     if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     /** Configure Injected Channel
@@ -65,7 +66,7 @@ void bsp_adc_init(void)
     sConfigInjected.InjecOversamplingMode = DISABLE;
     if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     /** Configure Injected Channel
@@ -74,7 +75,7 @@ void bsp_adc_init(void)
     sConfigInjected.InjectedRank = ADC_INJECTED_RANK_4;
     if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     /** Configure Injected Channel
@@ -83,7 +84,7 @@ void bsp_adc_init(void)
     sConfigInjected.InjectedRank = ADC_INJECTED_RANK_3;
     if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     /** Configure Injected Channel
@@ -92,7 +93,7 @@ void bsp_adc_init(void)
     sConfigInjected.InjectedRank = ADC_INJECTED_RANK_2;
     if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
@@ -165,7 +166,7 @@ void bsp_adc_init(void)
     hadc1.Init.OversamplingMode = DISABLE;
     if (HAL_ADC_Init(&hadc1) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     /** Configure the ADC multi-mode
@@ -173,7 +174,7 @@ void bsp_adc_init(void)
     multimode.Mode = ADC_MODE_INDEPENDENT;
     if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     /** Configure Regular Channel
@@ -186,7 +187,7 @@ void bsp_adc_init(void)
     sConfig.Offset = 0;
     if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
 }
 

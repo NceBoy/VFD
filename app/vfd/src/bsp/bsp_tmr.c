@@ -3,6 +3,7 @@
 #include "bsp_io.h"
 #include "bsp_led.h"
 
+#define THIS_FILE "bsp_tmr.c"
 
 static TIM_HandleTypeDef htim1;
 
@@ -25,24 +26,24 @@ void bsp_tmr_init(void)
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
     if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
     if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
     if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
     sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
     sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
     sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
     if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
     sConfigOC.OCMode = TIM_OCMODE_PWM1;
     sConfigOC.Pulse = 0;
@@ -53,21 +54,21 @@ void bsp_tmr_init(void)
     sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
     if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
     if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
     if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
 #if 0
     /* TIM1_CH4 用来做触发采集电流*/
     if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
     {
-        Error_Handler();
+        Error_Handler(THIS_FILE, __LINE__);
     } 
 #endif   
     sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
@@ -88,7 +89,7 @@ void bsp_tmr_init(void)
     sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
     if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
     {
-        Error_Handler(__FILE__, __LINE__);
+        Error_Handler(THIS_FILE, __LINE__);
     }
 
     HAL_TIM_MspPostInit(&htim1);
