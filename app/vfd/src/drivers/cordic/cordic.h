@@ -15,7 +15,7 @@ float cordic_cos(float angle);
 
 void cordic_sqrt_atan2(float x, float y, float *mag, float *phase);
 
-void cordic_sin_cos_rad(float angle_rad, float *sin_out, float *cos_out);
+void cordic_sin_cos(float angle, float *sin , float *cos);
     
 #ifdef __cplusplus
 }

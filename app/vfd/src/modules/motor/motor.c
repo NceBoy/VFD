@@ -501,7 +501,7 @@ static void motor_update_compare(void)
 
     float sin_value = 0.0f;
     float cos_value = 0.0f;
-    cordic_sin_cos_rad(g_motor_real.angle, &sin_value, &cos_value);
+    cordic_sin_cos(g_motor_real.angle, &sin_value, &cos_value);
     // 2. 计算 alpha-beta 轴电压
     //float U_alpha = Vq_ref * cordic_cos(g_motor_real.angle);
     //float U_beta  = Vq_ref * cordic_sin(g_motor_real.angle);
