@@ -8,12 +8,16 @@
 #include "param.h"
 #include "inout.h"
 #include "hmi.h"
+#include <math.h>
 
 #define  HIGH_OPEN_DELAY_MIN      3       /*开高频最小延时，单位0.1秒*/
 #define  HIGH_OPEN_DELAY_MAX      30       /*开高频最小延时，单位0.1秒*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
-#define RADIO_MAX               (0.98f)
+#define RADIO_MAX               (1.0f)
+#define PI                      (3.14159265358979323846f)
+#define SQRT3                   (1.73205080756887729353f)
+#define INV_SQRT3               (0.57735026918962576451f)  // 1/sqrt(3)
 
 typedef enum
 {
@@ -131,18 +135,6 @@ static void motor_param_get(void)
     if(value < 4)
         value = 4;    
     g_motor_param.deceleration_time_us = value* 100 * 1000;
-}
-
-static float radio_from_freq(float freq)
-{
-    if(freq > 50.0f)
-        return 1.0f;
-    float radio = 0.0f;
-
-    if(g_motor_param.radio > 6)
-        g_motor_param.radio = 6;
-    radio = g_radio_rate[g_motor_param.radio];
-    return ((1 - radio) / 50.0f * freq + radio) * RADIO_MAX;
 }
 
 /*高频控制:1 开  0关*/
@@ -368,29 +360,164 @@ void motor_start(unsigned int dir , float target_freq)
     hmi_clear_menu();
 }
 
+// SVPWM 核心计算函数 - 针对中心对齐模式，ARR=8500
+static void svpwm_calc_center_aligned(float U_alpha, float U_beta, unsigned short* Ta, unsigned short* Tb, unsigned short* Tc)
+{
+    // 1. 定时器参数设置
+    const unsigned short ARR = PWM_RESOLUTION;  // 定时器周期
+    const float U_max = (float)ARR / 2.0f; // 最大电压幅值对应占空比0.5
+    
+    // 2. 归一化到 [0, 1] 范围（相对于 PWM 最大值）
+    float alpha_norm = U_alpha / U_max;
+    float beta_norm  = U_beta  / U_max;
+
+    float U_mag = 0.0f;
+    float angle = 0.0f;
+
+    cordic_sqrt_atan2(alpha_norm, beta_norm, &U_mag, &angle);
+
+    // 3. 计算幅值，如果为零则输出中心占空比
+    //float U_mag = sqrtf(alpha_norm * alpha_norm + beta_norm * beta_norm);
+    if (U_mag == 0.0f) {
+        *Ta = ARR / 2;
+        *Tb = ARR / 2;
+        *Tc = ARR / 2;
+        return;
+    }
+
+    // 4. 扇区判断
+    //float angle = atan2f(beta_norm, alpha_norm);
+    if (angle < 0) angle += 2.0f * PI;
+
+    int sector = (int)((angle + PI/6.0f) / (PI/3.0f)) % 6;
+    if (sector < 0) sector += 6;
+
+    // 5. 计算 X, Y, Z (基于归一化后的电压)
+    float X = beta_norm * INV_SQRT3;
+    float Y = (beta_norm + SQRT3 * alpha_norm) * 0.5f;
+    float Z = (beta_norm - SQRT3 * alpha_norm) * 0.5f;
+
+    float Tx, Ty;
+    switch(sector) {
+        case 0: Tx = Z; Ty = Y; break;
+        case 1: Tx = Y; Ty = -X; break;
+        case 2: Tx = -Z; Ty = X; break;
+        case 3: Tx = -X; Ty = Z; break;
+        case 4: Tx = -Y; Ty = -Z; break;
+        case 5: Tx = X; Ty = -Y; break;
+        default: Tx = Ty = 0; break;
+    }
+
+    // 6. 限制占空比在 [0, 1] 范围内
+    if (Tx > 1.0f) Tx = 1.0f;
+    if (Tx < -1.0f) Tx = -1.0f;
+    if (Ty > 1.0f) Ty = 1.0f;
+    if (Ty < -1.0f) Ty = -1.0f;
+
+    float Tz = 1.0f - fabsf(Tx) - fabsf(Ty);
+    if (Tz < 0.0f) {
+        // 7. 过调制处理：按比例缩放
+        float scale = 1.0f / (fabsf(Tx) + fabsf(Ty) + fabsf(Tz));
+        Tx *= scale;
+        Ty *= scale;
+        Tz = 1.0f - fabsf(Tx) - fabsf(Ty);
+    }
+
+    float T1 = Tz * 0.5f;
+    float T2 = T1 + Tx;
+    float T3 = T2 + Ty;
+
+    // 8. 根据扇区映射到三相占空比（中心对齐模式）
+    float duty_a, duty_b, duty_c;
+    switch(sector) {
+        case 0: 
+            duty_a = T3; 
+            duty_b = T2; 
+            duty_c = T1; 
+            break;
+        case 1: 
+            duty_a = T2; 
+            duty_b = T3; 
+            duty_c = T1; 
+            break;
+        case 2: 
+            duty_a = T1; 
+            duty_b = T3; 
+            duty_c = T2; 
+            break;
+        case 3: 
+            duty_a = T1; 
+            duty_b = T2; 
+            duty_c = T3; 
+            break;
+        case 4: 
+            duty_a = T2; 
+            duty_b = T1; 
+            duty_c = T3; 
+            break;
+        case 5: 
+            duty_a = T3; 
+            duty_b = T1; 
+            duty_c = T2; 
+            break;
+        default: 
+            duty_a = 0.5f; 
+            duty_b = 0.5f; 
+            duty_c = 0.5f; 
+            break;
+    }
+
+    // 转换为中心对齐模式的 CCR 值
+    // 中心对齐模式下，占空比 = (ARR/2 - |CCR - ARR/2|) / (ARR/2)
+    // 简化：CCR = ARR/2 + duty * ARR/2 = (0.5 + duty*0.5) * ARR
+    *Ta = (unsigned short)((0.5f + duty_a * 0.5f) * ARR);
+    *Tb = (unsigned short)((0.5f + duty_b * 0.5f) * ARR);
+    *Tc = (unsigned short)((0.5f + duty_c * 0.5f) * ARR);
+
+    // 限制范围
+    if(*Ta > ARR) *Ta = ARR;
+    if(*Tb > ARR) *Tb = ARR;
+    if(*Tc > ARR) *Tc = ARR;
+}
+
+static float radio_from_freq(float freq)
+{
+    if(freq > 50.0f)
+        return 1.0f;
+    float radio = 0.0f;
+
+    if(g_motor_param.radio > 6)
+        g_motor_param.radio = 6;
+    radio = g_radio_rate[g_motor_param.radio];
+    return ((1 - radio) / 50.0f * freq + radio);
+}
+
 static void motor_update_compare(void)
 {
-    // 计算三相占空比
-    unsigned short phaseA = 0;
-    unsigned short phaseB = 0;
-    unsigned short phaseC = 0;
-
+    // 1. 根据当前频率计算电压幅值（V/F + 转矩提升）
     float radio = radio_from_freq(g_motor_real.current_freq);
-    //if(radio > RADIO_MAX) /*避免过调制,保护IPM模块*/
-    //    radio = RADIO_MAX;
+    const unsigned short ARR = PWM_RESOLUTION;  // 定时器周期
+    float Vq_ref = radio * (ARR / 2.0f); // 最大电压幅值对应占空比0.5
 
-    phaseA = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle)));
-    if(g_motor_real.motor_dir == 0)
-    {
-        phaseC = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));
-        phaseB = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));        
+    float sin_value = 0.0f;
+    float cos_value = 0.0f;
+    cordic_sin_cos_rad(g_motor_real.angle, &sin_value, &cos_value);
+    // 2. 计算 alpha-beta 轴电压
+    //float U_alpha = Vq_ref * cordic_cos(g_motor_real.angle);
+    //float U_beta  = Vq_ref * cordic_sin(g_motor_real.angle);
+    float U_alpha = Vq_ref * cos_value;
+    float U_beta  = Vq_ref * sin_value;
+    // 3. 如果反向，交换相序（对应你原来的 dir 逻辑）
+    if(g_motor_real.motor_dir != 0) {
+        U_beta = -U_beta; // 反向时 beta 轴反向
     }
-    else
-    {
-        phaseC = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle - PHASE_SHIFT_120)));
-        phaseB = (unsigned short)(radio * (PWM_RESOLUTION / 2) * (1 + cordic_sin(g_motor_real.angle + PHASE_SHIFT_120)));         
-    }
-    bsp_tmr_update_compare(phaseA , phaseB , phaseC); 
+
+    // 4. SVPWM 核心计算（中心对齐模式）
+    unsigned short Ta, Tb, Tc;
+    svpwm_calc_center_aligned(U_alpha, U_beta, &Ta, &Tb, &Tc);
+
+    // 5. 输出到定时器
+    bsp_tmr_update_compare(Ta, Tb, Tc);
 }
 
 /*(T型加减速,下一步频率计算)*/
@@ -435,138 +562,9 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
     else{/*减速*/
         if(float_equal_in_step(current_freq , target_freq, dece_step_freq))
             return target_freq;
-        else return current_freq - dece_step_freq;
+        else return current_freq - acce_step_freq;
     }
 }
-
-#if 0
-/*三次多项式插值法（Cubic Interpolation） 来生成S型曲线*/
-static float motor_calcu_next_step_freq_s_curve(float current_freq,float target_freq)
-{
-    static float start_freq = 0.0f;
-    static float delta_freq = 0.0f;
-    static unsigned int total_steps = 0;
-    static unsigned int step_count = 0;
-
-    static float last_target_freq = 0.0f;
-    if(float_equal_in_step(last_target_freq , target_freq , 0.01f) == 0)
-    {
-        /*重新计算参数*/
-        last_target_freq = target_freq;
-
-        start_freq = current_freq;
-        delta_freq = target_freq - current_freq;
-
-        /* 计算动态的加速/减速时间 */
-        static float ratio = 0.0f;
-        if (target_freq > current_freq) {
-            // 加速
-            ratio = (target_freq - current_freq) / (50.0f - g_motor_param.start_freq);  // 当前频率比例
-            total_steps = (unsigned int)((ratio * g_motor_param.acceleration_time_us) / TMR_INT_PERIOD_US);
-        } else {
-            // 减速
-            ratio = (current_freq - target_freq) / (50.0f - g_motor_param.start_freq);  // 当前频率比例
-            total_steps = (unsigned int)((ratio * g_motor_param.deceleration_time_us) / TMR_INT_PERIOD_US);
-        }
-
-        if (total_steps == 0) total_steps = 1; // 防止除以零
-        step_count = 0;
-    }
-
-    /* 如果频率已经到位，直接返回当前频率 */
-    if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
-        g_motor_real.freq_arrive = 1;
-        return target_freq;
-    }
-    g_motor_real.freq_arrive = 0;
-    if (step_count >= total_steps) {
-        g_motor_real.freq_arrive = 1;
-        return target_freq;
-    }
-
-    /*   S 曲线插值：3t² - 2t³  */
-    float t = (float)step_count / (float)(total_steps - 1); // [0,1]
-    float sigmoid = 3.0f * t * t - 2.0f * t * t * t; // S 型曲线
-
-    float next_freq = start_freq + delta_freq * sigmoid;
-    step_count++;
-
-    return next_freq;
-}
-#endif
-
-
-#if 0
-/**
- * 自定义加减速曲线：前3/4时间完成前半段频率，后1/4时间完成后半段频率
- */
-static float motor_calcu_next_step_freq_custom_curve(float current_freq, float target_freq)
-{
-    static float start_freq = 0.0f;
-    static float delta_freq = 0.0f;
-    static unsigned int total_steps = 0;
-    static unsigned int step_count = 0;
-
-    static float last_target_freq = 0.0f;
-
-    if (!float_equal_in_step(last_target_freq, target_freq, 0.01f))
-    {
-        /* 重新计算参数 */
-        last_target_freq = target_freq;
-        start_freq = current_freq;
-        delta_freq = target_freq - current_freq;
-
-        /* 根据加速或减速计算总步数 */
-        static float ratio = 0.0f;
-        if (target_freq > current_freq) {
-            // 加速
-            ratio = (target_freq - current_freq) / (50.0f - g_motor_param.start_freq);  // 当前频率比例
-            total_steps = (unsigned int)((ratio * g_motor_param.acceleration_time_us) / TMR_INT_PERIOD_US);
-        } else {
-            // 减速
-            ratio = (current_freq - target_freq) / (50.0f - g_motor_param.start_freq);  // 当前频率比例
-            total_steps = (unsigned int)((ratio * g_motor_param.deceleration_time_us) / TMR_INT_PERIOD_US);
-        }
-
-        if (total_steps == 0) total_steps = 1; // 防止除以零
-        step_count = 0;
-    }
-
-    /* 如果已经到达目标频率 */
-    if (float_equal_in_step(current_freq, target_freq, 0.01f))
-    {
-        g_motor_real.freq_arrive = 1;
-        return target_freq;
-    }
-
-    g_motor_real.freq_arrive = 0;
-
-    if (step_count >= total_steps)
-    {
-        g_motor_real.freq_arrive = 1;
-        return target_freq;
-    }
-
-    float t = (float)step_count / (float)(total_steps - 1); // [0, 1]
-    float next_freq;
-
-    /* 分段插值：前半段时间走1/4频率，后半段时间走3/4频率 */
-    float s;
-    if (t < 0.5f)
-    {
-        s = t * 0.5f; // 前50%时间走25%频率
-    }
-    else
-    {
-        s = 0.25f + (t - 0.5f) * 1.5f; // 后50%时间走75%频率
-    }
-
-    next_freq = start_freq + delta_freq * s;
-    step_count++;
-
-    return next_freq;
-}
-#endif
 
 static void motor_update_spwm(void)
 {   
@@ -575,9 +573,9 @@ static void motor_update_spwm(void)
     g_motor_real.current_freq = g_motor_real.next_step_freq;
 
     /*计算下一步的角度*/
-    float delta = PI_2 * TMR_INT_PERIOD_US * g_motor_real.current_freq / 1000000;
+    float delta = PI * 2.0f * TMR_INT_PERIOD_US * g_motor_real.current_freq / 1000000;
     g_motor_real.angle += delta;
-    if (g_motor_real.angle >= PI_2) g_motor_real.angle -= PI_2;
+    if (g_motor_real.angle >= PI * 2.0f) g_motor_real.angle -= PI * 2.0f;
 
     /*计算下一步的频率*/
     g_motor_real.next_step_freq = motor_calcu_next_step_freq_t_curve(g_motor_real.current_freq,g_motor_real.target_freq);
