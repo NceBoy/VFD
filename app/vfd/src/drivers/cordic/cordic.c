@@ -65,19 +65,25 @@ float cordic_cos(float angle)
 // 输出：*mag = sqrt(x^2 + y^2), *phase = atan2(y, x) （单位：弧度）
 void cordic_sqrt_atan2(float x, float y, float *mag, float *phase)
 {
-    // 安全限制输入（避免 Q15 溢出）
-    const float SCALE_IN = 32767.0f;  // max positive Q15 value
-    if (x > 1.0f) x = 1.0f;
-    if (y > 1.0f) y = 1.0f;
-    if (x < 0.0f) x = 0.0f;
-    if (y < 0.0f) y = 0.0f;
+    // 估算最大值，避免饱和
+    float abs_x = (x >= 0) ? x : -x;
+    float abs_y = (y >= 0) ? y : -y;
+    float max_val = (abs_x > abs_y) ? abs_x : abs_y;
 
-    int32_t x_q15 = (int32_t)(x * SCALE_IN);
-    int32_t y_q15 = (int32_t)(y * SCALE_IN);
+    if (max_val == 0.0f) {
+        *mag = 0.0f;
+        *phase = 0.0f;
+        return;
+    }
+
+    // 使用 32767 作为缩放因子，确保不溢出 Q15
+    float scale_factor = 32767.0f / max_val;
+    int32_t x_q15 = (int32_t)(x * scale_factor);
+    int32_t y_q15 = (int32_t)(y * scale_factor);
 
     //RCC->AHB1ENR |= RCC_AHB1ENR_CORDICEN;
 
-    CORDIC->CSR = CORDIC_FUNCTION_MODULUS
+    CORDIC->CSR = CORDIC_FUNCTION_ARCTANGENT
                 | (4U << CORDIC_CSR_PRECISION_Pos)  // 迭代次数
                 | (0U << CORDIC_CSR_SCALE_Pos)
                 | (1U << CORDIC_CSR_NRES_Pos)       //2个结果
@@ -93,8 +99,8 @@ void cordic_sqrt_atan2(float x, float y, float *mag, float *phase)
     int32_t mag_q15   = (int32_t)CORDIC->RDATA;
     int32_t phase_q16 = (int32_t)CORDIC->RDATA;
 
-    *mag = (float)mag_q15 / SCALE_IN;      // 还原幅度
-    *phase = (float)phase_q16 / 65536.0f;  // 弧度
+    *mag = ((float)mag_q15_scaled / 32767.0f) * max_val;
+    *phase = (float)phase_q16 / 65536.0f;  // 弧度，范围 [-π, π]
 }
 
 
