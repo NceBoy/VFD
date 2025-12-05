@@ -373,108 +373,85 @@ static void svpwm_calc_center_aligned(float U_alpha, float U_beta, unsigned shor
 
     float U_mag = 0.0f;
     float angle = 0.0f;
-
     cordic_sqrt_atan2(alpha_norm, beta_norm, &U_mag, &angle);
 
     // 3. 计算幅值，如果为零则输出中心占空比
     //float U_mag = sqrtf(alpha_norm * alpha_norm + beta_norm * beta_norm);
-    if (U_mag == 0.0f) {
-        *Ta = ARR / 2;
-        *Tb = ARR / 2;
-        *Tc = ARR / 2;
-        return;
+    if (U_mag > INV_SQRT3) {
+        float scale = INV_SQRT3 / U_mag;
+        alpha_norm *= scale;
+        beta_norm  *= scale;
+        U_mag = INV_SQRT3;
     }
 
     // 4. 扇区判断
     //float angle = atan2f(beta_norm, alpha_norm);
     if (angle < 0) angle += 2.0f * PI;
 
-    int sector = (int)((angle + PI/6.0f) / (PI/3.0f)) % 6;
-    if (sector < 0) sector += 6;
+    int sector = (int)(angle / (PI / 3.0f)); // 0 to 5
+    float angle_in_sector = angle - sector * (PI / 3.0f);
 
-    // 5. 计算 X, Y, Z (基于归一化后的电压)
-    float X = beta_norm * INV_SQRT3;
-    float Y = (beta_norm + SQRT3 * alpha_norm) * 0.5f;
-    float Z = (beta_norm - SQRT3 * alpha_norm) * 0.5f;
-
-    float Tx, Ty;
+    // 计算两个相邻矢量的作用时间（归一化到 [0,1]）
+    float T1 = U_mag * cordic_sin((PI / 3.0f) - angle_in_sector);
+    float T2 = U_mag * cordic_sin(angle_in_sector);
+    float T0 = 1.0f - T1 - T2;
+    // **过调制处理：如果 T0 < 0，重新分配时间**
+    if (T0 < 0) {
+        // 过调制区：延长有效矢量时间，T0 = 0
+        T1 -= T0 / 2.0f;  // T0 为负，相当于 +|T0|/2
+        T2 -= T0 / 2.0f;
+        T0 = 0.0f;        // 零矢量时间为 0
+    }
+    // 三相占空比（中心对齐：占空比 = (T0 + 有效矢量时间)/2）
+    float da, db, dc;
     switch(sector) {
-        case 0: Tx = Z; Ty = Y; break;
-        case 1: Tx = Y; Ty = -X; break;
-        case 2: Tx = -Z; Ty = X; break;
-        case 3: Tx = -X; Ty = Z; break;
-        case 4: Tx = -Y; Ty = -Z; break;
-        case 5: Tx = X; Ty = -Y; break;
-        default: Tx = Ty = 0; break;
-    }
-
-    // 6. 限制占空比在 [0, 1] 范围内
-    if (Tx > 1.0f) Tx = 1.0f;
-    if (Tx < -1.0f) Tx = -1.0f;
-    if (Ty > 1.0f) Ty = 1.0f;
-    if (Ty < -1.0f) Ty = -1.0f;
-
-    float Tz = 1.0f - fabsf(Tx) - fabsf(Ty);
-    if (Tz < 0.0f) {
-        // 7. 过调制处理：按比例缩放
-        float scale = 1.0f / (fabsf(Tx) + fabsf(Ty) + fabsf(Tz));
-        Tx *= scale;
-        Ty *= scale;
-        Tz = 1.0f - fabsf(Tx) - fabsf(Ty);
-    }
-
-    float T1 = Tz * 0.5f;
-    float T2 = T1 + Tx;
-    float T3 = T2 + Ty;
-
-    // 8. 根据扇区映射到三相占空比（中心对齐模式）
-    float duty_a, duty_b, duty_c;
-    switch(sector) {
-        case 0: 
-            duty_a = T3; 
-            duty_b = T2; 
-            duty_c = T1; 
+        case 0:
+            da = T1 + T2 + T0 * 0.5f;
+            db = T2 + T0 * 0.5f;
+            dc = T0 * 0.5f;
             break;
-        case 1: 
-            duty_a = T2; 
-            duty_b = T3; 
-            duty_c = T1; 
+        case 1:
+            da = T1 + T0 * 0.5f;
+            db = T1 + T2 + T0 * 0.5f;
+            dc = T0 * 0.5f;
             break;
-        case 2: 
-            duty_a = T1; 
-            duty_b = T3; 
-            duty_c = T2; 
+        case 2:
+            da = T0 * 0.5f;
+            db = T1 + T2 + T0 * 0.5f;
+            dc = T1 + T0 * 0.5f;
             break;
-        case 3: 
-            duty_a = T1; 
-            duty_b = T2; 
-            duty_c = T3; 
+        case 3:
+            da = T0 * 0.5f;
+            db = T2 + T0 * 0.5f;
+            dc = T1 + T2 + T0 * 0.5f;
             break;
-        case 4: 
-            duty_a = T2; 
-            duty_b = T1; 
-            duty_c = T3; 
+        case 4:
+            da = T1 + T0 * 0.5f;
+            db = T0 * 0.5f;
+            dc = T1 + T2 + T0 * 0.5f;
             break;
-        case 5: 
-            duty_a = T3; 
-            duty_b = T1; 
-            duty_c = T2; 
+        case 5:
+            da = T1 + T2 + T0 * 0.5f;
+            db = T0 * 0.5f;
+            dc = T2 + T0 * 0.5f;
             break;
-        default: 
-            duty_a = 0.5f; 
-            duty_b = 0.5f; 
-            duty_c = 0.5f; 
+        default:
+            da = db = dc = 0.5f;
             break;
     }
+    // **额外保护：确保占空比在 [0,1] 范围内**
+    if (da < 0.0f) da = 0.0f;
+    if (da > 1.0f) da = 1.0f;
+    if (db < 0.0f) db = 0.0f;
+    if (db > 1.0f) db = 1.0f;
+    if (dc < 0.0f) dc = 0.0f;
+    if (dc > 1.0f) dc = 1.0f;
+    // 转换为 CCR（中心对齐模式：CCR = duty * ARR）
+    *Ta = (unsigned short)(da * ARR);
+    *Tb = (unsigned short)(db * ARR);
+    *Tc = (unsigned short)(dc * ARR);
 
-    // 转换为中心对齐模式的 CCR 值
-    // 中心对齐模式下，占空比 = (ARR/2 - |CCR - ARR/2|) / (ARR/2)
-    // 简化：CCR = ARR/2 + duty * ARR/2 = (0.5 + duty*0.5) * ARR
-    *Ta = (unsigned short)((0.5f + duty_a * 0.5f) * ARR);
-    *Tb = (unsigned short)((0.5f + duty_b * 0.5f) * ARR);
-    *Tc = (unsigned short)((0.5f + duty_c * 0.5f) * ARR);
-
-    // 限制范围
+    // 限幅
     if(*Ta > ARR) *Ta = ARR;
     if(*Tb > ARR) *Tb = ARR;
     if(*Tc > ARR) *Tc = ARR;
@@ -505,8 +482,8 @@ static void motor_update_compare(void)
     // 2. 计算 alpha-beta 轴电压
     //float U_alpha = Vq_ref * cordic_cos(g_motor_real.angle);
     //float U_beta  = Vq_ref * cordic_sin(g_motor_real.angle);
-    float U_alpha = Vq_ref * cos_value;
-    float U_beta  = Vq_ref * sin_value;
+    float U_alpha = INV_SQRT3 * Vq_ref * cos_value;
+    float U_beta  = INV_SQRT3 * Vq_ref * sin_value;
     // 3. 如果反向，交换相序（对应你原来的 dir 逻辑）
     if(g_motor_real.motor_dir != 0) {
         U_beta = -U_beta; // 反向时 beta 轴反向
