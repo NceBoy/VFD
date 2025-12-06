@@ -369,9 +369,10 @@ void motor_start(unsigned int dir , float target_freq)
     hmi_clear_menu();
 }
 
-#if 0
-static float torque_boost_from_freq(float freq)
+
+static float torque_boost_from_freq(float freq, float modulation)
 {
+    (void)modulation;
     if(freq > 50.0f)
         return 1.0f;
     float torque_boost = 0.0f;
@@ -381,6 +382,7 @@ static float torque_boost_from_freq(float freq)
     torque_boost = g_radio_rate[g_motor_param.radio];
     return ((1.0f - torque_boost)* freq / 50.0f  + torque_boost);
 }
+#if 0
 static float torque_boost_from_freq(float freq)
 {
 
@@ -396,13 +398,13 @@ static float torque_boost_from_freq(float freq)
         return DEV_BASE_FREQ / freq; // 1/f 弱磁
     }
 }
-#endif
+
 
 static float torque_boost_from_freq(float freq, float modulation)
 {
 
     if (freq <= DEV_BASE_FREQ) {
-        // 基频以下：原有逻辑
+        // 基频以下：低频力矩提升
         float B = g_radio_rate[MIN(g_motor_param.radio, 6)];
         return (1.0f - B) * (freq / DEV_BASE_FREQ) + B;
     } else {
@@ -413,14 +415,14 @@ static float torque_boost_from_freq(float freq, float modulation)
         if (!motor_speed_is_const()) {
             // 处于加速/减速：尝试提升电压，但不超过当前调制能力
             // 补偿后 vf = min(稳态vf * 补偿系数, modulation)
-            float boost_factor = 1.2f; // 可调参数，如 1.1~1.3
-            float dynamic_vf = MIN(steady_vf * boost_factor, modulation);
-            return dynamic_vf;
+            //float boost_factor = 1.2f; // 可调参数，如 1.1~1.3
+            //return MIN(steady_vf * boost_factor, modulation);
+            return modulation;  //直接最大调制输出
         }
         return steady_vf;
     }
 }
-
+#endif
 /**
  * @brief 获取当前平滑后的调制比
  * @return 当前调制比，范围 [MODULATION_MIN, MODULATION_MAX]
@@ -545,9 +547,9 @@ static void svpwm_calc_center_aligned(float U_alpha,
 static void motor_update_compare(void)
 {
     // 1. 根据当前频率计算电压幅值（V/F + 转矩提升）
-    float modulation = get_smooth_modulation_ratio();
-    float torque_boost = torque_boost_from_freq(g_motor_real.current_freq,modulation);//范围[0~1.0]
-    float Vq_ref = torque_boost * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
+    float target_mod = get_smooth_modulation_ratio();  //此时硬件输出的调制系数值
+    float torque_boost = torque_boost_from_freq(g_motor_real.current_freq,target_mod);//范围[0~1.0]
+    float Vq_ref = torque_boost * target_mod * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
 
     float sin_value = 0.0f;
     float cos_value = 0.0f;
@@ -564,7 +566,7 @@ static void motor_update_compare(void)
 
     // 4. SVPWM 核心计算（中心对齐模式）
     unsigned short Ta, Tb, Tc;
-    svpwm_calc_center_aligned(U_alpha, U_beta, modulation, &Ta, &Tb, &Tc);
+    svpwm_calc_center_aligned(U_alpha, U_beta, target_mod, &Ta, &Tb, &Tc);
 
     // 5. 输出到定时器
     bsp_tmr_update_compare(Ta, Tb, Tc);
