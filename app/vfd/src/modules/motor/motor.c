@@ -19,8 +19,8 @@
 #define SQRT3                   (1.73205080756887729353f)
 #define INV_SQRT3               (0.57735026918962576451f)  // 1/sqrt(3)
 
-#define MODULATION_MIN    (0.57735026918962576451f)   // 稳态调制比
-#define MODULATION_MAX    (0.75f)    // 动态（加速/减速/换向）
+#define MODULATION_MIN    (1.0f)   // 稳态调制比
+#define MODULATION_MAX    (1.3f)    // 动态（加速/减速/换向）
 
 #define DEV_BASE_FREQ      (50.0f)
 #define DEV_MAX_FREQ       (100.0f)
@@ -487,7 +487,7 @@ float get_smooth_modulation_ratio(void)
 // SVPWM 核心计算函数 - 针对中心对齐模式，ARR=8500
 static void svpwm_calc_center_aligned(float U_alpha, 
                                       float U_beta, 
-                                      float modulation,
+                                      float vbus,
                                       unsigned short* Ta, 
                                       unsigned short* Tb, 
                                       unsigned short* Tc)
@@ -505,11 +505,11 @@ static void svpwm_calc_center_aligned(float U_alpha,
 
     // 3. 计算幅值，如果为零则输出中心占空比
     //float U_mag = sqrtf(alpha_norm * alpha_norm + beta_norm * beta_norm);
-    if (U_mag > modulation) {
-        float scale = modulation / U_mag;
+    if (U_mag > vbus) {
+        float scale = vbus / U_mag;
         alpha_norm *= scale;
         beta_norm  *= scale;
-        U_mag = modulation;
+        U_mag = vbus;
     }
 
     // 4. 扇区判断
@@ -588,9 +588,10 @@ static void svpwm_calc_center_aligned(float U_alpha,
 static void motor_update_compare(void)
 {
     // 1. 根据当前频率计算电压幅值（V/F + 转矩提升）
-    float target_mod = get_smooth_modulation_ratio();  //此时硬件输出的调制系数值
+    float modulation = get_smooth_modulation_ratio();  //此时硬件输出的调制系数值
+    float vbus = modulation * INV_SQRT3;
     float torque_boost = torque_boost_from_freq(g_motor_real.current_freq);//范围[0~1.0]
-    float Vq_ref = torque_boost * target_mod * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
+    float Vq_ref = torque_boost * vbus * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
 
     float sin_value = 0.0f;
     float cos_value = 0.0f;
@@ -600,14 +601,14 @@ static void motor_update_compare(void)
     //float U_beta  = Vq_ref * cordic_sin(g_motor_real.angle);
     float U_alpha = Vq_ref * cos_value;
     float U_beta  = Vq_ref * sin_value;
-    // 3. 如果反向，交换相序（对应你原来的 dir 逻辑）
+    // 3. 如果反向，交换相序
     if(g_motor_real.motor_dir != 0) {
         U_beta = -U_beta; // 反向时 beta 轴反向
     }
 
     // 4. SVPWM 核心计算（中心对齐模式）
     unsigned short Ta, Tb, Tc;
-    svpwm_calc_center_aligned(U_alpha, U_beta, target_mod, &Ta, &Tb, &Tc);
+    svpwm_calc_center_aligned(U_alpha, U_beta, vbus, &Ta, &Tb, &Tc);
 
     // 5. 输出到定时器
     bsp_tmr_update_compare(Ta, Tb, Tc);
