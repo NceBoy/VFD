@@ -369,7 +369,7 @@ void motor_start(unsigned int dir , float target_freq)
     hmi_clear_menu();
 }
 
-
+#if 0
 static float torque_boost_from_freq(float freq, float modulation)
 {
     (void)modulation;
@@ -382,7 +382,7 @@ static float torque_boost_from_freq(float freq, float modulation)
     torque_boost = g_radio_rate[g_motor_param.radio];
     return ((1.0f - torque_boost)* freq / 50.0f  + torque_boost);
 }
-#if 0
+
 static float torque_boost_from_freq(float freq)
 {
 
@@ -400,7 +400,7 @@ static float torque_boost_from_freq(float freq)
 }
 
 
-static float torque_boost_from_freq(float freq, float modulation)
+static float torque_boost_from_freq(float freq)
 {
 
     if (freq <= DEV_BASE_FREQ) {
@@ -414,15 +414,56 @@ static float torque_boost_from_freq(float freq, float modulation)
         // === 动态补偿 ===
         if (!motor_speed_is_const()) {
             // 处于加速/减速：尝试提升电压，但不超过当前调制能力
-            // 补偿后 vf = min(稳态vf * 补偿系数, modulation)
-            //float boost_factor = 1.2f; // 可调参数，如 1.1~1.3
-            //return MIN(steady_vf * boost_factor, modulation);
-            return modulation;  //直接最大调制输出
+            return 1.0f;  //直接最大调制输出
         }
         return steady_vf;
     }
 }
 #endif
+static float torque_boost_from_freq(float freq)
+{
+    float steady_vf;
+    if (freq <= DEV_BASE_FREQ) {
+        float B = g_radio_rate[MIN(g_motor_param.radio, 6)];
+        steady_vf = (1.0f - B) * (freq / DEV_BASE_FREQ) + B;
+    } else {
+        if (freq >= DEV_MAX_FREQ) {
+            steady_vf = DEV_BASE_FREQ / DEV_MAX_FREQ;
+        } else {
+            steady_vf = DEV_BASE_FREQ / freq;
+        }
+    }
+
+    // 全局状态（用于检测状态切换）
+    static bool was_in_dynamic = false;
+    static float smoothed_tb = 0.0f;
+
+    if (motor_speed_is_const()) {
+        // 稳态：更新状态，并直接返回
+        was_in_dynamic = false;
+        return steady_vf;
+    }
+
+    // 动态：检测是否刚进入
+    if (!was_in_dynamic) {
+        smoothed_tb = steady_vf; // 从当前稳态值开始
+    }
+    was_in_dynamic = true;
+
+    // 动态目标
+    const float DYNAMIC_BOOST_FACTOR = 1.2f;
+    const float MAX_DYNAMIC_RATIO = 1.0f;
+    float target_tb = MIN(steady_vf * DYNAMIC_BOOST_FACTOR, MAX_DYNAMIC_RATIO);
+
+    // 平滑
+    const float SMOOTH_K = 0.2f;
+    smoothed_tb += (target_tb - smoothed_tb) * SMOOTH_K;
+    if (smoothed_tb > 1.0f) smoothed_tb = 1.0f;
+    if (smoothed_tb < 0.0f) smoothed_tb = 0.0f;
+
+    return smoothed_tb;
+}
+
 /**
  * @brief 获取当前平滑后的调制比
  * @return 当前调制比，范围 [MODULATION_MIN, MODULATION_MAX]
@@ -548,7 +589,7 @@ static void motor_update_compare(void)
 {
     // 1. 根据当前频率计算电压幅值（V/F + 转矩提升）
     float target_mod = get_smooth_modulation_ratio();  //此时硬件输出的调制系数值
-    float torque_boost = torque_boost_from_freq(g_motor_real.current_freq,target_mod);//范围[0~1.0]
+    float torque_boost = torque_boost_from_freq(g_motor_real.current_freq);//范围[0~1.0]
     float Vq_ref = torque_boost * target_mod * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
 
     float sin_value = 0.0f;
