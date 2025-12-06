@@ -19,6 +19,15 @@
 #define SQRT3                   (1.73205080756887729353f)
 #define INV_SQRT3               (0.57735026918962576451f)  // 1/sqrt(3)
 
+#define MODULATION_MIN    (0.57735026918962576451f)   // 稳态调制比
+#define MODULATION_MAX    (0.75f)    // 动态（加速/减速/换向）
+
+#define DEV_BASE_FREQ      (50.0f)
+#define DEV_MAX_FREQ       (100.0f)
+// 平滑系数（可调）：值越小，响应越慢，越平滑
+// 建议范围：0.01 ~ 0.2
+#define MOD_SMOOTH_FACTOR (0.05f)
+
 typedef enum
 {
     motor_in_idle,          /*空闲*/
@@ -360,13 +369,89 @@ void motor_start(unsigned int dir , float target_freq)
     hmi_clear_menu();
 }
 
+#if 0
+static float torque_boost_from_freq(float freq)
+{
+    if(freq > 50.0f)
+        return 1.0f;
+    float torque_boost = 0.0f;
+
+    if(g_motor_param.radio > 6)
+        g_motor_param.radio = 6;
+    torque_boost = g_radio_rate[g_motor_param.radio];
+    return ((1.0f - torque_boost)* freq / 50.0f  + torque_boost);
+}
+static float torque_boost_from_freq(float freq)
+{
+
+    if (freq <= DEV_BASE_FREQ) {
+        // 基频以下：保留原有转矩提升
+        float B = g_radio_rate[MIN(g_motor_param.radio, 6)];
+        return (1.0f - B) * (freq / DEV_BASE_FREQ) + B;
+    } else {
+        // 基频以上：弱磁（1/f 降压）
+        if (freq >= DEV_MAX_FREQ) {
+            return DEV_BASE_FREQ / DEV_MAX_FREQ; // 最小电压
+        }
+        return DEV_BASE_FREQ / freq; // 1/f 弱磁
+    }
+}
+#endif
+
+static float torque_boost_from_freq(float freq, float modulation)
+{
+
+    if (freq <= DEV_BASE_FREQ) {
+        // 基频以下：原有逻辑
+        float B = g_radio_rate[MIN(g_motor_param.radio, 6)];
+        return (1.0f - B) * (freq / DEV_BASE_FREQ) + B;
+    } else {
+        // 基频以上：弱磁区
+        float steady_vf = (freq >= DEV_MAX_FREQ) ? (DEV_BASE_FREQ / DEV_MAX_FREQ) : (DEV_BASE_FREQ / freq);
+
+        // === 动态补偿 ===
+        if (!motor_speed_is_const()) {
+            // 处于加速/减速：尝试提升电压，但不超过当前调制能力
+            // 补偿后 vf = min(稳态vf * 补偿系数, modulation)
+            float boost_factor = 1.2f; // 可调参数，如 1.1~1.3
+            float dynamic_vf = MIN(steady_vf * boost_factor, modulation);
+            return dynamic_vf;
+        }
+        return steady_vf;
+    }
+}
+
+/**
+ * @brief 获取当前平滑后的调制比
+ * @return 当前调制比，范围 [MODULATION_MIN, MODULATION_MAX]
+ */
+float get_smooth_modulation_ratio(void)
+{
+    static float current_mod = MODULATION_MIN; // 初始为稳态值
+    // 设定目标调制比
+    float target_mod = motor_speed_is_const() ? MODULATION_MIN : MODULATION_MAX;
+
+    // 一阶低通滤波：平滑过渡
+    current_mod += (target_mod - current_mod) * MOD_SMOOTH_FACTOR;
+
+    // 安全限幅（防止浮点误差超限）
+    if (current_mod < MODULATION_MIN) current_mod = MODULATION_MIN;
+    if (current_mod > MODULATION_MAX) current_mod = MODULATION_MAX;
+
+    return current_mod;
+}
+
 // SVPWM 核心计算函数 - 针对中心对齐模式，ARR=8500
-static void svpwm_calc_center_aligned(float U_alpha, float U_beta, unsigned short* Ta, unsigned short* Tb, unsigned short* Tc)
+static void svpwm_calc_center_aligned(float U_alpha, 
+                                      float U_beta, 
+                                      float modulation,
+                                      unsigned short* Ta, 
+                                      unsigned short* Tb, 
+                                      unsigned short* Tc)
 {
     // 1. 定时器参数设置
-    const unsigned short ARR = PWM_RESOLUTION;  // 定时器周期
+    const unsigned short ARR = PWM_RESOLUTION;
     const float U_max = (float)ARR / 2.0f; // 最大电压幅值对应占空比0.5
-    
     // 2. 归一化到 [0, 1] 范围（相对于 PWM 最大值）
     float alpha_norm = U_alpha / U_max;
     float beta_norm  = U_beta  / U_max;
@@ -377,11 +462,11 @@ static void svpwm_calc_center_aligned(float U_alpha, float U_beta, unsigned shor
 
     // 3. 计算幅值，如果为零则输出中心占空比
     //float U_mag = sqrtf(alpha_norm * alpha_norm + beta_norm * beta_norm);
-    if (U_mag > INV_SQRT3) {
-        float scale = INV_SQRT3 / U_mag;
+    if (U_mag > modulation) {
+        float scale = modulation / U_mag;
         alpha_norm *= scale;
         beta_norm  *= scale;
-        U_mag = INV_SQRT3;
+        U_mag = modulation;
     }
 
     // 4. 扇区判断
@@ -389,8 +474,8 @@ static void svpwm_calc_center_aligned(float U_alpha, float U_beta, unsigned shor
     if (angle < 0) angle += 2.0f * PI;
 
     int sector = (int)(angle / (PI / 3.0f)); // 0 to 5
+    if (sector >= 6) sector = 0; // 防止浮点误差导致 sector=6
     float angle_in_sector = angle - sector * (PI / 3.0f);
-
     // 计算两个相邻矢量的作用时间（归一化到 [0,1]）
     float T1 = U_mag * cordic_sin((PI / 3.0f) - angle_in_sector);
     float T2 = U_mag * cordic_sin(angle_in_sector);
@@ -457,24 +542,12 @@ static void svpwm_calc_center_aligned(float U_alpha, float U_beta, unsigned shor
     if(*Tc > ARR) *Tc = ARR;
 }
 
-static float radio_from_freq(float freq)
-{
-    if(freq > 50.0f)
-        return 1.0f;
-    float radio = 0.0f;
-
-    if(g_motor_param.radio > 6)
-        g_motor_param.radio = 6;
-    radio = g_radio_rate[g_motor_param.radio];
-    return ((1 - radio) / 50.0f * freq + radio);
-}
-
 static void motor_update_compare(void)
 {
     // 1. 根据当前频率计算电压幅值（V/F + 转矩提升）
-    float radio = radio_from_freq(g_motor_real.current_freq);
-    const unsigned short ARR = PWM_RESOLUTION;  // 定时器周期
-    float Vq_ref = radio * (ARR / 2.0f); // 最大电压幅值对应占空比0.5
+    float modulation = get_smooth_modulation_ratio();
+    float torque_boost = torque_boost_from_freq(g_motor_real.current_freq,modulation);//范围[0~1.0]
+    float Vq_ref = torque_boost * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
 
     float sin_value = 0.0f;
     float cos_value = 0.0f;
@@ -482,8 +555,8 @@ static void motor_update_compare(void)
     // 2. 计算 alpha-beta 轴电压
     //float U_alpha = Vq_ref * cordic_cos(g_motor_real.angle);
     //float U_beta  = Vq_ref * cordic_sin(g_motor_real.angle);
-    float U_alpha = INV_SQRT3 * Vq_ref * cos_value;
-    float U_beta  = INV_SQRT3 * Vq_ref * sin_value;
+    float U_alpha = Vq_ref * cos_value;
+    float U_beta  = Vq_ref * sin_value;
     // 3. 如果反向，交换相序（对应你原来的 dir 逻辑）
     if(g_motor_real.motor_dir != 0) {
         U_beta = -U_beta; // 反向时 beta 轴反向
@@ -491,7 +564,7 @@ static void motor_update_compare(void)
 
     // 4. SVPWM 核心计算（中心对齐模式）
     unsigned short Ta, Tb, Tc;
-    svpwm_calc_center_aligned(U_alpha, U_beta, &Ta, &Tb, &Tc);
+    svpwm_calc_center_aligned(U_alpha, U_beta, modulation, &Ta, &Tb, &Tc);
 
     // 5. 输出到定时器
     bsp_tmr_update_compare(Ta, Tb, Tc);

@@ -28,6 +28,14 @@ extern "C" {
 #define PHASE_SHIFT_120 (PI_2 / 3)
 #endif
 
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+
 #define MAIN_CTL_PERIOD   10
 
 typedef struct
