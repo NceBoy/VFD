@@ -106,26 +106,26 @@ static pump_ctl_t   g_pump_ctl;
 static uint8_t g_end_value;
 static uint8_t g_io_debug_level = 1;
 
-__no_init static sync_status_t g_sync_status;
+static sync_status_t g_sync_status;
 
 static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
 
-    {IO_ID_SP0             ,GPIOD, GPIO_PIN_2  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
-    {IO_ID_SP1             ,GPIOC, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
-    {IO_ID_SP2             ,GPIOC, GPIO_PIN_11 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
-    {IO_ID_DEBUG           ,GPIOB, GPIO_PIN_7  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//调试，有效电平0
+    {IO_ID_SP0             ,GPIOD, GPIO_PIN_2  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
+    {IO_ID_SP1             ,GPIOC, GPIO_PIN_12 ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
+    {IO_ID_SP2             ,GPIOC, GPIO_PIN_11 ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},
+    {IO_ID_DEBUG           ,GPIOB, GPIO_PIN_7  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//调试，有效电平0
 
-    {IO_ID_WIRE            ,GPIOC, GPIO_PIN_13 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_HIGH}, //断丝检测，按照常闭极性控制
-    {IO_ID_END             ,GPIOC, GPIO_PIN_10 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //加工结束
+    {IO_ID_WIRE            ,GPIOC, GPIO_PIN_13 ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_HIGH}, //断丝检测，按照常闭极性控制
+    {IO_ID_END             ,GPIOC, GPIO_PIN_10 ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //加工结束
 
-    {IO_ID_LIMIT_EXCEED    ,GPIOA, GPIO_PIN_15 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //超程
-    {IO_ID_LIMIT_LEFT      ,GPIOA, GPIO_PIN_11 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //左限位
-    {IO_ID_LIMIT_RIGHT     ,GPIOA, GPIO_PIN_12 ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //右限位
+    {IO_ID_LIMIT_EXCEED    ,GPIOA, GPIO_PIN_15 ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //超程
+    {IO_ID_LIMIT_LEFT      ,GPIOA, GPIO_PIN_11 ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //左限位
+    {IO_ID_LIMIT_RIGHT     ,GPIOA, GPIO_PIN_12 ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //右限位
 
-    {IO_ID_MOTOR_START     ,GPIOB, GPIO_PIN_14  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开丝，有效电平0
-    {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_15  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
-    {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
-    {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 , 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
+    {IO_ID_MOTOR_START     ,GPIOB, GPIO_PIN_14  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开丝，有效电平0
+    {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_15  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
+    {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
+    {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
 };
 
 

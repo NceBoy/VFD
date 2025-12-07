@@ -9,6 +9,7 @@
 #include "inout.h"
 #include "hmi.h"
 #include <math.h>
+#include <stdbool.h>
 
 #define  HIGH_OPEN_DELAY_MIN      3       /*开高频最小延时，单位0.1秒*/
 #define  HIGH_OPEN_DELAY_MAX      30       /*开高频最小延时，单位0.1秒*/
@@ -19,8 +20,8 @@
 #define SQRT3                   (1.73205080756887729353f)
 #define INV_SQRT3               (0.57735026918962576451f)  // 1/sqrt(3)
 
-#define MODULATION_MIN    (1.0f)   // 稳态调制比
-#define MODULATION_MAX    (1.3f)    // 动态（加速/减速/换向）
+#define MODULATION_MIN    (0.95f)   // 稳态调制比
+#define MODULATION_MAX    (1.2f)    // 动态（加速/减速/换向）
 
 #define DEV_BASE_FREQ      (50.0f)
 #define DEV_MAX_FREQ       (100.0f)
@@ -81,7 +82,7 @@ typedef struct
 static motor_high_freq_t g_high_freq;
 
 static motor_para_t g_motor_param;
-__no_init static motor_ctl_t g_motor_real;   
+static motor_ctl_t g_motor_real;   
 static eeprom_ctl_t g_eeprom_ctl;
 
 static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
@@ -588,9 +589,10 @@ static void svpwm_calc_center_aligned(float U_alpha,
 static void motor_update_compare(void)
 {
     // 1. 根据当前频率计算电压幅值（V/F + 转矩提升）
-    float modulation = get_smooth_modulation_ratio();  //此时硬件输出的调制系数值
+    //float modulation = get_smooth_modulation_ratio();  //此时硬件输出的调制系数值
+    float modulation = 1.0f;
     float vbus = modulation * INV_SQRT3;//实际值为0.577~0.75
-    float torque_boost = torque_boost_from_freq(g_motor_real.current_freq);//范围[0~1.0]
+    float torque_boost = 1.0f;//torque_boost_from_freq(g_motor_real.current_freq);//范围[0~1.0]
     float Vq_ref = torque_boost * vbus * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
 
     float sin_value = 0.0f;
