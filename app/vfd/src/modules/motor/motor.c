@@ -370,10 +370,9 @@ void motor_start(unsigned int dir , float target_freq)
     hmi_clear_menu();
 }
 
-#if 0
-static float torque_boost_from_freq(float freq, float modulation)
+
+static float torque_boost_from_freq(float freq)
 {
-    (void)modulation;
     if(freq > 50.0f)
         return 1.0f;
     float torque_boost = 0.0f;
@@ -383,7 +382,7 @@ static float torque_boost_from_freq(float freq, float modulation)
     torque_boost = g_radio_rate[g_motor_param.radio];
     return ((1.0f - torque_boost)* freq / 50.0f  + torque_boost);
 }
-
+#if 0
 static float torque_boost_from_freq(float freq)
 {
 
@@ -420,7 +419,7 @@ static float torque_boost_from_freq(float freq)
         return steady_vf;
     }
 }
-#endif
+
 static float torque_boost_from_freq(float freq)
 {
     float steady_vf;
@@ -464,7 +463,7 @@ static float torque_boost_from_freq(float freq)
 
     return smoothed_tb;
 }
-
+#endif
 /**
  * @brief 获取当前平滑后的调制比
  * @return 当前调制比，范围 [MODULATION_MIN, MODULATION_MAX]
@@ -590,9 +589,9 @@ static void motor_update_compare(void)
 {
     // 1. 根据当前频率计算电压幅值（V/F + 转矩提升）
     //float modulation = get_smooth_modulation_ratio();  //此时硬件输出的调制系数值
-    float modulation = 1.0f;
+    float modulation = 0.95f;
     float vbus = modulation * INV_SQRT3;//实际值为0.577~0.75
-    float torque_boost = 1.0f;//torque_boost_from_freq(g_motor_real.current_freq);//范围[0~1.0]
+    float torque_boost = torque_boost_from_freq(g_motor_real.current_freq);//范围[0~1.0]
     float Vq_ref = torque_boost * vbus * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
 
     float sin_value = 0.0f;
