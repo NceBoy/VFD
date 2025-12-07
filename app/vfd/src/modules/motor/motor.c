@@ -589,7 +589,7 @@ static void motor_update_compare(void)
 {
     // 1. 根据当前频率计算电压幅值（V/F + 转矩提升）
     float modulation = get_smooth_modulation_ratio();  //此时硬件输出的调制系数值
-    float vbus = modulation * INV_SQRT3;
+    float vbus = modulation * INV_SQRT3;//实际值为0.577~0.75
     float torque_boost = torque_boost_from_freq(g_motor_real.current_freq);//范围[0~1.0]
     float Vq_ref = torque_boost * vbus * (PWM_RESOLUTION / 2.0f); // 最大电压幅值对应占空比0.5
 
