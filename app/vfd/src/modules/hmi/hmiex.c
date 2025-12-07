@@ -340,7 +340,11 @@ static void show_level0_and_led_info(void)
     if(g_errcode_display == 1) /*errcode只显示5s*/
     {
         if(HAL_GetTick() - g_errcode_display_time > 5000)
+        {
             g_errcode_display = 0;
+            immi_flag = 1;
+        }
+            
         return ;
     }
     if(g_errcode_display == 0) /*不显示erroce时才显示速度等信息*/

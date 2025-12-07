@@ -13,7 +13,7 @@
 #define  HIGH_OPEN_DELAY_MAX      30       /*开高频最小延时，单位0.1秒*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
-#define RADIO_MAX               (0.95f)
+#define RADIO_MAX               (0.98f)
 
 typedef enum
 {
@@ -133,17 +133,6 @@ static void motor_param_get(void)
     g_motor_param.deceleration_time_us = value* 100 * 1000;
 }
 
-static float radio_from_freq(float freq)
-{
-    if(freq > 50.0f)
-        return RADIO_MAX;
-    float radio = 0.0f;
-
-    if(g_motor_param.radio > 6)
-        g_motor_param.radio = 6;
-    radio = g_radio_rate[g_motor_param.radio];
-    return ((1 - radio) / 50.0f * freq + radio) * RADIO_MAX;
-}
 
 /*高频控制:1 开  0关*/
 static void high_frequery_ctl(int value)
@@ -368,6 +357,21 @@ void motor_start(unsigned int dir , float target_freq)
     hmi_clear_menu();
 }
 
+static float radio_from_freq(float freq)
+{
+    //if(freq >= 50.0f)
+    //    return 50.0f / freq * RADIO_MAX;
+    if(freq >= 50.0f)
+        return RADIO_MAX;
+    
+    float radio = 0.0f;
+
+    if(g_motor_param.radio > 6)
+        g_motor_param.radio = 6;
+    radio = g_radio_rate[g_motor_param.radio];
+    return ((1 - radio) / 50.0f * freq + radio) * RADIO_MAX;
+}
+
 static void motor_update_compare(void)
 {
     // 计算三相占空比
@@ -409,11 +413,11 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
         real_dece_time = g_motor_param.deceleration_time_us;
         if(target_freq <  current_freq){ 
             BREAK_VDC_ENABLE;       /*如果是减速，则打开刹车电阻*/
-            unsigned char freq_change = (int)(current_freq - target_freq);
-            if((freq_change > 50) && (real_dece_time < 700000))
-                real_dece_time = 700000; /*频率变化大于50，最小减速时间0.7秒*/
-            else if((freq_change > 40) && (real_dece_time < 400000))
-                real_dece_time = 400000;/*频率变化大于40，最小减速时间0.4秒*/
+            //unsigned char freq_change = (int)(current_freq - target_freq);
+            //if((freq_change > 50) && (real_dece_time < 700000))
+            //    real_dece_time = 700000; /*频率变化大于50，最小减速时间0.7秒*/
+            //else if((freq_change > 40) && (real_dece_time < 400000))
+            //    real_dece_time = 400000;/*频率变化大于40，最小减速时间0.4秒*/
         }
         /*计算减速时间*/
         last_target_freq = target_freq;
