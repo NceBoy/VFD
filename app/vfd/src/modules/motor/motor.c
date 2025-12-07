@@ -68,7 +68,7 @@ typedef struct
 static motor_high_freq_t g_high_freq;
 
 static motor_para_t g_motor_param;
-__no_init static motor_ctl_t g_motor_real;   
+static motor_ctl_t g_motor_real;   
 static eeprom_ctl_t g_eeprom_ctl;
 
 static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
