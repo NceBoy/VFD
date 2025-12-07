@@ -402,8 +402,8 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
 {
     /*计算加速时一步的频率和减速时一步的频率,T型加减速用到，如果不是T型，忽略该参数*/
     static float last_target_freq = 0.0f;
-    static float acce_step_freq = 0.0f;
-    static float dece_step_freq = 0.0f;
+    static float acce_step_freq = 0.0f;     //加速时一步的频率
+    static float dece_step_freq = 0.0f;     //减速时一步的频率
     static unsigned int real_acce_time = 0;
     static unsigned int real_dece_time = 0;
     if(float_equal_in_step(last_target_freq , target_freq , 0.01f) == 0)/*重新设置了目标值*/
