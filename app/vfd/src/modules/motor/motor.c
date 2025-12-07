@@ -373,7 +373,7 @@ void motor_start(unsigned int dir , float target_freq)
 
 static float torque_boost_from_freq(float freq)
 {
-    if(freq > 50.0f)
+    if(freq >= 50.0f)
         return 1.0f;
     float torque_boost = 0.0f;
 
