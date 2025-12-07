@@ -111,9 +111,11 @@ static  void  taskstart (ULONG thread_input)
         data_poll();
         inout_scan();
         bsp_led_run();
-        ext_ctl_pump(MAIN_CTL_PERIOD);   /*水泵控制*/
-        ext_high_freq_ctl(MAIN_CTL_PERIOD); /*高频控制*/
-        motor_save_check(MAIN_CTL_PERIOD); /*电机结束时保存方向*/
+        
+        inout_pump_ctl(MAIN_CTL_PERIOD);   /*水泵控制*/
+        motor_high_freq_ctl(MAIN_CTL_PERIOD); /*高频控制*/
+        motor_eeprom_save_check(MAIN_CTL_PERIOD); /*电机结束时保存方向*/
+        motor_speed_const_check(MAIN_CTL_PERIOD);
         tx_thread_sleep(MAIN_CTL_PERIOD);
 	}
 }

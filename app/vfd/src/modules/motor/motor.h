@@ -19,11 +19,12 @@ int motor_is_working(void);
 int motor_is_running(void);
 int motor_speed_is_const(void);
 int motor_high_freq_status(void);
-void motor_save_check(int period);
+void motor_eeprom_save_check(int period);
+void motor_speed_const_check(int period);
 
 void motor_init(void);
 
-void ext_high_freq_ctl(int period);
+void motor_high_freq_ctl(int period);
 
 /*获取当前是否开高频*/
 unsigned char motor_is_open_freq(void);

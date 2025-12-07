@@ -48,7 +48,7 @@ typedef struct
 {
     unsigned char need_ctl;
     unsigned int  ctl_delay;
-}eeprom_ctl_t;
+}delay_ctl_t;
 
 typedef struct 
 {
@@ -69,7 +69,9 @@ static motor_high_freq_t g_high_freq;
 
 static motor_para_t g_motor_param;
 static motor_ctl_t g_motor_real;   
-static eeprom_ctl_t g_eeprom_ctl;
+static delay_ctl_t g_eeprom_ctl;
+static delay_ctl_t g_speed_status;
+static uint8_t g_speed_const = 1;
 
 static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
 
@@ -81,7 +83,21 @@ static void motor_eeprom_ctl(void)
     g_eeprom_ctl.ctl_delay = 200; /*200ms后操作*/
 }
 
-void motor_save_check(int period)
+static void motor_speed_const(int is_const)
+{
+    if(is_const)
+    {
+        g_speed_status.need_ctl = 1;
+        g_speed_status.ctl_delay = g_motor_param.open_freq_delay; /*200ms后操作*/        
+    }
+    else{
+        g_speed_status.need_ctl = 0;
+        g_speed_status.ctl_delay = 0;
+        g_speed_const = 0;
+    }
+}
+
+void motor_eeprom_save_check(int period)
 {
     if(g_eeprom_ctl.need_ctl == 0)
         return ;
@@ -95,6 +111,21 @@ void motor_save_check(int period)
     }
 }
 
+void motor_speed_const_check(int period)
+{
+    if(g_speed_status.need_ctl == 0)
+        return ;
+    if(g_speed_status.ctl_delay > period)
+        g_speed_status.ctl_delay -= period;
+    else
+    {
+        g_speed_status.need_ctl = 0;
+        g_speed_status.ctl_delay = 0;
+        g_speed_const = 1;
+        BREAK_VDC_DISABLE;      /*关闭刹车电阻*/
+    }    
+}
+
 static void motor_param_get(void)
 {
     uint8_t value = 0;
@@ -106,7 +137,12 @@ static void motor_param_get(void)
     g_motor_param.open_freq = (float)value;
     /*开高频延时，单位：0.1秒*/
     param_get(PARAM0X02, PARAM_HIGH_FREQ_DELAY, &value);
-    g_motor_param.open_freq_delay = value;
+
+    if(value < HIGH_OPEN_DELAY_MIN)
+        value = HIGH_OPEN_DELAY_MIN;
+    else if(value > HIGH_OPEN_DELAY_MAX)
+        value = HIGH_OPEN_DELAY_MAX;
+    g_motor_param.open_freq_delay = value * 100;
     /*变频关高频*/
     param_get(PARAM0X02, PARAM_VARI_FREQ_CLOSE, &value);
     g_motor_param.vari_freq_close = value;
@@ -143,14 +179,7 @@ static void high_frequery_ctl(int value)
     g_high_freq.ctrl_value = value;
     if(value == 1) /*延时开*/
     {
-        unsigned int real_delay = 0;
-        if(g_motor_param.open_freq_delay < HIGH_OPEN_DELAY_MIN)
-            real_delay = HIGH_OPEN_DELAY_MIN * 100;
-        else if(g_motor_param.open_freq_delay > HIGH_OPEN_DELAY_MAX)
-            real_delay = HIGH_OPEN_DELAY_MAX * 100;
-        else 
-            real_delay = g_motor_param.open_freq_delay * 100; /*单位0.1秒*/
-        g_high_freq.ctrl_delay = real_delay;
+        g_high_freq.ctrl_delay = g_motor_param.open_freq_delay;
     }
     else /*立即关*/
     { 
@@ -186,7 +215,7 @@ static void high_freq_control(void)
 
 
 /*外部延时控制时的调用*/
-void ext_high_freq_ctl(int period)
+void motor_high_freq_ctl(int period)
 {
     uint8_t should_ctl = 0;
     static uint8_t polarity_last = 0; /*0:常开 1:常闭*/
@@ -247,8 +276,7 @@ int motor_is_running(void)
 /*电机的速度已经稳定，不再变速,1已经稳定，0:还在变速不稳定*/
 int motor_speed_is_const(void)  
 {
-    //return g_motor_real.freq_arrive;
-    return g_high_freq.real_status == 1 ? 1 : 0;
+    return g_speed_const;
 }
 
 int motor_high_freq_status(void)
@@ -426,10 +454,11 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
     }
 
     if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
-        BREAK_VDC_DISABLE;      /*关闭刹车电阻*/
         g_motor_real.freq_arrive = 1;
+        motor_speed_const(1);
         return target_freq;
     }
+    motor_speed_const(0);
     g_motor_real.freq_arrive = 0;
     if(target_freq > current_freq){/*加速*/
         if(float_equal_in_step(current_freq , target_freq, acce_step_freq))

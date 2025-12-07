@@ -377,7 +377,7 @@ void inout_sp_sync_from_ext(uint8_t sp)
 }
 
 /*主循环控制*/
-void ext_ctl_pump(int period)
+void inout_pump_ctl(int period)
 {
     if(g_pump_ctl.real_status == g_pump_ctl.ctrl_value)
         return ;
@@ -534,6 +534,7 @@ static void io_scan_wire(void)
                 g_vfd_ctrl.err |= ERROR_WIRE;
                 /*断丝*/
                 io_ctrl_wire();
+                logdbg("wire break at %s[%d]\n",THIS_FILE,__LINE__);
             }
         }
     }
@@ -643,6 +644,7 @@ static void io_scan_end(void)
         return ;
     /*加工结束*/
     io_ctrl_end();  
+    logdbg("end at %s[%d]\n",THIS_FILE,__LINE__);
 }
 
 
@@ -855,7 +857,7 @@ static void io_scan_onoff(void)
                 /*通知开或者关*/
                 io_ctrl_onoff();
             }
-        }       
+        }
     }
 }
 

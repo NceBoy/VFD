@@ -43,7 +43,7 @@ void inout_mode_sync_from_ext(unsigned char mode);
 void inout_sp_sync_from_ext(unsigned char sp);
 
 /*外部水泵控制，水泵接口扫描使用*/
-void ext_ctl_pump(int period);
+void inout_pump_ctl(int period);
 
 /*水泵控制，控制水泵时调用该接口*/
 void pump_ctl_set_value(int value , int delay);
