@@ -13,7 +13,7 @@
 #define  HIGH_OPEN_DELAY_MAX      30       /*开高频最小延时，单位0.1秒*/
 
 #define ROUND_TO_UINT(x)        ((unsigned int)(x + 0.5))
-#define RADIO_MAX               (0.98f)
+#define RADIO_MAX               (0.95f)
 
 typedef enum
 {
@@ -136,7 +136,7 @@ static void motor_param_get(void)
 static float radio_from_freq(float freq)
 {
     if(freq > 50.0f)
-        return 1.0f;
+        return RADIO_MAX;
     float radio = 0.0f;
 
     if(g_motor_param.radio > 6)
