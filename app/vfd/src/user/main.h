@@ -7,6 +7,8 @@ extern "C" {
 
 #include "stm32g4xx_hal.h"
 
+#define VFD_VERSION "1.0.0"
+
 /* Define PI */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f

@@ -24,7 +24,7 @@
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 
-#define  CFG_TASK_START_PRIO                          2u
+#define  CFG_TASK_START_PRIO                           2u
 #define  CFG_TASK_START_STK_SIZE                    1024u
 static  TX_THREAD   taskstarttcb;
 static  ULONG64     taskstartstk[CFG_TASK_START_STK_SIZE/8];
@@ -102,7 +102,7 @@ static  void  taskstart (ULONG thread_input)
 
     tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 20, 10, TX_AUTO_ACTIVATE);
     
-    logdbg("system start .\n");
+    logdbg("build at %s, version %s, system start .\n", __DATE__, VFD_VERSION);
 
 	while(1)
 	{
@@ -185,7 +185,7 @@ void Error_Handler(const char *file, int line)
     logdbg("error occur in: %s line %d, reset.\n", file, line);
     __disable_irq();
     while (1)
-    {   
+    {
         HAL_NVIC_SystemReset();
     }
 }
