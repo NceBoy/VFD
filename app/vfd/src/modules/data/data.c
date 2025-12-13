@@ -14,17 +14,19 @@
 #include "motor.h"
 #include "bsp_io.h"
 
+#define THIS_FILE   "data.c"
+
 // UART接收缓冲区
 static uint8_t g_uart_buffer[256];
 static uint16_t g_uart_buffer_length;
 static void comm_uart_process(char* buf, int len);
-static const char* local_file_name = "data.c";
 typedef int (*protocol_cb)(Packet* in , Packet* out);
 
 #define CMD_BUILD(action,main_type,sub_type)        (action << 16 | main_type << 8 | sub_type)
 
 #define CMD_PARAM_SET           CMD_BUILD(ACTION_SET,0xFF,0x00)
 #define CMD_PARAM_GET           CMD_BUILD(ACTION_GET,0xFF,0x00)
+#define CMD_STATUS_GET          CMD_BUILD(ACTION_GET,0xFE,0x00)
 
 #define CMD_AUTO_REPORT         CMD_BUILD(ACTION_REPORT,0xFE,0x00)
 
@@ -44,6 +46,7 @@ typedef struct
 
 static int vfd_param_set(Packet* in , Packet* out);
 static int vfd_param_get(Packet* in , Packet* out);
+static int vfd_status_get(Packet* in , Packet* out);
 static int vfd_motor_ctl(Packet* in , Packet* out);
 static int vfd_pump_ctl(Packet* in , Packet* out);
 static int vfd_mode_ctl(Packet* in , Packet* out);
@@ -54,6 +57,7 @@ static int vfd_device_ctl(Packet* in , Packet* out);
 static const data_item_t data_tab[] = {
     {CMD_PARAM_SET , vfd_param_set},
     {CMD_PARAM_GET , vfd_param_get},
+    {CMD_STATUS_GET , vfd_status_get},
     {CMD_MOTOR_CTL , vfd_motor_ctl},
     {CMD_PUMB_CTL , vfd_pump_ctl},
     {CMD_MODE_CTL , vfd_mode_ctl},
@@ -250,6 +254,31 @@ int data_process(Packet* in , Packet* out)
     return -1;
 }
 
+/*变频器参数获取*/
+static int vfd_status_get(Packet* in , Packet* out)
+{
+    logdbg("status get, length = %d\n",in->body_length);
+    if(in->body_length != 0)
+        return -1;
+    uint8_t temp[8] = {0};
+    uint8_t sp = 0;
+    uint8_t speed = 0;
+    inout_get_current_sp(&sp, &speed);
+    uint16_t err = inout_get_err();
+    temp[0] = pump_ctl_get_value();             //水泵状态:0-关闭，1-开启
+    temp[1] = motor_is_working();               //电机启停:0-停止，1-工作
+    temp[2] = motor_target_current_dir();       //电机方向:0-正转，1-反转
+    temp[3] = motor_debug_mode() ? 0 : 1;       //模式:0-调试模式，1-正常模式
+    temp[4] = speed;                            //目标频率
+    temp[5] |= motor_high_freq_status();        //高频状态:0-关闭，1-开启
+    temp[6] = err & 0xFF;                       //err
+    temp[7] = err >> 8 & 0xFF;
+    
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
+    temp, sizeof(temp));
+    return 0;
+}
+
 /*变频器参数设置*/
 static int vfd_param_set(Packet* in , Packet* out)
 {
@@ -287,11 +316,12 @@ static int vfd_motor_ctl(Packet* in , Packet* out)
     if(in->body_length != 1)
         return -1;
     if(in->body[0] == 0){
-        motor_start_ctl();
+        motor_stop_ctl(CODE_END);
+        logdbg("motor stop at %s[%d]\n",THIS_FILE,__LINE__);
     }
     else{
-        motor_stop_ctl(CODE_END);
-        logdbg("motor stop at %s[%d]\n",local_file_name,__LINE__);
+        motor_start_ctl();
+        logdbg("motor start at %s[%d]\n",THIS_FILE,__LINE__);
     }
     uint8_t ret = 0;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
@@ -306,10 +336,10 @@ static int vfd_pump_ctl(Packet* in , Packet* out)
     if(in->body_length != 1)
         return -1;
     if(in->body[0] == 0){
-        pump_ctl_set_value(1 , 0);
+        pump_ctl_set_value(0 , 0);
     }
     else{
-        pump_ctl_set_value(0 , 0);
+        pump_ctl_set_value(1 , 0);
     }
         
     uint8_t ret = 0;
@@ -337,8 +367,8 @@ static int vfd_speed_ctl(Packet* in , Packet* out)
     logdbg("motor speed control, length = %d, value = %d\n",in->body_length,in->body[0]);
     if(in->body_length != 1)
         return -1;
-    uint8_t speed = in->body[0] + 8;/*数字8为自动速度的偏移量*/
-    inout_sp_sync_from_ext(speed);
+    uint8_t manual_sp = in->body[0] + 8;/*数字8为自动速度的偏移量*/
+    inout_sp_sync_from_ext(manual_sp);
     uint8_t ret = 0;
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->target_id, in->source_id, in->subtype, \
         (uint8_t*)&ret, 1);

@@ -40,7 +40,7 @@ void inout_scan(void);
 void inout_mode_sync_from_ext(unsigned char mode);
 
 /*外部控制的调速信号同步进来*/
-void inout_sp_sync_from_ext(unsigned char sp);
+void inout_sp_sync_from_ext(unsigned char manual_sp);
 
 /*外部水泵控制，水泵接口扫描使用*/
 void inout_pump_ctl(int period);
@@ -81,6 +81,8 @@ unsigned char inout_get_work_end(void);
 
 /*复位获取水泵和高频值*/
 void inout_reset_pump_high_freq(unsigned char* pump , unsigned char* high_freq);
+
+unsigned short inout_get_err(void);
 
 #ifdef __cplusplus
 }

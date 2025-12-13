@@ -63,6 +63,9 @@ void param_default(void)
  {
     uint8_t dir = 0;
     EEPROM_Read(PARAM_MOTOR_START_ADDR, &dir, 1);
+    if(dir == 0xff){
+        dir = 0;
+    }
     return dir;
  }
 

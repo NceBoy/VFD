@@ -122,7 +122,6 @@ void motor_speed_const_check(int period)
         g_speed_status.need_ctl = 0;
         g_speed_status.ctl_delay = 0;
         g_speed_const = 1;
-        BREAK_VDC_DISABLE;      /*关闭刹车电阻*/
     }    
 }
 
@@ -319,8 +318,6 @@ void motor_brake_start(void)
     g_motor_real.motor_status = motor_in_brake;
 
     high_frequery_ctl(0);
-    //EXT_PUMP_DISABLE;
-    BREAK_VDC_ENABLE;
 }
 
 void motor_dc_brake(void)
@@ -387,8 +384,6 @@ void motor_start(unsigned int dir , float target_freq)
 
 static float radio_from_freq(float freq)
 {
-    //if(freq >= 50.0f)
-    //    return 50.0f / freq * RADIO_MAX;
     if(freq >= 50.0f)
         return RADIO_MAX;
     
@@ -399,6 +394,32 @@ static float radio_from_freq(float freq)
     radio = g_radio_rate[g_motor_param.radio];
     return ((1 - radio) / 50.0f * freq + radio) * RADIO_MAX;
 }
+
+#if 0
+#define MOD_SMOOTH_FACTOR (0.0005f)
+#define MODULATION_MIN    (0.98f)   // 稳态调制比
+#define MODULATION_MAX    (1.1f)    // 动态（加速/减速/换向）
+
+/**
+ * @brief 获取当前平滑后的调制比
+ * @return 当前调制比，范围 [MODULATION_MIN, MODULATION_MAX]
+ */
+float get_smooth_modulation_ratio(void)
+{
+    static float current_mod = MODULATION_MIN; // 初始为稳态值
+    // 设定目标调制比
+    float target_mod = motor_speed_is_const() ? MODULATION_MIN : MODULATION_MAX;
+
+    // 一阶低通滤波：平滑过渡
+    current_mod += (target_mod - current_mod) * MOD_SMOOTH_FACTOR;
+
+    // 安全限幅（防止浮点误差超限）
+    if (current_mod < MODULATION_MIN) current_mod = MODULATION_MIN;
+    if (current_mod > MODULATION_MAX) current_mod = MODULATION_MAX;
+
+    return current_mod;
+}
+#endif
 
 static void motor_update_compare(void)
 {
@@ -453,8 +474,10 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
         dece_step_freq = ((50.0f - g_motor_param.start_freq) / real_dece_time) * TMR_INT_PERIOD_US;
     }
 
-    if(float_equal_in_step(current_freq , target_freq , 0.01f)) {
+    if(float_equal_in_step(current_freq , target_freq , 0.01f)) 
+    {
         g_motor_real.freq_arrive = 1;
+        BREAK_VDC_DISABLE;      /*关闭刹车电阻*/
         motor_speed_const(1);
         return target_freq;
     }

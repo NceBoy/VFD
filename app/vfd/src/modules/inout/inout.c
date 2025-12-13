@@ -360,19 +360,18 @@ static void io_scan_debug(void)
 
 
 /*手控盒控速时，同步速度*/
-void inout_sp_sync_from_ext(uint8_t sp)
+void inout_sp_sync_from_ext(uint8_t manual_sp)
 {
     if(motor_debug_mode() == 0) /*处于正常工作模式，不响应手控盒控制*/
         return ;
 
     uint8_t speed = 0;
-    param_get(PARAM0X01, sp, &speed);
+    param_get(PARAM0X01, manual_sp, &speed);
     ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
             
-    g_vfd_ctrl.sp_manual = sp;
+    g_vfd_ctrl.sp_manual = manual_sp;
     g_vfd_ctrl.flag[IO_ID_SP0] = 1;  //外部控制速度标志位
     ctrl_speed(g_vfd_ctrl.sp_manual);
-
 
 }
 
@@ -640,6 +639,7 @@ static void io_scan_end(void)
 
     if(should_ctl == 0)
         return ;
+    logdbg("end signal trigger.\n");
     if((motor_is_running() == 0) || (g_vfd_ctrl.end == 1))
         return ;
     /*加工结束*/
@@ -1076,5 +1076,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         else
             g_ipm_vfo_flag = 0;
     }
+}
+
+unsigned short inout_get_err(void)
+{
+    return g_vfd_ctrl.err;
 }
 
