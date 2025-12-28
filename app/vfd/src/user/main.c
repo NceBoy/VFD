@@ -235,9 +235,9 @@ void SystemClock_Config(void)
 void Error_Handler(const char *file, int line)
 {
     logdbg("error occur in: %s line %d, reset.\n", file, line);
-    //__disable_irq();
+    __disable_irq();
     while (1)
     {
-        //HAL_NVIC_SystemReset();
+        HAL_NVIC_SystemReset();
     }
 }

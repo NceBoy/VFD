@@ -233,6 +233,7 @@ void bsp_adc_start(void)
 
 int bsp_get_voltage(void)
 {
-    return (int)((float)g_adc_value[0].average / 4095.0 * 3 * 160 / 1.414);
+    //return (int)((float)g_adc_value[0].average / 4096.0 * 3 * 160 / 1.414);
+    return (int)((float)g_adc_value[0].average / 4096.0 * 3 * 251 / 1.414);
 }
 

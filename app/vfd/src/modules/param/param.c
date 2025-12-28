@@ -21,8 +21,8 @@ void param_default(void)
     g_vfdParam[PARAM0X01][PRESET_MID_FREQ] = 25; //  手控盒中速
     g_vfdParam[PARAM0X01][PRESET_HIGH_FREQ] = 35; //  手控盒高速
 
-    g_vfdParam[PARAM0X02][PARAM_ACCE_TIME] = 6;// 变频加速时间，单位0.1秒
-    g_vfdParam[PARAM0X02][PARAM_DECE_TIME] = 6;// 变频减速时间，单位0.1秒
+    g_vfdParam[PARAM0X02][PARAM_ACCE_TIME] = 4;// 变频加速时间，单位0.1秒
+    g_vfdParam[PARAM0X02][PARAM_DECE_TIME] = 4;// 变频减速时间，单位0.1秒
     g_vfdParam[PARAM0X02][PARAM_ORQUE_BOOST] = 2;// 低频力矩提升
     g_vfdParam[PARAM0X02][PARAM_AUTO_ECONOMY] = 0;// 自动省电百分比
     g_vfdParam[PARAM0X02][PARAM_VOLTAGE_ADJUST] = 30;// 过压调节
