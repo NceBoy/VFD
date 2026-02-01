@@ -1,6 +1,8 @@
 #include "main.h"
 #include "tx_api.h"
 #include "nx_msg.h"
+#include "nx_malloc.h"
+#include "pending_msg.h"
 #include "log.h"
 #include "bsp_led.h"
 #include "bsp_adc.h"
@@ -88,6 +90,8 @@ static  void  taskstart (ULONG thread_input)
 
 	nx_msg_init();
 
+    nx_malloc_init();
+
     ble_init();
 
     param_load();
@@ -111,6 +115,7 @@ static  void  taskstart (ULONG thread_input)
         data_poll();
         inout_scan();
         bsp_led_run();
+        pending_msg_check();
         
         inout_pump_ctl(MAIN_CTL_PERIOD);   /*水泵控制*/
         motor_high_freq_ctl(MAIN_CTL_PERIOD); /*高频控制*/

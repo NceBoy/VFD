@@ -356,27 +356,10 @@
                     <state>$PROJ_DIR$\..\src\user</state>
                     <state>$PROJ_DIR$\..\src\threadx\ports\inc</state>
                     <state>$PROJ_DIR$\..\src\threadx\src\inc</state>
-                    <state>$PROJ_DIR$\..\src\modules\nx_msg</state>
-                    <state>$PROJ_DIR$\..\src\services\service_test</state>
                     <state>$PROJ_DIR$\..\src\bsp</state>
-                    <state>$PROJ_DIR$\..\src\drivers\log</state>
-                    <state>$PROJ_DIR$\..\src\services\service_motor</state>
-                    <state>$PROJ_DIR$\..\src\drivers\cordic</state>
-                    <state>$PROJ_DIR$\..\src\modules\motor</state>
-                    <state>$PROJ_DIR$\..\src\drivers\eeprom</state>
-                    <state>$PROJ_DIR$\..\src\modules\protocol</state>
-                    <state>$PROJ_DIR$\..\src\drivers\adc</state>
-                    <state>$PROJ_DIR$\..\src\modules\inout</state>
-                    <state>$PROJ_DIR$\..\src\services\service_data</state>
-                    <state>$PROJ_DIR$\..\src\modules\data</state>
-                    <state>$PROJ_DIR$\..\src\drivers\softi2c</state>
-                    <state>$PROJ_DIR$\..\src\modules\param</state>
-                    <state>$PROJ_DIR$\..\src\drivers\tm1628a</state>
-                    <state>$PROJ_DIR$\..\src\services\service_hmi</state>
-                    <state>$PROJ_DIR$\..\src\modules\hmi</state>
-                    <state>$PROJ_DIR$\..\src\modules\ble</state>
-                    <state>$PROJ_DIR$\..\src\modules\ringbuffer</state>
-                    <state>$PROJ_DIR$\..\src\modules\utils</state>
+                    <state>$PROJ_DIR$\..\src\drivers\inc</state>
+                    <state>$PROJ_DIR$\..\src\modules\inc</state>
+                    <state>$PROJ_DIR$\..\src\services\inc</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2199,72 +2182,57 @@
     <group>
         <name>drivers</name>
         <group>
-            <name>adc</name>
+            <name>inc</name>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\adc\adc.c</name>
+                <name>$PROJ_DIR$\..\src\drivers\inc\drv_adc.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\adc\adc.h</name>
-            </file>
-        </group>
-        <group>
-            <name>cordic</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\drivers\cordic\cordic.c</name>
+                <name>$PROJ_DIR$\..\src\drivers\inc\drv_cordic.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\cordic\cordic.h</name>
-            </file>
-        </group>
-        <group>
-            <name>eeprom</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\drivers\eeprom\EEPROM.c</name>
+                <name>$PROJ_DIR$\..\src\drivers\inc\drv_eeprom.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\eeprom\EEPROM.h</name>
+                <name>$PROJ_DIR$\..\src\drivers\inc\drv_eeprom_port.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\eeprom\EEPROM_port.h</name>
-            </file>
-        </group>
-        <group>
-            <name>log</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\drivers\log\log.c</name>
+                <name>$PROJ_DIR$\..\src\drivers\inc\drv_i2c.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\log\log.h</name>
+                <name>$PROJ_DIR$\..\src\drivers\inc\drv_log.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\log\printf-stdarg.c</name>
+                <name>$PROJ_DIR$\..\src\drivers\inc\drv_tm1628a.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\log\printf-stdarg.h</name>
+                <name>$PROJ_DIR$\..\src\drivers\inc\i2c_port.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\inc\printf-stdarg.h</name>
             </file>
         </group>
         <group>
-            <name>softi2c</name>
+            <name>src</name>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\softi2c\SoftI2C.c</name>
+                <name>$PROJ_DIR$\..\src\drivers\src\adc.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\softi2c\SoftI2C.h</name>
+                <name>$PROJ_DIR$\..\src\drivers\src\cordic.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\softi2c\SoftI2C_port.c</name>
+                <name>$PROJ_DIR$\..\src\drivers\src\eeprom.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\softi2c\SoftI2C_port.h</name>
-            </file>
-        </group>
-        <group>
-            <name>tm1628a</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\drivers\tm1628a\tm1628a.c</name>
+                <name>$PROJ_DIR$\..\src\drivers\src\i2c.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\drivers\tm1628a\tm1628a.h</name>
+                <name>$PROJ_DIR$\..\src\drivers\src\i2c_port.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\src\printf-stdarg.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\drivers\src\tm1628a.c</name>
             </file>
         </group>
     </group>
@@ -2529,138 +2497,126 @@
     <group>
         <name>modules</name>
         <group>
-            <name>ble</name>
+            <name>inc</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\ble\ble.c</name>
+                <name>$PROJ_DIR$\..\src\modules\inc\ble.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\ble\ble.h</name>
+                <name>$PROJ_DIR$\..\src\modules\inc\data.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\hmi.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\inout.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\log.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\motor.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\nx_malloc.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\nx_msg.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\param.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\pending_msg.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\protocol.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\ringbuffer.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\inc\utils.h</name>
             </file>
         </group>
         <group>
-            <name>data</name>
+            <name>src</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\data\data.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\ble.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\data\data.h</name>
+                <name>$PROJ_DIR$\..\src\modules\src\data.c</name>
             </file>
-        </group>
-        <group>
-            <name>hmi</name>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\hmi\hmi.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\hmi.c</name>
                 <excluded>
                     <configuration>Debug</configuration>
                 </excluded>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\hmi\hmi.h</name>
+                <name>$PROJ_DIR$\..\src\modules\src\hmiex.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\hmi\hmiex.c</name>
-            </file>
-        </group>
-        <group>
-            <name>inout</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\inout\inout.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\inout.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\inout\inout.h</name>
-            </file>
-        </group>
-        <group>
-            <name>motor</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\motor\motor.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\log.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\motor\motor.h</name>
-            </file>
-        </group>
-        <group>
-            <name>nx_msg</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\nx_msg\nx_msg.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\motor.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\nx_msg\nx_msg.h</name>
-            </file>
-        </group>
-        <group>
-            <name>param</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\param\param.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\nx_malloc.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\param\param.h</name>
-            </file>
-        </group>
-        <group>
-            <name>protocol</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\protocol\protocol.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\nx_msg.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\protocol\protocol.h</name>
-            </file>
-        </group>
-        <group>
-            <name>ringbuffer</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\ringbuffer\ringbuffer.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\param.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\ringbuffer\ringbuffer.h</name>
-            </file>
-        </group>
-        <group>
-            <name>utils</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\modules\utils\utils.c</name>
+                <name>$PROJ_DIR$\..\src\modules\src\pending_msg.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\modules\utils\utils.h</name>
+                <name>$PROJ_DIR$\..\src\modules\src\protocol.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\src\ringbuffer.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\modules\src\utils.c</name>
             </file>
         </group>
     </group>
     <group>
         <name>services</name>
         <group>
-            <name>service_data</name>
+            <name>inc</name>
             <file>
-                <name>$PROJ_DIR$\..\src\services\service_data\service_data.c</name>
+                <name>$PROJ_DIR$\..\src\services\inc\service_data.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\services\service_data\service_data.h</name>
-            </file>
-        </group>
-        <group>
-            <name>service_hmi</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\services\service_hmi\service_hmi.c</name>
+                <name>$PROJ_DIR$\..\src\services\inc\service_hmi.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\services\service_hmi\service_hmi.h</name>
+                <name>$PROJ_DIR$\..\src\services\inc\service_motor.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\inc\service_test.h</name>
             </file>
         </group>
         <group>
-            <name>service_motor</name>
+            <name>src</name>
             <file>
-                <name>$PROJ_DIR$\..\src\services\service_motor\service_motor.c</name>
+                <name>$PROJ_DIR$\..\src\services\src\service_data.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\services\service_motor\service_motor.h</name>
-            </file>
-        </group>
-        <group>
-            <name>service_test</name>
-            <file>
-                <name>$PROJ_DIR$\..\src\services\service_test\service_test.c</name>
+                <name>$PROJ_DIR$\..\src\services\src\service_hmi.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\src\services\service_test\service_test.h</name>
+                <name>$PROJ_DIR$\..\src\services\src\service_motor.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\src\services\src\service_test.c</name>
             </file>
         </group>
     </group>
