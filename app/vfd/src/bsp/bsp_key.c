@@ -1,6 +1,8 @@
 #include "bsp_key.h"
 #include "main.h"
 #include "service_data.h"
+#include "motor.h"
+#include "param.h"
 
 static uint32_t key_down_count = 0;
 static uint8_t  key_send_flag = 0;
@@ -23,10 +25,17 @@ void bsp_key_detect(int tick)
         if(key_down_count < 5000)
         {
             key_down_count += tick;
-            if((key_down_count > 1000) && (key_send_flag == 0))
+            if((key_down_count > 3000) && (key_send_flag == 0))
             {
-                /*按键连续按下1秒钟*/
+                /*按键连续按下3秒钟*/
                 //ext_send_notify_to_data(0);
+
+                /*参数恢复出厂设置*/
+                if(motor_is_working() == 0)
+                {
+                    param_reset();
+                }
+
                 key_send_flag = 1;
             }
         }

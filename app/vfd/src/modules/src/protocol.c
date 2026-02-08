@@ -44,7 +44,7 @@ void create_packet( packet* packet,
 
     // 计算CRC时，从 header 到 crc 之前的字段都需要参与计算
     uint8_t* data = (uint8_t*)packet;
-    uint16_t crc = calculate_modbus_crc_2(data,body, 12,packet->body_length);
+    uint16_t crc = calculate_modbus_crc_2(data,body, 16,packet->body_length);
     packet->crc = crc; // 存储为小端
     packet->footer = FOOTER_VALUE;
 }

@@ -104,4 +104,6 @@ void param_set(ModuleParameterType type, uint8_t index, uint8_t value);
  uint8_t param_dir_load(void);
  void param_dir_save(uint8_t dir);
 
+  void param_reset(void);
+
 #endif /* __VFD_PARAM_H__ */

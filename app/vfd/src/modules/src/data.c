@@ -29,7 +29,7 @@ typedef int (*protocol_cb)(packet* in , packet* out);
 #define CMD_PARAM_GET           CMD_BUILD(ACTION_GET,0xFF,0x00)
 #define CMD_STATUS_GET          CMD_BUILD(ACTION_GET,0xFE,0x00)
 
-#define CMD_AUTO_REPORT         CMD_BUILD(ACTION_REPORT,0xFE,0x00)
+#define CMD_AUTO_REPLY         CMD_BUILD(ACTION_REPLY,0xFE,0x00)
 
 
 #define CMD_MOTOR_CTL           CMD_BUILD(ACTION_SET,0x04,0x01)
@@ -64,7 +64,7 @@ static const data_item_t data_tab[] = {
     {CMD_MODE_CTL , vfd_mode_ctl},
     {CMD_SPEED_CTL , vfd_speed_ctl},
     {CMD_DEVICE_CTL , vfd_device_ctl},
-    {CMD_AUTO_REPORT, vfd_report_ack}
+    {CMD_AUTO_REPLY, vfd_report_ack}
 };
 
 
@@ -92,8 +92,8 @@ static int search_flag(char* buf, int len, char flag)
  */
 static int get_total_packet_length(char* buf)
 {
-    int data_len = (int)(buf[10] | buf[11] << 8);
-    return (data_len + 15);
+    int data_len = (int)(buf[14] | buf[15] << 8);
+    return (data_len + 19);
 }
 
 
@@ -139,7 +139,7 @@ static int parse_stream(uint8_t *buf, int len, char **start_ptr, int *real_lengt
     current_ptr += offset;
     
     // 检查是否能获取到长度字段
-    if(len < (offset + 12))
+    if(len < (offset + 16))
     {
         *offset_ptr = offset;
         return -2;

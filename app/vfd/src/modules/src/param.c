@@ -50,10 +50,12 @@ void param_default(void)
  void param_load(void)
  {
     EEPROM_Init();
+    
     EEPROM_Read(0, g_vfdParam, sizeof(g_vfdParam));
+    
     uint8_t crc_param = custom_checksum((uint8_t*)g_vfdParam, sizeof(g_vfdParam) - 1);
     if(g_vfdParam[MAX_MODULE_TYPES - 1][MAX_PARAM_ENTRIES - 1] != crc_param){
-        logdbg("param_load: crc error");
+        logdbg("param_load: crc error, use default params.\n");
         param_default();
     }
  }
@@ -98,4 +100,10 @@ void param_default(void)
     if (type < MAX_MODULE_TYPES && index < MAX_PARAM_ENTRIES) {
         g_vfdParam[type][index] = value;
     }
+ }
+
+ void param_reset(void)
+ {
+    param_default();
+    param_save();
  }

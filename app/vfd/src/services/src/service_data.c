@@ -70,6 +70,8 @@ static void uart_report_status(unsigned char* buf , int len)
     int ack_len = packet2buf((const packet*) &out, g_ack_buf);
     bsp_uart_send(g_ack_buf , ack_len);
 
+    loghex(g_ack_buf,ack_len);
+    
     /*将上报消息加入待发送队列*/
     pending_msg_add(tid, g_ack_buf, ack_len);
 }
@@ -130,11 +132,14 @@ void ext_send_report_err(int from_id , unsigned short err)
     logdbg("report err: 0x%04x\n",err);
 }
 
+extern unsigned short inout_get_err(void);
 void ext_send_report_status(int from_id , unsigned short status , unsigned char value)
 {
+    /*上报状态时需要把错误码一起上报，否则手持会认为错误消失*/
+    unsigned short err = inout_get_err();
     unsigned char buf[5] = {0};
-    buf[0] = 0;
-    buf[1] = 0;
+    buf[0] = err & 0xFF; /*错误码*/
+    buf[1] = err >> 8 & 0xFF;
     buf[2] = status & 0xFF;
     buf[3] = status >> 8 & 0xFF;
     buf[4] = value;
