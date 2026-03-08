@@ -375,16 +375,16 @@ static void show_speed_info(void)
 { 
     static uint8_t sp_last;
     static uint32_t time_last;
-    static uint8_t immi_flag = 1;
+    static uint8_t immi_refresh_flag = 1;
 
     if(motor_is_working())
     {
         /*电机运行中*/
         uint8_t sp , value;
         inout_get_current_sp(&sp , &value);
-        if((sp != sp_last) || (g_level_refresh) || (immi_flag))
+        if((sp != sp_last) || (g_level_refresh) || (immi_refresh_flag))
         {
-            immi_flag = 0;
+            immi_refresh_flag = 0;
             uint8_t data[8] = {0x00, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
             sp = HEX_TO_BCD(sp);
             value = HEX_TO_BCD(value);
@@ -401,7 +401,7 @@ static void show_speed_info(void)
     else
     {
         /*电机未运行*/
-        immi_flag = 1;
+        immi_refresh_flag = 1;
         uint32_t now = HAL_GetTick();
         if((now - time_last > 500) || (g_level_refresh))
         {

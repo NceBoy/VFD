@@ -4,6 +4,7 @@
 #include "param.h"
 #include "inout.h"
 #include "motor.h"
+#include "hmi.h"
 
 #define DEBOUNCE_TIME_MS     50   // Debounce time to avoid false triggers
 #define LONG_PRESS_TIME_MS  200   // Time to trigger continuous press
@@ -61,7 +62,12 @@ const uint8_t value_menu_items[MAIN_MAX][12] = {
 static void menu_display(void)
 {
     if((g_menu_state.level == 0) && (g_menu_state.main_index == 0))
+    {
+        if(g_menu_state.sub_index[0] == 0){
+            hmi_clear_menu();
+        }
         return ;
+    }
     switch(g_menu_state.level)
     {
         case 0:{/*第0级菜单*/
@@ -215,18 +221,22 @@ static void show_speed_blink(void)
 }
 #endif
 
-static uint8_t immi_flag = 1;
+static uint8_t immi_refresh_flag = 1;
 
 static void show_speed_info(void)
 { 
     static uint8_t sp_last;
+    static uint8_t value_last;
 
     /*电机运行中*/
     uint8_t sp , value;
     inout_get_current_sp(&sp , &value);
-    if((sp != sp_last) || (immi_flag))
+    if((sp != sp_last) || (value != value_last) || (immi_refresh_flag))
     {
-        immi_flag = 0;
+        immi_refresh_flag = 0;
+        sp_last = sp;
+        value_last = value;
+        
         uint8_t data[8] = {0x00, 0x00, 0x00, 0x00,0x00, 0x00 ,0x00, 0x00};
         //sp = HEX_TO_BCD(sp);
         value = HEX_TO_BCD(value);
@@ -235,8 +245,6 @@ static void show_speed_info(void)
         data[4] = code_table[value >> 4];
         data[6] = code_table[value & 0x0f];
         tm1628a_write_continuous(data , sizeof(data));
-
-        sp_last = sp;
     }
     
 }
@@ -324,6 +332,10 @@ static void scan_key(void)
     }
     else
     {
+        if((hmi_is_main_index() == 0) && (g_key.current_time - g_key.key_pressed_time >= 10 * 1000))
+        {
+            hmi_clear_menu();
+        }
         // Key released
         if (g_key.is_key_pressed)
         {
@@ -342,7 +354,7 @@ static void show_level0_and_led_info(void)
         if(HAL_GetTick() - g_errcode_display_time > 5000)
         {
             g_errcode_display = 0;
-            immi_flag = 1;
+            immi_refresh_flag = 1;
         }
             
         return ;
@@ -358,7 +370,7 @@ static void show_level0_and_led_info(void)
         }
         else if(g_menu_state.sub_index[0] == 1)
         {
-            immi_flag = 1;
+            immi_refresh_flag = 1;
             show_voltage_info();
         }
     }
@@ -400,4 +412,10 @@ void hmi_clear_menu(void)
     g_menu_state.sub_index[2] = 0;
     g_menu_state.sub_index[3] = 0;
     g_menu_state.sub_index[4] = 0;
+    immi_refresh_flag = 1;
+}
+
+int hmi_is_main_index(void)
+{
+    return g_menu_state.main_index == 0;
 }

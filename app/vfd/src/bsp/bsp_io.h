@@ -16,8 +16,9 @@ extern "C" {
 #define HIGH_FREQ_RESET       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_3, GPIO_PIN_RESET)
 
 //刹车电阻控制
-#define BREAK_VDC_ENABLE        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, GPIO_PIN_SET)
+//#define BREAK_VDC_ENABLE        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, GPIO_PIN_SET)
 #define BREAK_VDC_DISABLE       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, GPIO_PIN_RESET)
+#define BREAK_VDC_ENABLE        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, GPIO_PIN_RESET)
     
 
 void bsp_io_init_input(void);

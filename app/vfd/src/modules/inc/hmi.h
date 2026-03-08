@@ -11,6 +11,7 @@ void hmi_init(void);
 void hmi_scan_key(void);
 void hmi_clear_menu(void);
 void hmi_stop_code(int code);
+int hmi_is_main_index(void);
 
 #ifdef __cplusplus
 }

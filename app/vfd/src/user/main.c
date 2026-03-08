@@ -88,7 +88,7 @@ static  void  taskstart (ULONG thread_input)
 
     inout_init();
 
-	nx_msg_init();
+    nx_msg_init();
 
     nx_malloc_init();
 
@@ -131,7 +131,7 @@ static void adc_timer_expire(ULONG id)
     bsp_adc_start();
 }
 
-#if 1
+#if 0
 /**
   * @brief System Clock Configuration
   * @retval None

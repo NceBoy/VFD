@@ -66,7 +66,7 @@ static  void  task_hmi (ULONG thread_input)
 
     MSG_MGR_T *msg = NULL;
 
-    tx_timer_create(&key_scan_timer , "key_scan_timer", key_scan_timer_expire, 0, 50, 50, TX_AUTO_ACTIVATE);
+    tx_timer_create(&key_scan_timer , "key_scan_timer", key_scan_timer_expire, 0, 100, 50, TX_AUTO_ACTIVATE);
 
 	while(1)
 	{
