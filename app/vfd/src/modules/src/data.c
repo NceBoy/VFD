@@ -106,7 +106,7 @@ static int get_total_packet_length(char* buf)
  */
 static int check_packet_validity(char* buf, int len)
 {
-    uint16_t calculated_crc = modbus_crc16((unsigned char*)buf, len - 3);
+    uint16_t calculated_crc = crc16_modbus((unsigned char*)buf, len - 3);
     uint16_t packet_crc = buf[len - 3] | buf[len - 2] << 8;
     
     if(packet_crc != calculated_crc)
