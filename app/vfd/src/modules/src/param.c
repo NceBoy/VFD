@@ -82,6 +82,66 @@ void param_default(void)
     EEPROM_Write(0, g_vfdParam, sizeof(g_vfdParam));
  }
 
+ int param_check(uint8_t *newParams)
+ {
+    if(newParams == NULL){
+        return -1;
+    }
+    //前11个参数为速度参数，不能超过80
+    for(int i = 0; i < 11; i++){
+        if(newParams[i] > 80){  //速度不能超过80
+            return -1;
+        }
+    }
+    //第12个参数为无效参数，必须为0xFF
+    if(newParams[11] != 0xFF){
+        return -1;
+    }
+
+    /*第二个参数表前8个为有效参数，后4个为无效参数，必须为0xFF*/
+    if((newParams[12] > 1) || (newParams[13] > 1) || (newParams[14] > 1))
+    {  //最大值为1
+        return -1;
+    }
+    if((newParams[15] > 2) || (newParams[16] > 2))
+    {  //最大值为2
+        return -1;
+    }
+    if((newParams[17] > 1) || (newParams[19] > 1))
+    {  //最大值为1
+        return -1;
+    }
+    if(newParams[18] > 20)
+    {  //开高频延时，最大为2秒
+        return -1;
+    }
+    for(int i = 20; i < 24; i++){
+        if(newParams[i] != 0xFF){
+            return -1;
+        }
+    }
+    //第三个参数表前11个为有效参数，后1个为无效参数，必须为0xFF
+    if((newParams[24] < 4) || (newParams[25] < 4))
+    {  //最小值为4
+        return -1;
+    }
+    if(newParams[35] != 0xFF)
+    {//无效参数，必须为0xFF
+        return -1;
+    }
+    //第四个参数表前2个为有效参数，后9个为无效参数，必须为0xFF
+    if((newParams[36] > 1) || (newParams[37] > 1))
+    {  //最大值为1
+        return -1;
+    }
+    for(int i = 38; i < 47; i++){
+        if(newParams[i] != 0xFF){
+            return -1;
+        }
+    }
+    return 0;
+ }
+
  void param_update_all(uint8_t *newParams)
  {
     memcpy(g_vfdParam, newParams, sizeof(g_vfdParam) - 1);

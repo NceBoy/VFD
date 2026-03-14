@@ -290,6 +290,11 @@ static int vfd_param_set(packet* in , packet* out)
     uint8_t ret = 0;
     if(motor_is_working())  /*电机在运行时，不允许改参数*/
         ret = 1;
+    else if(param_check(in->body) < 0)
+    {
+        logerr("param check failed at %s[%d]\n",THIS_FILE,__LINE__);
+        ret = 1;
+    }
     else
     {
         param_update_all(in->body);

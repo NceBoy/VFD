@@ -38,7 +38,7 @@ typedef enum {
     PARAM1_HIGH_FREQ_POLARITY = 0x02,  // 高频极性0：常开 1：常闭
     PARAM1_STOP_POLARITY = 0x03 , // 加工结束信号极性0:常开 1:常闭 2:自适应极性
     PARAM1_STOP_POSITION = 0x04,  // 加工停机结束位置0:立即停止 1:靠右停 2:靠左停
-    PARAM1_VARI_FREQ_CLOSE = 0x05,  // 变频关高频  
+    PARAM1_VARI_FREQ_CLOSE = 0x05,  // 变频关高频0:不关闭 1:关闭  
     PARAM1_HIGH_FREQ_DELAY = 0x06,  // 开高频延时
     PARAM1_BUTTON_TYPE = 0x07,  // 按键类型,(0:点动 1:4键)
 } ModuleParameterType_0x01;
@@ -82,6 +82,8 @@ extern uint8_t g_vfdParam[MAX_MODULE_TYPES][MAX_PARAM_ENTRIES];
 void param_load();
 
 void param_default(void);
+
+ int param_check(uint8_t *newParams);
 
 void param_update_all(uint8_t *newParams);
 
