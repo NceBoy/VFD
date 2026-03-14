@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-uint8_t custom_checksum(uint8_t* data, int length);
+uint8_t crc8_itu(uint8_t* data, int length);
 
-uint16_t modbus_crc16(uint8_t *data, int length) ;
+uint16_t crc16_modbus(uint8_t *data, int length) ;
 
 
 #endif
