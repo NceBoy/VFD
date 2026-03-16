@@ -122,27 +122,29 @@ void ext_send_buf_to_data(int from_id , unsigned char* buf , int len , int type)
 
 void ext_send_report_err(int from_id , unsigned short err)
 {
-    unsigned char buf[5] = {0};
+    unsigned char buf[6] = {0};
     buf[0] = err & 0xFF;
     buf[1] = err >> 8 & 0xFF;
     buf[2] = 0x00;
     buf[3] = 0x00;
     buf[4] = 0x00;
+    buf[5] = 0x00;
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
     logdbg("report err: 0x%04x\n",err);
 }
 
 extern unsigned short inout_get_err(void);
-void ext_send_report_status(int from_id , unsigned short status , unsigned char value)
+void ext_send_report_status(int from_id , unsigned short status , unsigned char value1 , unsigned char value2 )
 {
     /*上报状态时需要把错误码一起上报，否则手持会认为错误消失*/
     unsigned short err = inout_get_err();
-    unsigned char buf[5] = {0};
+    unsigned char buf[6] = {0};
     buf[0] = err & 0xFF; /*错误码*/
     buf[1] = err >> 8 & 0xFF;
     buf[2] = status & 0xFF;
     buf[3] = status >> 8 & 0xFF;
-    buf[4] = value;
+    buf[4] = value1;
+    buf[5] = value2;
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
-    logdbg("report status: 0x%04x = %d\n",status,value);
+    logdbg("report status: 0x%04x = %d %d\n",status,value1,value2);
 }

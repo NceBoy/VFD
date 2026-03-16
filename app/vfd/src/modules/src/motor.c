@@ -240,7 +240,7 @@ void motor_high_freq_ctl(int period)
     {
         bsp_io_ctrl_high_freq(g_high_freq.ctrl_value , polarity);  //开关高频        
         g_high_freq.real_status = g_high_freq.ctrl_value;
-        ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,g_high_freq.real_status);
+        ext_send_report_status(0,STATUS_HIGH_FREQ_CHANGE,g_high_freq.real_status,0);
     }
 }
 

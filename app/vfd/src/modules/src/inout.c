@@ -288,26 +288,24 @@ void inout_mode_sync_from_ext(unsigned char mode)
     {
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
 
-        if(motor_is_working())
+        if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
         {
-            if(g_vfd_ctrl.flag[IO_ID_WIRE] != 0) /*退出debug模式，断丝刹车*/
-            {
-                motor_stop_ctl(CODE_WIRE_BREAK);
-                pump_ctl_set_value(0 , 500);
-                logdbg("motor stop at %s[%d]\n",THIS_FILE,__LINE__);
-            }
-            else if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
-            {
-                ctrl_speed(g_vfd_ctrl.sp);
-                uint8_t speed = 0;
-                param_get(PARAM_TYPE0, g_vfd_ctrl.sp, &speed);
-                ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
-            }
+            ctrl_speed(g_vfd_ctrl.sp);
+            uint8_t speed = 0;
+            param_get(PARAM_TYPE0, g_vfd_ctrl.sp, &speed);
+            ext_send_report_status(0,STATUS_SPEED_CHANGE,speed,g_vfd_ctrl.sp);
+        }
+
+        if(motor_is_working() && (g_vfd_ctrl.flag[IO_ID_WIRE] != 0))/*退出debug模式，断丝刹车*/
+        {
+            motor_stop_ctl(CODE_WIRE_BREAK);
+            pump_ctl_set_value(0 , 500);
+            logdbg("motor stop at %s[%d]\n",THIS_FILE,__LINE__);
         }
         g_vfd_ctrl.flag[IO_ID_SP0] = 0;
     }
     uint8_t now_mode = g_vfd_ctrl.flag[IO_ID_DEBUG] ? 0 : 1;
-    ext_send_report_status(0,STATUS_MODE_CHANGE,now_mode);
+    ext_send_report_status(0,STATUS_MODE_CHANGE,now_mode,0);
 }
 
 int motor_debug_mode(void)
@@ -325,7 +323,7 @@ static void io_scan_debug(void)
     {
         if((g_io_debug_level == 1) || (g_vfd_ctrl.flag[IO_ID_DEBUG] == 0))  /*首次进入debug模式*/
         {
-            ext_send_report_status(0,STATUS_MODE_CHANGE,0);
+            ext_send_report_status(0,STATUS_MODE_CHANGE,0,0);
         }
         g_io_debug_level = debug_now;
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
@@ -336,14 +334,14 @@ static void io_scan_debug(void)
         {
             g_io_debug_level = debug_now;
             g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
-            ext_send_report_status(0,STATUS_MODE_CHANGE,1);
+            ext_send_report_status(0,STATUS_MODE_CHANGE,1,0);
 
             if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
             {
                 ctrl_speed(g_vfd_ctrl.sp);
                 uint8_t speed = 0;
                 param_get(PARAM_TYPE0, g_vfd_ctrl.sp, &speed);
-                ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
+                ext_send_report_status(0,STATUS_SPEED_CHANGE,speed,g_vfd_ctrl.sp);
             }
 
             if(motor_is_working() && (g_vfd_ctrl.flag[IO_ID_WIRE] != 0))/*退出debug模式，断丝刹车*/
@@ -367,7 +365,7 @@ void inout_sp_sync_from_ext(uint8_t manual_sp)
 
     uint8_t speed = 0;
     param_get(PARAM_TYPE0, manual_sp, &speed);
-    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
+    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed,manual_sp);
             
     g_vfd_ctrl.sp_manual = manual_sp;
     g_vfd_ctrl.flag[IO_ID_SP0] = 1;  //外部控制速度标志位
@@ -393,7 +391,7 @@ void inout_pump_ctl(int period)
     if(g_pump_ctl.ctrl_delay == 0)
     {
         bsp_io_ctrl_pump(g_pump_ctl.ctrl_value);
-        ext_send_report_status(0,STATUS_PUMP_CHANGE,g_pump_ctl.ctrl_value);
+        ext_send_report_status(0,STATUS_PUMP_CHANGE,g_pump_ctl.ctrl_value,0);
         g_pump_ctl.real_status = g_pump_ctl.ctrl_value;
     }
 }
@@ -496,7 +494,7 @@ static void io_scan_speed(void)
     g_vfd_ctrl.sp = sp;
     g_vfd_ctrl.speed = speed;
 
-    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed);
+    ext_send_report_status(0,STATUS_SPEED_CHANGE,speed,sp);
 
     if(g_vfd_ctrl.end != 0)
         return ;

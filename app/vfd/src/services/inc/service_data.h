@@ -14,7 +14,7 @@ void ext_send_notify_to_data(int from_id);
 
 void ext_send_report_err(int from_id , unsigned short err);
 
-void ext_send_report_status(int from_id , unsigned short status , unsigned char value);
+void ext_send_report_status(int from_id , unsigned short status , unsigned char value1, unsigned char value2);
   
 #ifdef __cplusplus
 }
