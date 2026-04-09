@@ -1,6 +1,6 @@
 #include "main.h"
 #include "service_data.h"
-#include "bsp_tmr.h"
+#include "bsp_tim.h"
 #include "bsp_io.h"
 #include "motor.h"
 #include "log.h"

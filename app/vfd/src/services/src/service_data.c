@@ -56,6 +56,7 @@ static int protocol_process(unsigned char* buf , int len)
             return ret;
         ack_len = packet2buf((const packet*) &ack_pkt, g_ack_buf);
         bsp_uart_send(g_ack_buf , ack_len);
+        logdbg("ack_len: %d\n", ack_len);
         loghex(g_ack_buf,ack_len);
     }
     return 0;

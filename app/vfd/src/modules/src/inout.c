@@ -260,6 +260,9 @@ static void io_scan_active_polarity(void)
     g_vfd_io_tab[IO_ID_END].active_polarity =  (value == 1 ? ACTIVE_HIGH : ACTIVE_LOW);
     g_end_value =  value ;
 
+    /*断丝检测极性,0:常开(断丝高电平) 1:常闭(断丝低电平)*/
+    param_get(PARAM_TYPE2, PARAM2_WIRE_BREAK_SIGNAL, &value); /*断丝检测极性,0:常开 1:常闭*/
+    g_vfd_io_tab[IO_ID_WIRE].active_polarity =  (value == 0 ? ACTIVE_HIGH : ACTIVE_LOW);
     /*断丝检测时间，消抖作用*/
     param_get(PARAM_TYPE2, PARAM2_WIRE_BREAK_TIME, &value); /*更新断丝检测时间*/
     g_vfd_io_tab[IO_ID_WIRE].debounce_ticks = value * 100; /*ms*/

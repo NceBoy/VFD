@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "tx_byte_pool.h"
 #include "nx_malloc.h"
+#include "log.h"
 
 static uint32_t g_tid = 0;
 
@@ -107,8 +108,11 @@ uint16_t buf2packet(const uint8_t* buffer, uint16_t length , packet* packet)
     uint16_t crc_pack = temp[16 + body_length] | (temp[17 + body_length] << 8);
     uint16_t expected_crc = calculate_modbus_crc(temp, 16 + body_length);
     if (crc_pack != expected_crc)
-        return 0;
-
+    {
+        logdbg("crc_pack: %d, expected_crc: %d", crc_pack, expected_crc);
+        return 0; 
+    }
+        
     packet->header = *temp++;
     packet->dtype = *temp++;
     packet->action = *temp++;

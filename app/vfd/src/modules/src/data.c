@@ -262,7 +262,7 @@ static int vfd_status_get(packet* in , packet* out)
     logdbg("status get, length = %d\n",in->body_length);
     if(in->body_length != 0)
         return -1;
-    uint8_t temp[8] = {0};
+    uint8_t temp[9] = {0};
     uint8_t sp = 0;
     uint8_t speed = 0;
     inout_get_current_sp(&sp, &speed);
@@ -271,10 +271,11 @@ static int vfd_status_get(packet* in , packet* out)
     temp[1] = motor_is_working();               //电机启停:0-停止，1-工作
     temp[2] = motor_target_current_dir();       //电机方向:0-正转，1-反转
     temp[3] = motor_debug_mode() ? 0 : 1;       //模式:0-调试模式，1-正常模式
-    temp[4] = speed;                            //目标频率
-    temp[5] |= motor_high_freq_status();        //高频状态:0-关闭，1-开启
-    temp[6] = err & 0xFF;                       //err
-    temp[7] = err >> 8 & 0xFF;
+    temp[4] = speed;                            //当前速度
+    temp[5] = sp;                               //当前档位
+    temp[6] |= motor_high_freq_status();        //高频状态:0-关闭，1-开启
+    temp[7] = err & 0xFF;                       //err
+    temp[8] = err >> 8 & 0xFF;
     
     create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
     temp, sizeof(temp));

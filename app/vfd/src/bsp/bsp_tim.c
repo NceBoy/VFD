@@ -1,9 +1,9 @@
 #include "main.h"
-#include "bsp_tmr.h"
+#include "bsp_tim.h"
 #include "bsp_io.h"
 #include "bsp_led.h"
 
-#define THIS_FILE "bsp_tmr.c"
+#define THIS_FILE "bsp_tim.c"
 
 static TIM_HandleTypeDef htim1;
 
@@ -18,11 +18,11 @@ void bsp_tmr_init(void)
     TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
     htim1.Instance = TIM1;
-    htim1.Init.Prescaler = PWM_PSC;  /* 170MHz / (psc + 1) = clk , 170MHz*/
+    htim1.Init.Prescaler = ((TIM_CLOCK_DIVIDER) - 1);  /* 170MHz / (psc + 1) = clk , 170MHz*/
     htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
     htim1.Init.Period = PWM_RESOLUTION;  /*对称计数模式，周期为10KHz*/
     htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;  /*APB2 clk = 170MHz ,计算死区时间*/
-    htim1.Init.RepetitionCounter = TMR_RCR;
+    htim1.Init.RepetitionCounter = (REP_COUNTER);
     htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
     if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
     {
@@ -46,7 +46,7 @@ void bsp_tmr_init(void)
         Error_Handler(THIS_FILE, __LINE__);
     }
     sConfigOC.OCMode = TIM_OCMODE_PWM1;
-    sConfigOC.Pulse = 0;
+    sConfigOC.Pulse = ((PWM_PERIOD_CYCLES) / 4);
     sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
     sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -65,7 +65,11 @@ void bsp_tmr_init(void)
         Error_Handler(THIS_FILE, __LINE__);
     }
 #if 0
-    /* TIM1_CH4 用来做触发采集电流*/
+
+	/* TIM1_CH4 用来做触发采集电流*/
+    sConfigOC.OCMode = TIM_OCMODE_PWM2;
+    sConfigOC.Pulse = (((PWM_PERIOD_CYCLES) / 2) - (HTMIN));
+    
     if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
     {
         Error_Handler(THIS_FILE, __LINE__);
@@ -93,8 +97,6 @@ void bsp_tmr_init(void)
     }
 
     HAL_TIM_MspPostInit(&htim1);
-
-    //htim1.Instance->CCR4 = PWM_RESOLUTION - 500;
 }
 
 void bsp_tmr_start(void)

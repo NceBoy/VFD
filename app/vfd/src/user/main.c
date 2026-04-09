@@ -96,7 +96,7 @@ static  void  taskstart (ULONG thread_input)
 
     param_load();
 
-    //service_test_start();
+    service_test_start();
     
     service_data_start();
 

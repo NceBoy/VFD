@@ -1,6 +1,6 @@
 #include "main.h"
 
-static uint32_t g_led_period = 1000;
+static uint32_t g_led_period = 2000;
 static uint32_t g_led_now  = 0;
 
 
@@ -22,7 +22,7 @@ void bsp_led_run(void)
 {
     g_led_now = HAL_GetTick ();
     g_led_now %= g_led_period;
-    if(g_led_now < 50)
+    if(g_led_now < 20)
         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET);
     else
         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
