@@ -324,7 +324,7 @@ void motor_dc_brake(void)
 {
     bsp_tmr_dc_brake(20);
     g_motor_real.motor_status = motor_in_dc_brake;
-    g_motor_real.dc_brake_time = 10 * 1000;   //单位:100us，实际时间1秒钟
+    g_motor_real.dc_brake_time = 1000000 / TMR_INT_PERIOD_US;   //单位:100us，实际时间1秒钟
 }
 
 
@@ -451,8 +451,8 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
 {
     /*计算加速时一步的频率和减速时一步的频率,T型加减速用到，如果不是T型，忽略该参数*/
     static float last_target_freq = 0.0f;
-    static float acce_step_freq = 0.0f;     //加速时一步的频率
-    static float dece_step_freq = 0.0f;     //减速时一步的频率
+    static float acce_freq_per_step = 0.0f;     //加速时一步的频率
+    static float dece_freq_per_step = 0.0f;     //减速时一步的频率
     static unsigned int real_acce_time = 0;
     static unsigned int real_dece_time = 0;
     if(float_equal_in_step(last_target_freq , target_freq , 0.01f) == 0)/*重新设置了目标值*/
@@ -470,8 +470,8 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
         }
         /*计算减速时间*/
         last_target_freq = target_freq;
-        acce_step_freq = ((50.0f - g_motor_param.start_freq) / real_acce_time) * TMR_INT_PERIOD_US;
-        dece_step_freq = ((50.0f - g_motor_param.start_freq) / real_dece_time) * TMR_INT_PERIOD_US;
+        acce_freq_per_step = ((50.0f - g_motor_param.start_freq) / real_acce_time) * TMR_INT_PERIOD_US;
+        dece_freq_per_step = ((50.0f - g_motor_param.start_freq) / real_dece_time) * TMR_INT_PERIOD_US;
     }
 
     if(float_equal_in_step(current_freq , target_freq , 0.01f)) 
@@ -484,14 +484,14 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
     motor_speed_const(0);
     g_motor_real.freq_arrive = 0;
     if(target_freq > current_freq){/*加速*/
-        if(float_equal_in_step(current_freq , target_freq, acce_step_freq))
+        if(float_equal_in_step(current_freq , target_freq, acce_freq_per_step))
             return target_freq;
-        else return current_freq + acce_step_freq;
+        else return current_freq + acce_freq_per_step;
     } 
     else{/*减速*/
-        if(float_equal_in_step(current_freq , target_freq, dece_step_freq))
+        if(float_equal_in_step(current_freq , target_freq, dece_freq_per_step))
             return target_freq;
-        else return current_freq - dece_step_freq;
+        else return current_freq - dece_freq_per_step;
     }
 }
 
