@@ -14,6 +14,8 @@ void ext_motor_speed(unsigned int speed);
 void ext_motor_reverse(void);
 void ext_motor_brake(void);
 
+unsigned int ext_motor_get_reverse_tick(void);
+
 #ifdef __cplusplus
 }
 #endif

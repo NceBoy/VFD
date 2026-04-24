@@ -25,8 +25,8 @@ typedef enum
     CODE_LIMIT_TIMEOUT = 4,         /*左右限位长时间触发*/
     CODE_UNDER_VOLTAGE = 5,         /*欠压*/
     CODE_OVER_VOLTAGE = 6,          /*过压*/
-    CODE_POWER_OFF = 7,             /*断电*/
-    CODE_IPM_VFO = 8,               /*IPM*/
+    CODE_IPM_VFO = 7,               /*IPM*/
+    CODE_REVERSE_TIMEOUT = 8,       /*长时间不换向*/
 }stopcode_t;
 
 

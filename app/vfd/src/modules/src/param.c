@@ -38,7 +38,7 @@ void param_default(void)
     g_vfdParam[PARAM_TYPE2][PARAM2_TORQUE_BOOST] = 2;// 低频扭矩提升
     g_vfdParam[PARAM_TYPE2][PARAM2_WIRE_BREAK_SIGNAL] = 0;// 断丝检测信号极性0：常开 1：常闭    
     g_vfdParam[PARAM_TYPE2][PARAM2_WIRE_BREAK_TIME] = 2;// 断丝检测时间，单位0.1秒
-    g_vfdParam[PARAM_TYPE2][PARAM2_POWER_OFF_TIME] = 0;// 允许掉电最长时间，单位0.1秒
+    g_vfdParam[PARAM_TYPE2][PARAM2_POWER_OFF_TIME] = 2;// 允许掉电最长时间，单位0.1秒
     g_vfdParam[PARAM_TYPE2][PARAM2_AUTO_ECONOMY] = 0;// 自动省电百分比
     g_vfdParam[PARAM_TYPE2][PARAM2_VOLTAGE_ADJUST] = 0;// 过压调节
 
@@ -87,55 +87,63 @@ void param_default(void)
     if(newParams == NULL){
         return -1;
     }
+    uint8_t temp_buf[MAX_PARAM_ENTRIES] = {0};
+    memcpy(temp_buf, newParams, sizeof(temp_buf));
+    //第一个参数表前11个参数为有效参数，后1个参数为无效参数，必须为0xFF
     //前11个参数为速度参数，不能超过80
     for(int i = 0; i < 11; i++){
-        if(newParams[i] > 80){  //速度不能超过80
+        if((temp_buf[i] > 80) || (temp_buf[i] == 0)){  //速度不能超过80
             return -1;
         }
     }
     //第12个参数为无效参数，必须为0xFF
-    if(newParams[11] != 0xFF){
+    if(temp_buf[11] != 0xFF){
         return -1;
     }
 
+    memcpy(temp_buf, newParams + 12, sizeof(temp_buf));
     /*第二个参数表前8个为有效参数，后4个为无效参数，必须为0xFF*/
-    if((newParams[12] > 1) || (newParams[13] > 1) || (newParams[14] > 1))
+    if((temp_buf[0] > 1) || (temp_buf[1] > 1) || (temp_buf[2] > 1))
     {  //最大值为1
         return -1;
     }
-    if((newParams[15] > 2) || (newParams[16] > 2))
+    if((temp_buf[3] > 2) || (temp_buf[4] > 2))
     {  //最大值为2
         return -1;
     }
-    if((newParams[17] > 1) || (newParams[19] > 1))
+    if((temp_buf[5] > 1) || (temp_buf[7] > 1))
     {  //最大值为1
         return -1;
     }
-    if(newParams[18] > 20)
+    if(temp_buf[6] > 20)
     {  //开高频延时，最大为2秒
         return -1;
     }
-    for(int i = 20; i < 24; i++){
-        if(newParams[i] != 0xFF){
+    for(int i = 8; i < 12; i++){
+        if(temp_buf[i] != 0xFF){
             return -1;
         }
     }
+    
+    memcpy(temp_buf, newParams + 24, sizeof(temp_buf));
     //第三个参数表前11个为有效参数，后1个为无效参数，必须为0xFF
-    if((newParams[24] < 4) || (newParams[25] < 4))
+    if((temp_buf[0] < 4) || (temp_buf[1] < 4))
     {  //最小值为4
         return -1;
     }
-    if(newParams[35] != 0xFF)
+    if(temp_buf[11] != 0xFF)
     {//无效参数，必须为0xFF
         return -1;
     }
-    //第四个参数表前2个为有效参数，后9个为无效参数，必须为0xFF
-    if((newParams[36] > 1) || (newParams[37] > 1))
+    
+    memcpy(temp_buf, newParams + 36, sizeof(temp_buf));
+    //第四个参数表前2个为有效参数，后10个为无效参数，必须为0xFF
+    if((temp_buf[0] > 1) || (temp_buf[1] > 1))
     {  //最大值为1
         return -1;
     }
-    for(int i = 38; i < 47; i++){
-        if(newParams[i] != 0xFF){
+    for(int i = 2; i < 11; i++){
+        if(temp_buf[i] != 0xFF){
             return -1;
         }
     }
@@ -146,6 +154,71 @@ void param_default(void)
  {
     memcpy(g_vfdParam, newParams, sizeof(g_vfdParam) - 1);
     param_save();
+ }
+
+ //打印所有的参数
+void param_print_all(uint8_t *newParams)
+{
+    if(newParams == NULL){
+        return;
+    }
+
+    for(int i = 0 ; i < MAX_PARAM_ENTRIES; i++ )
+    {
+        logdbg("%d ",newParams[i]);
+    }
+    logdbg("\r\n");
+
+    for(int i = 0 ; i < MAX_PARAM_ENTRIES; i++ )
+    {
+        logdbg("%d ",newParams[i + 12]);
+    }
+    logdbg("\r\n");
+    
+    for(int i = 0 ; i < MAX_PARAM_ENTRIES; i++ )
+    {
+        logdbg("%d ",newParams[i + 24]);
+    }
+    logdbg("\r\n");
+    
+    for(int i = 0 ; i < MAX_PARAM_ENTRIES; i++ )
+    {
+        logdbg("%d ",newParams[i + 36]);
+    }
+    logdbg("\r\n");
+ }
+
+ //打印新设置的参数和老参数不同的地方
+ void param_print_diff(uint8_t *newParams)
+ {
+    for(int i = 0 ; i <= PARAM0_HIGH_FREQ; i++ )
+    {
+        if(g_vfdParam[PARAM_TYPE0][i] != newParams[i]){
+            logdbg("table0 diff: %d\n",i);
+        }
+    }
+    logdbg("\r\n");
+    for(int i = 0 ; i <= PARAM1_BUTTON_TYPE; i++ )
+    {
+        if(g_vfdParam[PARAM_TYPE1][i] != newParams[i + 12]){
+            logdbg("table1 diff: %d\n",i);
+        }
+    }
+    logdbg("\r\n");
+    for(int i = 0 ; i <= PARAM2_VOLTAGE_ADJUST; i++ )
+    {
+        if(g_vfdParam[PARAM_TYPE2][i] != newParams[i + 24]){
+            logdbg("table2 diff: %d\n",i);
+        }
+    }
+    logdbg("\r\n");
+    for(int i = 0 ; i <= PARAM3_RECOVERY; i++ )
+    {
+        if(g_vfdParam[PARAM_TYPE3][i] != newParams[i + 36]){
+            logdbg("table3 diff: %d\n",i);
+        }
+    }
+    logdbg("\r\n");
  }
 
  void param_get(ModuleParameterType type, uint8_t index, uint8_t* value)

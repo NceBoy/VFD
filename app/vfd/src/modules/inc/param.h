@@ -87,6 +87,9 @@ void param_default(void);
 
 void param_update_all(uint8_t *newParams);
 
+void param_print_all(uint8_t *newParams);
+
+ void param_print_diff(uint8_t *newParams);
 /// 将参数表完整写入EEPROM
 /// \brief 将参数表的三个部分完整写入EEPROM。
 void param_save();

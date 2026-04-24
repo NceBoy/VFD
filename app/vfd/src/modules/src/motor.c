@@ -48,6 +48,7 @@ typedef struct
 {
     unsigned char need_ctl;
     unsigned int  ctl_delay;
+    unsigned int  ctl_value;
 }delay_ctl_t;
 
 typedef struct 
@@ -71,7 +72,7 @@ static motor_para_t g_motor_param;
 static motor_ctl_t g_motor_real;   
 static delay_ctl_t g_eeprom_ctl;
 static delay_ctl_t g_speed_status;
-static uint8_t g_speed_const = 1;
+static uint8_t g_speed_const = 0;
 
 static float g_radio_rate[7] = {0.0f,0.1f,0.2f,0.25f,0.3f,0.35f,0.4f}; 
 
@@ -85,15 +86,19 @@ static void motor_eeprom_ctl(void)
 
 static void motor_speed_const(int is_const)
 {
+    if(is_const == g_speed_status.ctl_value)
+        return;
+    g_speed_status.ctl_value = is_const;
+    
     if(is_const)
     {
         g_speed_status.need_ctl = 1;
-        g_speed_status.ctl_delay = g_motor_param.open_freq_delay; /*200ms后操作*/        
+        g_speed_status.ctl_delay = 3500; /*3500ms后操作*/        
     }
     else{
         g_speed_status.need_ctl = 0;
         g_speed_status.ctl_delay = 0;
-        g_speed_const = 0;
+        g_speed_const = g_speed_status.ctl_value;
     }
 }
 
@@ -121,7 +126,7 @@ void motor_speed_const_check(int period)
     {
         g_speed_status.need_ctl = 0;
         g_speed_status.ctl_delay = 0;
-        g_speed_const = 1;
+        g_speed_const = g_speed_status.ctl_value;
     }    
 }
 
@@ -481,8 +486,12 @@ static float motor_calcu_next_step_freq_t_curve(float current_freq,float target_
         motor_speed_const(1);
         return target_freq;
     }
-    motor_speed_const(0);
-    g_motor_real.freq_arrive = 0;
+    else
+    {
+        motor_speed_const(0);
+        g_motor_real.freq_arrive = 0;       /*未到达目标频率*/ 
+    }
+
     if(target_freq > current_freq){/*加速*/
         if(float_equal_in_step(current_freq , target_freq, acce_freq_per_step))
             return target_freq;
@@ -665,7 +674,7 @@ unsigned int interrupt_times = 0;
                 BREAK_VDC_DISABLE;
                 /*保存当前的运行方向（如果是靠边停，没关系）*/
                 motor_eeprom_ctl();
-
+                interrupt_times = 0;
             }
             return ;
         }

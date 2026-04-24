@@ -23,6 +23,8 @@
 #define ERROR_OVER_VOLTAGE                  (1 << 5)        //过压触发
 #define ERROR_UNDER_VOLTAGE                 (1 << 6)        //掉电触发   
 #define ERROR_IPM                           (1 << 7)        //IPM模块故障
+#define ERROR_REVERSE_TIMEOUT               (1 << 8)        //长时间不换向
+
 
 
 static int g_ipm_vfo_flag = 0;
@@ -145,7 +147,7 @@ static void update_err(void)
     /*左右限位同时触发的错误，此处不再处理*/
 
     /*IPM模块的错误，此处不再处理*/
-
+    
     static uint16_t err_last = 0;
     if(g_vfd_ctrl.err != err_last)
     {
@@ -166,10 +168,10 @@ void motor_start_ctl(void)
         return ;
     }
 
-    /*电压错误，1:欠压,2:过压, 3:掉电*/
+    /*电压错误，1:欠压,2:过压*/
     if(g_vfd_voltage_flag != 0)
     {
-        ext_notify_stop_code(g_vfd_voltage_flag + 4);
+        ext_notify_stop_code((stopcode_t)(g_vfd_voltage_flag + 4));
         return ;
     }
 
@@ -311,6 +313,7 @@ void inout_mode_sync_from_ext(unsigned char mode)
     ext_send_report_status(0,STATUS_MODE_CHANGE,now_mode,0);
 }
 
+/*是否进入debug模式，1:进入debug模式 0:退出debug模式*/
 int motor_debug_mode(void)
 {
     return g_vfd_ctrl.flag[IO_ID_DEBUG];
@@ -918,6 +921,7 @@ unsigned char inout_get_work_end(void)
     return g_vfd_ctrl.flag[IO_ID_END];
 }
 
+#if 0
 static uint8_t is_power_off(int voltage , uint32_t timeout_time)
 {
     static uint32_t power_off_start_time = 0;
@@ -938,37 +942,80 @@ static uint8_t is_power_off(int voltage , uint32_t timeout_time)
     }
     return 0;
 }
+#endif
 
-static uint8_t check_voltage_status(int voltage, int low_threshold, int high_threshold, uint32_t timeout_time)
+static uint8_t check_voltage_status(int voltage, 
+    int under_voltage_lower, int under_voltage_upper, 
+    int over_voltage_lower, int over_voltage_upper, 
+    uint32_t timeout_time)
 {
     static uint32_t voltage_abnormal_start_time = 0; // 记录异常开始时间
-    if (voltage < low_threshold) {
+    static uint32_t voltage_normal_start_time = 0;   // 记录恢复正常开始时间
+    static uint8_t current_status = 0;               // 记录当前状态
+
+    if (voltage < under_voltage_lower || voltage > over_voltage_upper) {
+        // 电压异常（低于欠压下限或高于过压上限）
+        voltage_normal_start_time = 0; // 重置正常计时器
         if (voltage_abnormal_start_time == 0) {
-            voltage_abnormal_start_time = HAL_GetTick(); // 第一次低于下限，记录时间
+            voltage_abnormal_start_time = HAL_GetTick(); // 第一次异常，记录时间
         } else {
             uint32_t elapsed_time = HAL_GetTick() - voltage_abnormal_start_time;
             if (elapsed_time >= timeout_time) {
-                return 1; // 持续低于下限
+                if (voltage < under_voltage_lower) {
+                    current_status = 1; // 欠压
+                } else {
+                    current_status = 2; // 过压
+                }
+                return current_status;
             }
         }
-    } else if (voltage > high_threshold) {
-        if (voltage_abnormal_start_time == 0) {
-            voltage_abnormal_start_time = HAL_GetTick(); // 第一次高于上限，记录时间
+    } else if (current_status == 1 && voltage >= under_voltage_upper) {
+        // 从欠压异常恢复到欠压上限以上
+        voltage_abnormal_start_time = 0; // 重置异常计时器
+        if (voltage_normal_start_time == 0) {
+            voltage_normal_start_time = HAL_GetTick(); // 第一次恢复正常，记录时间
         } else {
-            uint32_t elapsed_time = HAL_GetTick() - voltage_abnormal_start_time;
+            uint32_t elapsed_time = HAL_GetTick() - voltage_normal_start_time;
             if (elapsed_time >= timeout_time) {
-                return 2; // 持续高于上限
+                current_status = 0; // 更新状态为正常
+                return 0;
             }
         }
-    } else {
-        // 电压恢复正常区间，重置计时器
-        voltage_abnormal_start_time = 0;
+    } else if (current_status == 2 && voltage <= over_voltage_lower) {
+        // 从过压异常恢复到过压下限以下
+        voltage_abnormal_start_time = 0; // 重置异常计时器
+        if (voltage_normal_start_time == 0) {
+            voltage_normal_start_time = HAL_GetTick(); // 第一次恢复正常，记录时间
+        } else {
+            uint32_t elapsed_time = HAL_GetTick() - voltage_normal_start_time;
+            if (elapsed_time >= timeout_time) {
+                current_status = 0; // 更新状态为正常
+                return 0;
+            }
+        }
+    } else if (voltage >= under_voltage_upper && voltage <= over_voltage_lower) {
+        // 电压在正常范围内（欠压上限以上且过压下限以下）
+        voltage_abnormal_start_time = 0; // 重置异常计时器
+        if (current_status != 0) {
+            if (voltage_normal_start_time == 0) {
+                voltage_normal_start_time = HAL_GetTick(); // 第一次恢复正常，记录时间
+            } else {
+                uint32_t elapsed_time = HAL_GetTick() - voltage_normal_start_time;
+                if (elapsed_time >= timeout_time) {
+                    current_status = 0; // 更新状态为正常
+                    return 0;
+                }
+            }
+        } else {
+            return 0;
+        }
     }
 
-    return 0; // 电压在正常范围内或未超时
+    return current_status; // 返回当前状态
 }
 
 int g_real_voltage = 0;
+
 void scan_voltage(void)
 {
     //根据GB/T 12325-2008，220V单相的允许偏差为标称电压的+7%（上限）和-10%（下限），即198V至235.4V‌
@@ -979,11 +1026,11 @@ void scan_voltage(void)
     if (now - last_check_time < 200) {
         return ; 
     }
+    last_check_time = now;
 
     if(motor_is_working() && (motor_speed_is_const() == 0)) //变速时，由于母线电压不稳定，此时不再检测电压
         return ;
 
-    last_check_time = now;
     /*获取电压保护参数和掉电异常参数*/
     //uint8_t voltage_protect = 0;
     //param_get(PARAM0X02, PARAM_VOLTAGE_ADJUST, &voltage_protect); /*更新电压调节参数*/
@@ -995,30 +1042,40 @@ void scan_voltage(void)
     /*过压时电机停止，放电很慢*/
     int voltage = bsp_get_voltage();
     g_real_voltage = voltage;
- 
-    if(is_power_off(voltage,timeout) == 1){
-        g_vfd_voltage_flag = 3;
+    //每隔1秒钟打印一次电压
+    #if 0
+    static uint32_t last_print_time = 0;
+    if(now - last_print_time >= 1000)
+    {
+        last_print_time = now;
+        logdbg("voltage = %d\n",voltage);
+    }
+    #endif
+    
+    uint8_t voltage_status = check_voltage_status(voltage, 165, 180, 260, 262, timeout);
+    g_vfd_voltage_flag = voltage_status;
+    if(voltage_status == 0) //没有电压异常
+    {
+        g_vfd_ctrl.err &= ~ERROR_UNDER_VOLTAGE;
+        g_vfd_ctrl.err &= ~ERROR_OVER_VOLTAGE;
+    }
+    else
+    {
         if(motor_is_running()){
             pump_ctl_set_value(0 , 500);
-            motor_stop_ctl(CODE_POWER_OFF);
+            motor_stop_ctl((stopcode_t)(voltage_status + 4));
             logdbg("motor stop at %s[%d]\n",THIS_FILE,__LINE__);
         }
-        g_vfd_ctrl.err |= ERROR_UNDER_VOLTAGE;
-    }else{
-        g_vfd_ctrl.err &= ~ERROR_UNDER_VOLTAGE;
-        uint8_t voltage_status = check_voltage_status(voltage,176 , 264,timeout);
-        if(voltage_status != 0){
-            g_vfd_ctrl.err |= ERROR_OVER_VOLTAGE;
-            if(motor_is_running()){
-                pump_ctl_set_value(0 , 500);
-                motor_stop_ctl((stopcode_t)(voltage_status + 4));
-                logdbg("motor stop at %s[%d]\n",THIS_FILE,__LINE__);
-            }
-        }
-        else
+        if(voltage_status == 1) //电压过低
+        {
+            g_vfd_ctrl.err |= ERROR_UNDER_VOLTAGE;
             g_vfd_ctrl.err &= ~ERROR_OVER_VOLTAGE;
-
-        g_vfd_voltage_flag = voltage_status;
+        }
+        else if(voltage_status == 2) //电压过高
+        {
+            g_vfd_ctrl.err |= ERROR_OVER_VOLTAGE;
+            g_vfd_ctrl.err &= ~ERROR_UNDER_VOLTAGE;
+        }
     }
 }
 
@@ -1052,6 +1109,38 @@ void inout_reset_pump_high_freq(unsigned char* pump , unsigned char* high_freq)
         *high_freq = g_sync_status.high_freq;
 }
 
+/*检查换向超时*/
+static void check_reverse_timeout(void)
+{
+    //调试状态或者电机未运行，不检查换向超时
+    static uint32_t last_check_time = 0;
+    uint32_t now = HAL_GetTick();
+    if (now - last_check_time < 1000) {
+        return ; 
+    }
+    last_check_time = now;
+    
+    if(motor_is_running() == 0 || motor_debug_mode() == 1)
+        return ;
+    
+    uint32_t reverse_tick = ext_motor_get_reverse_tick();
+    if(reverse_tick == 0)
+        return ;
+    uint8_t sp,speed;
+    inout_get_current_sp(&sp,&speed);
+    //计算超时时间，80Hz时的超时时间是20秒，等比例变换，向上取整
+    uint32_t timeout = ((uint32_t)(80.0f / (float)speed * 20.0f + 0.5f)) * 1000;
+    //logdbg("reverse timeout check, speed %d, timeout %d \n",speed,timeout);
+    if(now - reverse_tick >= timeout){
+        g_vfd_ctrl.err |= ERROR_REVERSE_TIMEOUT;
+        motor_stop_ctl(CODE_REVERSE_TIMEOUT);
+        pump_ctl_set_value(0 , 0);
+        logdbg("motor stop at %s[%d]\n",THIS_FILE,__LINE__);
+    }
+}
+
+
+
 void inout_scan(void)
 {
     /*step 1 . 极性*/
@@ -1070,9 +1159,12 @@ void inout_scan(void)
     io_scan_onoff();
     /*step 8 . 电压检测*/
     scan_voltage();
-    /*step 9 . 错误处理*/
+    /*step 9 . 换向超时*/
+    check_reverse_timeout();
+    /*step 10 . 错误处理*/
     update_err();
-    /*step 10 . 状态同步*/
+
+    /*step 11 . 状态同步*/
     io_sync_status();
 }
 

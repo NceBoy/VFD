@@ -10,7 +10,7 @@ extern "C" {
 #define TIM_CLOCK_DIVIDER                1
 #define PWM_FREQUENCY                    10000
 #define ADV_TIM_CLK_MHz                  170 		/* Actual TIM clk including Timer clock divider*/
-#define REGULATION_EXECUTION_RATE        1 		/*!< FOC execution rate in number of PWM cycles */
+#define REGULATION_EXECUTION_RATE        5 		/*!< FOC execution rate in number of PWM cycles */
 #define PWM_PERIOD_CYCLES     			(uint16_t)(ADV_TIM_CLK_MHz*(uint32_t)1000000u/((uint32_t)(PWM_FREQUENCY)))
 #define REP_COUNTER 					(uint16_t) ((REGULATION_EXECUTION_RATE *2u)-1u)
 #define HTMIN 							1 /* Required for main.c compilation only, CCR4 is overwritten at runtime */

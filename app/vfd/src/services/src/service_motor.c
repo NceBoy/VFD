@@ -22,7 +22,7 @@ static  void        task_motor          (ULONG thread_input);
 #define  QUEUE_MOTOR_MAX_NUM                          8
 static TX_QUEUE g_motor_queue = {0};
 static UINT g_motor_queue_addr[QUEUE_MOTOR_MAX_NUM] = {0};
-
+static UINT g_motor_reverse_tick = 0;
 void service_motor_start(void)
 {
     nx_msg_queue_create(&g_motor_queue, "motor queue",(VOID *)g_motor_queue_addr, sizeof(g_motor_queue_addr));
@@ -101,6 +101,8 @@ void ext_motor_start(unsigned int dir , unsigned int target)
     unsigned int data[2] = {dir,target};
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_START, data, sizeof(data));
     ext_send_report_status(0,STATUS_START_CHANGE,1,0);
+    g_motor_reverse_tick = _tx_time_get();
+    logdbg("motor start, tick %d \n",g_motor_reverse_tick);
 }
 
 void ext_motor_speed(unsigned int speed)
@@ -109,6 +111,8 @@ void ext_motor_speed(unsigned int speed)
         return ;
     unsigned int freq = speed;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_VF, &freq, 4);
+    g_motor_reverse_tick = _tx_time_get();
+    logdbg("motor speed, tick %d \n",g_motor_reverse_tick);
 }
 
 void ext_motor_reverse(void)
@@ -118,6 +122,8 @@ void ext_motor_reverse(void)
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_REVERSE, NULL, 0);
     uint8_t dir = motor_target_current_dir() ? 0 : 1;
     ext_send_report_status(0,STATUS_DIRECTION_CHANGE,dir,0);
+    g_motor_reverse_tick = _tx_time_get();
+    logdbg("motor reverse, tick %d \n",g_motor_reverse_tick);
 }
 
 void ext_motor_brake(void)
@@ -126,4 +132,9 @@ void ext_motor_brake(void)
         return ;
     nx_msg_send(NULL, &g_motor_queue, MSG_ID_MOTOR_BRAKE, NULL, 0);
     ext_send_report_status(0,STATUS_START_CHANGE,0,0);
+}
+
+unsigned int ext_motor_get_reverse_tick(void)
+{
+    return g_motor_reverse_tick;
 }

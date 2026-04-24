@@ -27,9 +27,10 @@ typedef int (*protocol_cb)(packet* in , packet* out);
 
 #define CMD_PARAM_SET           CMD_BUILD(ACTION_SET,0xFF,0x00)
 #define CMD_PARAM_GET           CMD_BUILD(ACTION_GET,0xFF,0x00)
+
 #define CMD_STATUS_GET          CMD_BUILD(ACTION_GET,0xFE,0x00)
 
-#define CMD_AUTO_REPLY         CMD_BUILD(ACTION_REPLY,0xFE,0x00)
+#define CMD_REPORT_ACK          CMD_BUILD(ACTION_REPLY,0xFE,0x00)
 
 
 #define CMD_MOTOR_CTL           CMD_BUILD(ACTION_SET,0x04,0x01)
@@ -64,7 +65,7 @@ static const data_item_t data_tab[] = {
     {CMD_MODE_CTL , vfd_mode_ctl},
     {CMD_SPEED_CTL , vfd_speed_ctl},
     {CMD_DEVICE_CTL , vfd_device_ctl},
-    {CMD_AUTO_REPLY, vfd_report_ack}
+    {CMD_REPORT_ACK, vfd_report_ack}
 };
 
 
@@ -256,7 +257,7 @@ int data_process(packet* in , packet* out)
     return -1;
 }
 
-/*变频器参数获取*/
+/*变频器状态获取*/
 static int vfd_status_get(packet* in , packet* out)
 {
     logdbg("status get, length = %d\n",in->body_length);
@@ -277,8 +278,7 @@ static int vfd_status_get(packet* in , packet* out)
     temp[7] = err & 0xFF;                       //err
     temp[8] = err >> 8 & 0xFF;
     
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
-    temp, sizeof(temp));
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, temp, sizeof(temp));
     return 0;
 }
 
@@ -294,15 +294,16 @@ static int vfd_param_set(packet* in , packet* out)
     else if(param_check(in->body) < 0)
     {
         logerr("param check failed at %s[%d]\n",THIS_FILE,__LINE__);
-        ret = 1;
+        ret = 2;
     }
     else
     {
+        //打印修改参数差异
+        param_print_diff(in->body);
         param_update_all(in->body);
         ret = 0;
     }
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
-        (uint8_t*)&ret, 1);
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, (uint8_t*)&ret, 1);
     return 0;
 }
 
@@ -312,8 +313,7 @@ static int vfd_param_get(packet* in , packet* out)
     logdbg("param get, length = %d\n",in->body_length);
     if(in->body_length != 0)
         return -1;
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
-        (uint8_t*)g_vfdParam, sizeof(g_vfdParam));
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, (uint8_t*)g_vfdParam, sizeof(g_vfdParam));
     return 0;
 }
 
@@ -332,8 +332,7 @@ static int vfd_motor_ctl(packet* in , packet* out)
         logdbg("motor start at %s[%d]\n",THIS_FILE,__LINE__);
     }
     uint8_t ret = 0;
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
-        (uint8_t*)&ret, 1);
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, (uint8_t*)&ret, 1);
     return 0;
 }
 
@@ -351,8 +350,7 @@ static int vfd_pump_ctl(packet* in , packet* out)
     }
         
     uint8_t ret = 0;
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
-        (uint8_t*)&ret, 1);
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, (uint8_t*)&ret, 1);
     return 0;
 }
 
@@ -364,8 +362,7 @@ static int vfd_mode_ctl(packet* in , packet* out)
         return -1;
     inout_mode_sync_from_ext(in->body[0]);
     uint8_t ret = 0;
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
-        (uint8_t*)&ret, 1);
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, (uint8_t*)&ret, 1);
     return 0;
 }
 
@@ -378,8 +375,7 @@ static int vfd_speed_ctl(packet* in , packet* out)
     uint8_t manual_sp = in->body[0] + 8;/*数字8为自动速度的偏移量*/
     inout_sp_sync_from_ext(manual_sp);
     uint8_t ret = 0;
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
-        (uint8_t*)&ret, 1);
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, (uint8_t*)&ret, 1);
     return 0;
 }
 
@@ -390,14 +386,13 @@ static int vfd_device_ctl(packet* in , packet* out)
     if(in->body_length != 1)
         return -1;
     uint8_t ret = 0;
-    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, \
-        (uint8_t*)&ret, 1);
+    create_packet(out, ACTION_REPLY, TYPE_VFD, in->tid, in->target_id, in->source_id, in->mtype, (uint8_t*)&ret, 1);
     return 0;
 }
 
 static int vfd_report_ack(packet* in , packet* out)
 {
-    logdbg("report ack, length = %d\n",in->body_length);
+    //logdbg("report ack, length = %d\n",in->body_length);
     if(in->body_length != 0)
         return -1;
     pending_msg_find_and_remove(in->tid);

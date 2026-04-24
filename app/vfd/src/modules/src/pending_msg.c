@@ -76,13 +76,13 @@ int pending_msg_find_and_remove(unsigned int msg_id)
         {
             // 找到匹配的消息，删除它
             pending_msg_remove(i);
-            logdbg("Message ID %d found and removed.\n", msg_id);
+            //logdbg("Message ID %d found and removed.\n", msg_id);
             return 0;  // 成功删除
         }
     }
 
     // 没有找到匹配的消息
-    logdbg("Message ID %d not found.\n", msg_id);
+    //logdbg("Message ID %d not found.\n", msg_id);
     return -1;  // 未找到
 }
 
@@ -104,12 +104,12 @@ void pending_msg_check(void)
                 bsp_uart_send(msg->buf , msg->len);
                 msg->send_time = current_time;
                 msg->retry_count++;
-                logdbg("Retrying message ID %d, retry count: %d\n", msg->msg_id, msg->retry_count);
+                //logdbg("Retrying message ID %d, retry count: %d\n", msg->msg_id, msg->retry_count);
             } 
             else 
             {
                 // 达到最大重试次数，丢弃消息
-                logdbg("Max retries reached for message ID %d, dropping.\n", msg->msg_id);
+                //logdbg("Max retries reached for message ID %d, dropping.\n", msg->msg_id);
                 pending_msg_remove(i);
                 --i;  // 队列前移，调整索引
             }
