@@ -392,7 +392,7 @@ static int vfd_device_ctl(packet* in , packet* out)
 
 static int vfd_report_ack(packet* in , packet* out)
 {
-    //logdbg("report ack, length = %d\n",in->body_length);
+    logdbg("report ack, length = %d,tid = %d\n",in->body_length,in->tid);
     if(in->body_length != 0)
         return -1;
     pending_msg_find_and_remove(in->tid);

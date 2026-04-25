@@ -134,7 +134,22 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
 };
 
-
+static const char* get_err_str(int index)
+{
+    switch(index)
+    {
+        case 0: return "wire break";
+        case 1: return "left key trigger timeout";
+        case 2: return "right key trigger timeout";
+        case 3: return "double key trigger sync";
+        case 4: return "exceed trigger";
+        case 5: return "over voltage";
+        case 6: return "under voltage";
+        case 7: return "ipm error";
+        case 8: return "reverse timeout";
+        default:return "unknow";
+    }
+}
 /*外部IO的错误信息处理*/
 static void update_err(void)
 {  
@@ -151,6 +166,14 @@ static void update_err(void)
     static uint16_t err_last = 0;
     if(g_vfd_ctrl.err != err_last)
     {
+        logdbg("last err:0x%04x, now err:0x%04x\n",err_last,g_vfd_ctrl.err);
+        for(int i = 0; i < 16; i++ )
+        {
+            if(g_vfd_ctrl.err & (1 << i))
+            {
+                logdbg("err:%s\n",get_err_str(i));
+            }
+        }
         err_last = g_vfd_ctrl.err;
         ext_send_report_err(0 , g_vfd_ctrl.err);
     }
@@ -288,13 +311,15 @@ void inout_mode_sync_from_ext(unsigned char mode)
     if(mode != 0) /*进入debug模式*/
     {
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
+        logdbg("enter debug mode\n");
     }
     else /*退出debug模式*/
     {
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
-
+        logdbg("exit debug mode\n");
         if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
         {
+            logdbg("mode normal, recovery speed\n");
             ctrl_speed(g_vfd_ctrl.sp);
             uint8_t speed = 0;
             param_get(PARAM_TYPE0, g_vfd_ctrl.sp, &speed);
@@ -329,10 +354,12 @@ static void io_scan_debug(void)
     {
         if((g_io_debug_level == 1) || (g_vfd_ctrl.flag[IO_ID_DEBUG] == 0))  /*首次进入debug模式*/
         {
+            logdbg("enter debug mode\n");
             ext_send_report_status(0,STATUS_MODE_CHANGE,0,0);
         }
         g_io_debug_level = debug_now;
         g_vfd_ctrl.flag[IO_ID_DEBUG] = 1;   /*进入debug模式*/
+
     }
     else
     {
@@ -341,7 +368,7 @@ static void io_scan_debug(void)
             g_io_debug_level = debug_now;
             g_vfd_ctrl.flag[IO_ID_DEBUG] = 0;
             ext_send_report_status(0,STATUS_MODE_CHANGE,1,0);
-
+            logdbg("exit debug mode\n");
             if(g_vfd_ctrl.flag[IO_ID_SP0] != 0) /*退出debug模式，恢复IO速度*/
             {
                 ctrl_speed(g_vfd_ctrl.sp);
@@ -367,14 +394,20 @@ static void io_scan_debug(void)
 void inout_sp_sync_from_ext(uint8_t manual_sp)
 {
     if(motor_debug_mode() == 0) /*处于正常工作模式，不响应手控盒控制*/
+    {
+        logdbg("debug mode,refuse speed ctrl from ext.\n");
         return ;
+    }
+        
 
     uint8_t speed = 0;
     param_get(PARAM_TYPE0, manual_sp, &speed);
     ext_send_report_status(0,STATUS_SPEED_CHANGE,speed,manual_sp);
+    logdbg("ext protocol change speed\n");
             
     g_vfd_ctrl.sp_manual = manual_sp;
     g_vfd_ctrl.flag[IO_ID_SP0] = 1;  //外部控制速度标志位
+
 
     if(motor_is_working())
     {
@@ -490,10 +523,17 @@ static void io_scan_speed(void)
     uint8_t speed = 0;
     param_get(PARAM_TYPE0, sp, &speed);
     if(sp != g_vfd_ctrl.sp)
+    {
+        logdbg("sp change,from %d to %d\n",g_vfd_ctrl.sp,sp);
         sp_change = 1;
+    }
+        
     if(speed != g_vfd_ctrl.speed)
+    {
+        logdbg("speed change,from %d to %d\n",g_vfd_ctrl.speed,speed);
         value_change = 1;
-
+    }
+        
     if((sp_change == 0) && (value_change == 0))
         return ;
 
@@ -501,6 +541,7 @@ static void io_scan_speed(void)
     g_vfd_ctrl.speed = speed;
 
     ext_send_report_status(0,STATUS_SPEED_CHANGE,speed,sp);
+    
 
     if(g_vfd_ctrl.end != 0)
         return ;
@@ -871,6 +912,7 @@ static void io_scan_onoff(void)
                 g_vfd_ctrl.flag[i] = 1;
                 /*通知开或者关*/
                 io_ctrl_onoff();
+                logdbg("start or stop trigger.\n");
             }
         }
     }
@@ -1043,7 +1085,7 @@ void scan_voltage(void)
     int voltage = bsp_get_voltage();
     g_real_voltage = voltage;
     //每隔1秒钟打印一次电压
-    #if 0
+    #if 1
     static uint32_t last_print_time = 0;
     if(now - last_print_time >= 1000)
     {
@@ -1068,11 +1110,13 @@ void scan_voltage(void)
         }
         if(voltage_status == 1) //电压过低
         {
+            logdbg("under voltage\n");
             g_vfd_ctrl.err |= ERROR_UNDER_VOLTAGE;
             g_vfd_ctrl.err &= ~ERROR_OVER_VOLTAGE;
         }
         else if(voltage_status == 2) //电压过高
         {
+            logdbg("over voltage\n");
             g_vfd_ctrl.err |= ERROR_OVER_VOLTAGE;
             g_vfd_ctrl.err &= ~ERROR_UNDER_VOLTAGE;
         }

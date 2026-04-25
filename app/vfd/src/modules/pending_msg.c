@@ -29,7 +29,7 @@ void pending_msg_add(unsigned int msg_id, unsigned char* buf, int len)
     if((buf == NULL) || (len == 0))
         return;
     if (g_pending_count >= MAX_PENDING_MSGS) {
-        logdbg("Pending queue is full, dropping message.\n");
+        logdbg("pending queue is full, dropping message.\n");
         return;
     }
     
@@ -86,6 +86,7 @@ int pending_msg_find_and_remove(unsigned int msg_id)
     return -1;  // 未找到
 }
 
+/*每秒钟由定时器触发一次*/
 void pending_msg_check(void)
 {
     if(g_pending_count == 0)
@@ -94,25 +95,22 @@ void pending_msg_check(void)
     for (int i = 0; i < g_pending_count; ++i) 
     {
         pending_msg_t* msg = &g_pending_msgs[i];
-
-        // 超时判断（假设超时时间为 5 秒）
-        if ((current_time - msg->send_time) > (PENDING_MSG_TIMEOUT)) 
+        if((current_time - msg->send_time) < PENDING_MSG_TIMEOUT)
+            continue;
+        if (msg->retry_count < MAX_RETRIES) 
         {
-            if (msg->retry_count < MAX_RETRIES) 
-            {
-                // 重发消息
-                bsp_uart_send(msg->buf , msg->len);
-                msg->send_time = current_time;
-                msg->retry_count++;
-                //logdbg("Retrying message ID %d, retry count: %d\n", msg->msg_id, msg->retry_count);
-            } 
-            else 
-            {
-                // 达到最大重试次数，丢弃消息
-                //logdbg("Max retries reached for message ID %d, dropping.\n", msg->msg_id);
-                pending_msg_remove(i);
-                --i;  // 队列前移，调整索引
-            }
+            // 重发消息
+            bsp_uart_send(msg->buf , msg->len);
+            msg->send_time = current_time;
+            msg->retry_count++;
+            logdbg("retrying message tid %d, retry count: %d\n", msg->msg_id, msg->retry_count);
+        } 
+        else 
+        {
+            // 达到最大重试次数，丢弃消息
+            //logdbg("Max retries reached for message ID %d, dropping.\n", msg->msg_id);
+            pending_msg_remove(i);
+            --i;  // 队列前移，调整索引
         }
     }
 }

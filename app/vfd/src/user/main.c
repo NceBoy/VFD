@@ -2,7 +2,6 @@
 #include "tx_api.h"
 #include "nx_msg.h"
 #include "nx_malloc.h"
-#include "pending_msg.h"
 #include "log.h"
 #include "bsp_led.h"
 #include "bsp_adc.h"
@@ -94,6 +93,8 @@ static  void  taskstart (ULONG thread_input)
 
     ble_init();
 
+    logdbg("build at %s, version %s, system start .\n", __DATE__, VFD_VERSION);
+
     param_load();
 
     //service_test_start();
@@ -105,8 +106,6 @@ static  void  taskstart (ULONG thread_input)
     service_hmi_start();
 
     tx_timer_create(&adc_timer , "adc_timer", adc_timer_expire, 0, 20, 10, TX_AUTO_ACTIVATE);
-    
-    logdbg("build at %s, version %s, system start .\n", __DATE__, VFD_VERSION);
 
 	while(1)
 	{
@@ -115,7 +114,7 @@ static  void  taskstart (ULONG thread_input)
         data_poll();
         inout_scan();
         bsp_led_run();
-        pending_msg_check();
+        
         
         inout_pump_ctl(MAIN_CTL_PERIOD);   /*水泵控制*/
         motor_high_freq_ctl(MAIN_CTL_PERIOD); /*高频控制*/

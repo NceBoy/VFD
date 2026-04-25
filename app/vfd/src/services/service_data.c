@@ -22,13 +22,15 @@ static  void        task_data          (ULONG thread_input);
 #define  QUEUE_DATA_MAX_NUM                          10
 static TX_QUEUE g_data_queue = {0};
 static UINT g_data_queue_addr[QUEUE_DATA_MAX_NUM] = {0};
-
+TX_TIMER report_check_timer;
+static void report_timer_expire(ULONG id);
 
 /*ack 应答全局缓冲区*/
 static uint8_t g_ack_buf[1024];
 
 void service_data_start(void)
 {
+    tx_timer_create(&report_check_timer , "report_check_timer", report_timer_expire, 0, 20, 500, TX_AUTO_ACTIVATE);
     nx_msg_queue_create(&g_data_queue, "data queue",(VOID *)g_data_queue_addr, sizeof(g_data_queue_addr));
     tx_thread_create(&task_data_tcb,
                      "task data",
@@ -56,10 +58,30 @@ static int protocol_process(unsigned char* buf , int len)
             return ret;
         ack_len = packet2buf((const packet*) &ack_pkt, g_ack_buf);
         bsp_uart_send(g_ack_buf , ack_len);
-        logdbg("ack_len: %d\n", ack_len);
-        loghex(g_ack_buf,ack_len);
+        //logdbg("ack_len: %d\n", ack_len);
+        //loghex(g_ack_buf,ack_len);
     }
     return 0;
+}
+
+static void report_timer_expire(ULONG id)
+{
+    (void)id;
+    nx_msg_send(NULL, &g_data_queue, MSG_ID_UART_REPORT_CHECK, NULL, 0);
+}
+
+static const char* get_status_str(unsigned short status)
+{
+    switch(status)
+    {
+        case 0x0001 : return "speed change";
+        case 0x0002 : return "pump change";
+        case 0x0004 : return "start change";
+        case 0x0008 : return "direction change";
+        case 0x0010 : return "mode change";
+        case 0x0020 : return "high freq change";
+        default: return "unknow status";
+    }
 }
 
 static void uart_report_status(unsigned char* buf , int len)
@@ -70,8 +92,11 @@ static void uart_report_status(unsigned char* buf , int len)
     create_packet(&out, ACTION_REPORT, TYPE_VFD, tid, 0x1234, 0x0001, 0xFE00, buf, len);
     int ack_len = packet2buf((const packet*) &out, g_ack_buf);
     bsp_uart_send(g_ack_buf , ack_len);
-
-    loghex(g_ack_buf,ack_len);
+    uint16_t status = buf[3] << 8 | buf[2];
+    if(status != 0){ //上报状态，status==0上报的是错误，错误不在此处打印
+        logdbg("report status[0x%04x], tid = %d, %s : %d %d\n",status,tid,get_status_str(status),buf[4],buf[5]);
+    }
+    //loghex(g_ack_buf,ack_len);
     
     /*将上报消息加入待发送队列*/
     pending_msg_add(tid, g_ack_buf, ack_len);
@@ -87,6 +112,9 @@ static int do_handler(MSG_MGR_T* msg)
             break;
         case MSG_ID_UART_REPORT_DATA:
             uart_report_status(msg->buf , msg->len);
+            break;
+        case MSG_ID_UART_REPORT_CHECK:
+            pending_msg_check();
             break;
         default:
             loginfo("unknow msg type %d",msg->mtype);
@@ -131,10 +159,10 @@ void ext_send_report_err(int from_id , unsigned short err)
     buf[4] = 0x00;
     buf[5] = 0x00;
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
-    logdbg("report err: 0x%04x\n",err);
 }
 
 extern unsigned short inout_get_err(void);
+
 void ext_send_report_status(int from_id , unsigned short status , unsigned char value1 , unsigned char value2 )
 {
     /*上报状态时需要把错误码一起上报，否则手持会认为错误消失*/
@@ -147,5 +175,5 @@ void ext_send_report_status(int from_id , unsigned short status , unsigned char 
     buf[4] = value1;
     buf[5] = value2;
     nx_msg_send((TX_QUEUE*)from_id, &g_data_queue, MSG_ID_UART_REPORT_DATA, buf, sizeof(buf));
-    logdbg("report status: 0x%04x = %d %d\n",status,value1,value2);
+    //logdbg("report status: %s : %d %d\n",get_status_str(status),value1,value2);
 }
