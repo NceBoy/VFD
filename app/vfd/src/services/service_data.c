@@ -84,6 +84,22 @@ static const char* get_status_str(unsigned short status)
     }
 }
 
+static const char* get_err_str(int index)
+{
+    switch(index)
+    {
+        case 0: return "wire break";
+        case 1: return "left key trigger timeout";
+        case 2: return "right key trigger timeout";
+        case 3: return "double key trigger sync";
+        case 4: return "exceed trigger";
+        case 5: return "over voltage";
+        case 6: return "under voltage";
+        case 7: return "ipm error";
+        case 8: return "reverse timeout";
+        default:return "unknow";
+    }
+}
 static void uart_report_status(unsigned char* buf , int len)
 {
     /* 上报状态*/
@@ -92,9 +108,21 @@ static void uart_report_status(unsigned char* buf , int len)
     create_packet(&out, ACTION_REPORT, TYPE_VFD, tid, 0x1234, 0x0001, 0xFE00, buf, len);
     int ack_len = packet2buf((const packet*) &out, g_ack_buf);
     bsp_uart_send(g_ack_buf , ack_len);
+    uint16_t err = buf[1] << 8 | buf[0];
     uint16_t status = buf[3] << 8 | buf[2];
-    if(status != 0){ //上报状态，status==0上报的是错误，错误不在此处打印
+    if(status != 0){ //上报状态，status==0上报的是错误
         logdbg("report status[0x%04x], tid = %d, %s : %d %d\n",status,tid,get_status_str(status),buf[4],buf[5]);
+    }
+    else
+    {
+        logdbg("report err[0x%04x], tid = %d\n",err,tid);
+        for(int i = 0; i < 16; i++ )
+        {
+            if(err & (1 << i))
+            {
+                logdbg("err:%s\n",get_err_str(i));
+            }
+        }
     }
     //loghex(g_ack_buf,ack_len);
     

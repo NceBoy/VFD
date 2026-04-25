@@ -134,22 +134,7 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
 };
 
-static const char* get_err_str(int index)
-{
-    switch(index)
-    {
-        case 0: return "wire break";
-        case 1: return "left key trigger timeout";
-        case 2: return "right key trigger timeout";
-        case 3: return "double key trigger sync";
-        case 4: return "exceed trigger";
-        case 5: return "over voltage";
-        case 6: return "under voltage";
-        case 7: return "ipm error";
-        case 8: return "reverse timeout";
-        default:return "unknow";
-    }
-}
+
 /*外部IO的错误信息处理*/
 static void update_err(void)
 {  
@@ -166,14 +151,7 @@ static void update_err(void)
     static uint16_t err_last = 0;
     if(g_vfd_ctrl.err != err_last)
     {
-        logdbg("last err:0x%04x, now err:0x%04x\n",err_last,g_vfd_ctrl.err);
-        for(int i = 0; i < 16; i++ )
-        {
-            if(g_vfd_ctrl.err & (1 << i))
-            {
-                logdbg("err:%s\n",get_err_str(i));
-            }
-        }
+        //logdbg("last err:0x%04x, now err:0x%04x\n",err_last,g_vfd_ctrl.err);
         err_last = g_vfd_ctrl.err;
         ext_send_report_err(0 , g_vfd_ctrl.err);
     }
@@ -1110,13 +1088,13 @@ void scan_voltage(void)
         }
         if(voltage_status == 1) //电压过低
         {
-            logdbg("under voltage\n");
+            //logdbg("under voltage\n");
             g_vfd_ctrl.err |= ERROR_UNDER_VOLTAGE;
             g_vfd_ctrl.err &= ~ERROR_OVER_VOLTAGE;
         }
         else if(voltage_status == 2) //电压过高
         {
-            logdbg("over voltage\n");
+            //logdbg("over voltage\n");
             g_vfd_ctrl.err |= ERROR_OVER_VOLTAGE;
             g_vfd_ctrl.err &= ~ERROR_UNDER_VOLTAGE;
         }
