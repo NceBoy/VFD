@@ -820,12 +820,12 @@ static void io_scan_direction(void)
 
 
 
-static void io_ctrl_onoff(void)
+static void io_ctrl_onoff(int signal)
 {
     switch(g_vfd_ctrl.ctl)
     {
         case CTRL_MODE_JOG :{ /*忽略关丝和关水逻辑*/
-            if(g_vfd_ctrl.flag[IO_ID_MOTOR_START] != 0) /*开关丝*/
+            if(signal == IO_ID_MOTOR_START) /*开关丝*/
             {
                 if(motor_is_working() == 0){
                     motor_start_ctl();
@@ -835,30 +835,30 @@ static void io_ctrl_onoff(void)
                     logdbg("motor stop at %s[%d]\n",THIS_FILE,__LINE__);
                 }
             }
-            if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开关水*/
+            if(signal == IO_ID_PUMP_START) /*开关水*/
             {
                 pump_ctl_toggle_value();
             }            
         }break;
         case CTRL_MODE_FOUR_KEY :{
-            if(g_vfd_ctrl.flag[IO_ID_MOTOR_START] != 0) /*开丝*/
+            if(signal == IO_ID_MOTOR_START) /*开丝*/
             {
                 if(motor_is_working() == 0){
                     motor_start_ctl();
                 }
             }
-            if(g_vfd_ctrl.flag[IO_ID_MOTOR_STOP] != 0) /*关丝*/
+            if(signal == IO_ID_MOTOR_STOP) /*关丝*/ 
             {
                 if(motor_is_running() == 1){
                     motor_stop_ctl(CODE_END);
                     logdbg("motor stop at %s[%d]\n",THIS_FILE,__LINE__);
                 }
             }
-            if(g_vfd_ctrl.flag[IO_ID_PUMP_START] != 0) /*开水*/
+            if(signal == IO_ID_PUMP_START) /*开水*/
             {
                 pump_ctl_set_value(1 , 0);
             }  
-            if(g_vfd_ctrl.flag[IO_ID_PUMP_STOP] != 0) /*关水*/
+            if(signal == IO_ID_PUMP_STOP) /*关水*/
             {
                 pump_ctl_set_value(0 , 0);
             } 
@@ -895,18 +895,15 @@ static void io_scan_onoff(void)
             // 高电平状态，清零计时器和下降沿标志
             g_vfd_io_tab[i].trigger_ticks = 0;
             s_falling_edge_flag[i] = 0;
+            g_vfd_ctrl.flag[i] = 0;  // 按键松开后，重置标志，允许下次触发
         }
             
-        // 消抖时间到，触发逻辑
-        if(g_vfd_io_tab[i].trigger_ticks > g_vfd_io_tab[i].debounce_ticks)
+        // 消抖时间到，触发逻辑（只触发一次）
+        if((g_vfd_io_tab[i].trigger_ticks > g_vfd_io_tab[i].debounce_ticks) && (g_vfd_ctrl.flag[i] == 0))
         {
-            if(g_vfd_ctrl.flag[i] == 0)
-            {
-                g_vfd_ctrl.flag[i] = 1;
-                /*通知开或者关*/
-                io_ctrl_onoff();
-                logdbg("start or stop trigger.\n");
-            }
+            g_vfd_ctrl.flag[i] = 1;  // 设置标志，防止重复触发
+            io_ctrl_onoff(i);
+            logdbg("start or stop trigger.\n");
         }
         
         // 更新状态记录
