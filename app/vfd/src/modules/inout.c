@@ -129,9 +129,9 @@ static vfd_io_t g_vfd_io_tab[IO_ID_MAX] = {
     {IO_ID_LIMIT_RIGHT     ,GPIOA, GPIO_PIN_12 ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW}, //右限位
 
     {IO_ID_MOTOR_START     ,GPIOB, GPIO_PIN_14  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开丝，有效电平0
-    {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_15  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关丝，有效电平1
+    {IO_ID_MOTOR_STOP      ,GPIOB, GPIO_PIN_15  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_HIGH},//关丝，有效电平1
     {IO_ID_PUMP_START      ,GPIOB, GPIO_PIN_5  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//开水，有效电平0
-    {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_LOW},//关水，有效电平1
+    {IO_ID_PUMP_STOP       ,GPIOB, GPIO_PIN_6  ,0 ,0, 20 , IO_TIMEOUT_MS ,ACTIVE_HIGH},//关水，有效电平1
 };
 
 
@@ -869,20 +869,35 @@ static void io_ctrl_onoff(void)
 
 static void io_scan_onoff(void)
 {  
+    static uint8_t s_last_status[IO_ID_MAX] = {0};     // 记录上一次的电平状态
+    static uint8_t s_falling_edge_flag[IO_ID_MAX] = {0}; // 下降沿标志
+    
     for(int i = IO_ID_MOTOR_START ; i <= IO_ID_PUMP_STOP ; i++)
     {
-        if(HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin) == g_vfd_io_tab[i].active_polarity)
+        uint8_t current_status = HAL_GPIO_ReadPin(g_vfd_io_tab[i].port, g_vfd_io_tab[i].pin);
+        
+        // 检测下降沿：之前是高电平，现在是低电平
+        if((s_last_status[i] == 1) && (current_status == 0))
         {
+            // 检测到下降沿，设置标志并开始计时
+            s_falling_edge_flag[i] = 1;
+            if(g_vfd_io_tab[i].trigger_ticks < IO_TIMEOUT_MS)
+                g_vfd_io_tab[i].trigger_ticks += MAIN_CTL_PERIOD;
+        }
+        else if((s_falling_edge_flag[i] == 1) && (current_status == 0))
+        {
+            // 已检测到下降沿且保持低电平，继续计时
             if(g_vfd_io_tab[i].trigger_ticks < IO_TIMEOUT_MS)
                 g_vfd_io_tab[i].trigger_ticks += MAIN_CTL_PERIOD;
         }
         else
         {
+            // 高电平状态，清零计时器和下降沿标志
             g_vfd_io_tab[i].trigger_ticks = 0;
-            g_vfd_ctrl.flag[i] = 0;
+            s_falling_edge_flag[i] = 0;
         }
             
-
+        // 消抖时间到，触发逻辑
         if(g_vfd_io_tab[i].trigger_ticks > g_vfd_io_tab[i].debounce_ticks)
         {
             if(g_vfd_ctrl.flag[i] == 0)
@@ -893,6 +908,9 @@ static void io_scan_onoff(void)
                 logdbg("start or stop trigger.\n");
             }
         }
+        
+        // 更新状态记录
+        s_last_status[i] = current_status;
     }
 }
 
@@ -1061,17 +1079,17 @@ void scan_voltage(void)
 
     /*过压时电机停止，放电很慢*/
     int voltage = bsp_get_voltage();
-    g_real_voltage = voltage;
+    
     //每隔1秒钟打印一次电压
     #if 1
     static uint32_t last_print_time = 0;
-    if(now - last_print_time >= 1000)
+    if((now - last_print_time >= 1000) && (voltage != g_real_voltage))
     {
         last_print_time = now;
         logdbg("voltage = %d\n",voltage);
     }
     #endif
-    
+    g_real_voltage = voltage;
     uint8_t voltage_status = check_voltage_status(voltage, 165, 180, 260, 262, timeout);
     g_vfd_voltage_flag = voltage_status;
     if(voltage_status == 0) //没有电压异常
