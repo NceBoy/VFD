@@ -657,7 +657,7 @@
                 <option>
                     <name>OOCOutputFormat</name>
                     <version>3</version>
-                    <state>3</state>
+                    <state>1</state>
                 </option>
                 <option>
                     <name>OCOutputOverride</name>
@@ -665,7 +665,7 @@
                 </option>
                 <option>
                     <name>OOCOutputFile</name>
-                    <state>VFD_V1.0.0_20250517.bin</state>
+                    <state>vfd_v1.0_build20260516.hex</state>
                 </option>
                 <option>
                     <name>OOCCommandLineProducer</name>
